@@ -1,6 +1,8 @@
 ﻿@model KLTN_Registration_System.Models.Entities.Topic
 @{
-    Layout = "_layoutStudent";
+    Layout = "_LayoutStudent";
+    var majors = ViewBag.Majors as IEnumerable<KLTN_Registration_System.Models.Entities.Major>
+                 ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.Major>();
 }
 
 <div class="container mt-4">
@@ -10,6 +12,7 @@
         </h3>
 
         <form asp-action="Propose" method="post">
+            @Html.AntiForgeryToken()
             <div class="mb-4">
                 <label class="form-label fw-bold">Tên đề tài <span class="text-danger">*</span></label>
                 <input asp-for="Title" class="form-control" style="border-radius: 10px; padding: 12px;" placeholder="Nhập tên đề tài mong muốn..." required />
@@ -37,7 +40,7 @@
                 <div class="col-md-6 mb-3">
                     <label class="form-label fw-bold">Bộ môn / Chuyên ngành</label>
                     <select asp-for="MajorId" class="form-select" style="border-radius: 10px; padding: 10px;">
-                        @foreach (var m in ViewBag.Majors)
+                        @foreach (var m in majors)
                         {
                             <option value="@m.Id">@m.Name</option>
                         }

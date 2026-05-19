@@ -27,12 +27,12 @@
                             <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
 
-                        @if (User.Identity.IsAuthenticated)
+                        @if (User.Identity?.IsAuthenticated == true)
                         {
                             @if (User.IsInRole("Admin"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-danger fw-bold" asp-controller="Admin" asp-action="Dashboard">Quản trị</a>
+                                    <a class="nav-link text-danger fw-bold" asp-controller="Admin" asp-action="Index">Quản trị</a>
                                 </li>
                             }
 
@@ -60,7 +60,7 @@
                     </ul>
 
                     <ul class="navbar-nav ms-auto">
-                        @if (User.Identity.IsAuthenticated)
+                        @if (User.Identity?.IsAuthenticated == true)
                         {
                             <li class="nav-item d-flex align-items-center">
                                 <span class="nav-link text-dark">

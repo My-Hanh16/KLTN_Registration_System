@@ -6,7 +6,7 @@ namespace KLTN_Registration_System.Models.Entities
     public class Major
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         // 🔥 FIX: User → IdentityUser (Giữ nguyên theo yêu cầu của bạn)
         public List<ApplicationUser>? Users { get; set; }

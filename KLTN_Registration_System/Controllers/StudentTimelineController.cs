@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using KLTN_Registration_System.Models.Enums;
 
 namespace KLTN_Registration_System.Controllers
 {
@@ -25,8 +24,10 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Index()
         {
             var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(studentId)) return Unauthorized();
 
             var timelines = await _context.Timelines
+                .Where(t => t.IsActive)
                 .Include(t => t.TimelineSubmissions)
                     .ThenInclude(s => s.Versions)
                 .OrderBy(t => t.Date)
@@ -48,13 +49,41 @@ namespace KLTN_Registration_System.Controllers
         // =========================
         // NỘP BÁO CÁO
         // =========================
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
+        [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Submit(
-    int timelineId,
-    string content,
-    IFormFile? file)
+            int timelineId,
+            string? content,
+            IFormFile? file)
         {
+            var now = DateTime.Now;
             var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(studentId)) return Unauthorized();
+
+            var timeline = await _context.Timelines.FindAsync(timelineId);
+            if (timeline == null) return NotFound();
+
+            if (!timeline.IsActive || !timeline.AllowSubmission)
+            {
+                TempData["Error"] = "Mốc này chưa cho phép nộp báo cáo.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (timeline.SubmissionDeadline.HasValue && now > timeline.SubmissionDeadline.Value)
+            {
+                TempData["Error"] = $"Đã quá hạn nộp ({timeline.SubmissionDeadline.Value:dd/MM/yyyy HH:mm}).";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var hasApprovedTopic = await _context.Registrations.AnyAsync(r =>
+                r.StudentId == studentId &&
+                r.Status == "Approved");
+
+            if (!hasApprovedTopic)
+            {
+                TempData["Error"] = "Bạn cần có đề tài đã được duyệt trước khi nộp báo cáo tiến độ.";
+                return RedirectToAction(nameof(Index));
+            }
 
             // Tìm submission cũ
             var submission = await _context.TimelineSubmissions
@@ -63,6 +92,35 @@ namespace KLTN_Registration_System.Controllers
                     x.TimelineId == timelineId &&
                     x.StudentId == studentId);
 
+            if (submission != null && submission.Status != SubmissionStatus.Rejected)
+            {
+                TempData["Error"] = submission.Status == SubmissionStatus.Pending
+                    ? "Bài nộp đang chờ giảng viên duyệt, không thể nộp thêm."
+                    : "Bài nộp đã được duyệt, không thể nộp lại.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                TempData["Error"] = "Vui lòng chọn file báo cáo để nộp.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (file.Length > 20 * 1024 * 1024)
+            {
+                TempData["Error"] = "File báo cáo tối đa 20MB.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var allowedExt = GetAllowedTimelineExtensions(timeline.SubmissionType);
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            if (!allowedExt.Contains(extension))
+            {
+                TempData["Error"] = $"Định dạng file không hợp lệ. Chỉ hỗ trợ: {FormatTimelineExtensions(allowedExt)}.";
+                return RedirectToAction(nameof(Index));
+            }
+
             // Nếu chưa có thì tạo mới
             if (submission == null)
             {
@@ -70,7 +128,7 @@ namespace KLTN_Registration_System.Controllers
                 {
                     StudentId = studentId,
                     TimelineId = timelineId,
-                    SubmittedAt = DateTime.Now,
+                    SubmittedAt = now,
                     Status = SubmissionStatus.Pending
                 };
 
@@ -80,9 +138,9 @@ namespace KLTN_Registration_System.Controllers
             }
 
             // Update nội dung mới nhất
-            submission.ProgressDescription = content;
+            submission.ProgressDescription = content?.Trim();
 
-            submission.SubmittedAt = DateTime.Now;
+            submission.SubmittedAt = now;
 
             // Reset review
             submission.Status = SubmissionStatus.Pending;
@@ -95,56 +153,41 @@ namespace KLTN_Registration_System.Controllers
 
             submission.ReviewedById = null;
 
-            // Upload file
-            if (file != null && file.Length > 0)
+            submission.LecturerComment = null;
+
+            submission.IsCompleted = false;
+
+            var folder = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot", "uploads", "timeline");
+
+            Directory.CreateDirectory(folder);
+
+            int nextVersion = submission.Versions.Any()
+                ? submission.Versions.Max(v => v.VersionNumber) + 1
+                : 1;
+            var fileName = $"timeline_{timelineId}_student_{studentId}_v{nextVersion}_{Guid.NewGuid():N}{extension}";
+            var fullPath = Path.Combine(folder, fileName);
+
+            using (var stream = new FileStream(fullPath, FileMode.Create))
             {
-                var folder = Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "wwwroot/uploads/progress");
-
-                if (!Directory.Exists(folder))
-                    Directory.CreateDirectory(folder);
-
-                // Version mới
-                int nextVersion = submission.Versions.Count + 1;
-
-                var extension = Path.GetExtension(file.FileName);
-
-                var fileName =
-                    $"timeline_{timelineId}_student_{studentId}_v{nextVersion}{extension}";
-
-                var fullPath = Path.Combine(folder, fileName);
-
-                using (var stream = new FileStream(fullPath, FileMode.Create))
-                {
-                    await file.CopyToAsync(stream);
-                }
-
-                var filePath = "/uploads/progress/" + fileName;
-
-                // Lưu latest version
-                submission.FilePath = filePath;
-
-                submission.FileName = fileName;
-
-                // Add history version
-                var version = new TimelineSubmissionVersion
-                {
-                    TimelineSubmissionId = submission.Id,
-
-                    FileName = fileName,
-
-                    FilePath = filePath,
-
-                    VersionNumber = nextVersion,
-
-                    UploadedAt = DateTime.Now,
-
-                    Note = content
-                };
-
-                _context.TimelineSubmissionVersions.Add(version);
+                await file.CopyToAsync(stream);
             }
+
+            var filePath = "/uploads/timeline/" + fileName;
+
+            submission.FilePath = filePath;
+            submission.FileName = Path.GetFileName(file.FileName);
+
+            _context.TimelineSubmissionVersions.Add(new TimelineSubmissionVersion
+            {
+                TimelineSubmissionId = submission.Id,
+                FileName = submission.FileName,
+                FilePath = filePath,
+                VersionNumber = nextVersion,
+                UploadedAt = now,
+                Note = submission.ProgressDescription
+            });
 
             await _context.SaveChangesAsync();
 
@@ -152,6 +195,45 @@ namespace KLTN_Registration_System.Controllers
                 "Nộp báo cáo thành công!";
 
             return RedirectToAction(nameof(Index));
+        }
+
+        private static HashSet<string> GetAllowedTimelineExtensions(string? submissionType)
+        {
+            var defaults = DefaultTimelineExtensions();
+            var configured = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (!string.IsNullOrWhiteSpace(submissionType))
+            {
+                var tokens = submissionType
+                    .Split(new[] { ',', ';', '|', '/', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim().TrimStart('*').ToLowerInvariant());
+
+                foreach (var token in tokens)
+                {
+                    var extension = token.StartsWith(".") ? token : "." + token;
+                    if (defaults.Contains(extension))
+                    {
+                        configured.Add(extension);
+                    }
+                }
+            }
+
+            return configured.Count > 0 ? configured : defaults;
+        }
+
+        private static HashSet<string> DefaultTimelineExtensions()
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".zip", ".rar", ".txt"
+            };
+        }
+
+        private static string FormatTimelineExtensions(IEnumerable<string> extensions)
+        {
+            return string.Join(", ", extensions
+                .OrderBy(e => e)
+                .Select(e => e.TrimStart('.').ToUpperInvariant()));
         }
     }
 }

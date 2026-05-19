@@ -1,7 +1,7 @@
 ﻿@model KLTN_Registration_System.Models.Entities.Topic
 
 @{
-    Layout = "_layoutStudent";
+    Layout = "_LayoutStudent";
     ViewData["Title"] = "Đăng ký nhóm";
     var currentUserName = User.Identity?.Name ?? "Bạn";
 }
@@ -73,7 +73,7 @@
                     <div class="relative group">
                         <label class="text-[11px] font-bold text-slate-400 absolute -top-2 left-4 bg-white px-1 z-10">Trưởng nhóm (Bạn)</label>
                         <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                            <img src="https://ui-avatars.com/api/?name=@currentUserName&background=7c3aed&color=fff" class="w-8 h-8 rounded-full" />
+                            <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(currentUserName)&background=7c3aed&color=fff" class="w-8 h-8 rounded-full" />
                             <span class="text-sm font-semibold text-slate-600">@currentUserName (Hiện tại)</span>
                             <span class="ml-auto material-symbols-outlined text-green-500">check_circle</span>
                         </div>

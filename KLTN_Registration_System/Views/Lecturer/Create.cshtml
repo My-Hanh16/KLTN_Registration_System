@@ -18,7 +18,8 @@
             <p class="opacity-80 text-sm">Điền đầy đủ các thông tin để sinh viên có thể tìm thấy và đăng ký.</p>
         </div>
 
-        <form asp-action="Create" method="post" class="p-8 space-y-6">
+        <form asp-action="CreateFromForm" method="post" class="p-8 space-y-6">
+            @Html.AntiForgeryToken()
             <div class="grid grid-cols-2 gap-6">
                 @* Tên đề tài *@
                 <div class="col-span-2">

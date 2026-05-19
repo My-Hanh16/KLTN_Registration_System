@@ -1046,6 +1046,7 @@
                 {
                     @foreach (var group in groupedSubmissions)
                     {
+                        var student = group.Student!;
                         var sub = group.LatestSub!;
                         string statusClass = sub.Status switch
                         {
@@ -1060,7 +1061,7 @@
                             _ => "Đang chờ"
                         };
 
-                        var fullName = (group.Student?.FullName ?? "").Trim();
+                        var fullName = (student.FullName ?? "").Trim();
 
                         string initial = "?";
 
@@ -1075,7 +1076,7 @@
                         }
 
                         // JS-safe strings per row
-                        string jsName = System.Text.Json.JsonSerializer.Serialize(group.Student.FullName ?? "");
+                        string jsName = System.Text.Json.JsonSerializer.Serialize(student.FullName ?? "");
                         string jsSubId = sub.Id.ToString();
 
                         <div class="student-row">
@@ -1084,11 +1085,11 @@
                                 <div class="stu-avatar">@initial</div>
                                 <div style="min-width:0;">
                                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                                        <span class="stu-name">@group.Student.FullName</span>
+                                        <span class="stu-name">@student.FullName</span>
                                         <span class="status-badge @statusClass">@statusText</span>
                                         @if (group.HistoryCount > 1)
                                         {
-                                            <span class="history-tag" title="@group.Student.FullName đã nộp @group.HistoryCount lần">
+                                            <span class="history-tag" title="@student.FullName đã nộp @group.HistoryCount lần">
                                                 +@(group.HistoryCount - 1) lần trước
                                             </span>
                                         }
@@ -1111,7 +1112,7 @@
                             <div class="stu-actions">
                                 @if (!string.IsNullOrWhiteSpace(sub.FilePath))
                                 {
-                                    <a href="@sub.FilePath" target="_blank" class="btn-view-file">
+                                    <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = sub.Id })" target="_blank" class="btn-view-file">
                                         <i class="fa-solid fa-eye"></i> Xem file
                                     </a>
                                 }

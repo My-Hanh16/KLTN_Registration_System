@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace KLTN_Registration_System.Controllers.Admin
 {
@@ -17,14 +18,12 @@ namespace KLTN_Registration_System.Controllers.Admin
     public class AdminController : BaseController
     {
         private readonly AppDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
         private readonly NotificationService _notificationService;
 
         public AdminController(AppDbContext context,UserManager<ApplicationUser> userManager,NotificationService notificationService)
             : base(context, userManager)
         {
             _context = context;
-            _userManager = userManager;
             _notificationService = notificationService;
         }
 
@@ -625,6 +624,13 @@ t.Lecturer.FullName.Contains(search)));
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleLockUser(string userId)
         {
+            var currentUserId = _userManager.GetUserId(User);
+            if (userId == currentUserId)
+            {
+                TempData["Error"] = "Bạn không thể tự khóa tài khoản đang đăng nhập.";
+                return RedirectToAction(nameof(UserManagement));
+            }
+
             var user = await _userManager.FindByIdAsync(userId);
 
             if (user == null)
@@ -664,6 +670,24 @@ t.Lecturer.FullName.Contains(search)));
             if (user == null) return NotFound();
 
             var currentRoles = await _userManager.GetRolesAsync(user);
+            var currentUserId = _userManager.GetUserId(User);
+
+            if (user.Id == currentUserId && currentRoles.Contains("Admin") && newRole != "Admin")
+            {
+                TempData["Error"] = "Bạn không thể tự hạ quyền Admin của tài khoản đang đăng nhập.";
+                return RedirectToAction(nameof(UserManagement));
+            }
+
+            if (currentRoles.Contains("Admin") && newRole != "Admin")
+            {
+                var adminCount = (await _userManager.GetUsersInRoleAsync("Admin")).Count;
+                if (adminCount <= 1)
+                {
+                    TempData["Error"] = "Không thể hạ quyền Admin cuối cùng của hệ thống.";
+                    return RedirectToAction(nameof(UserManagement));
+                }
+            }
+
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
             await _userManager.AddToRoleAsync(user, newRole);
 
@@ -700,14 +724,18 @@ t.Lecturer.FullName.Contains(search)));
                 string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
                 string nums = "23456789";
                 string special = "@#!$";
-                var rng = new Random();
-                // Cách sửa 2: Dùng List và AddRange
                 var passwordChars = new List<char>();
-                passwordChars.AddRange(Enumerable.Range(0, 4).Select(_ => chars[rng.Next(chars.Length)]));
-                passwordChars.AddRange(Enumerable.Range(0, 3).Select(_ => nums[rng.Next(nums.Length)]));
-                passwordChars.AddRange(Enumerable.Range(0, 1).Select(_ => special[rng.Next(special.Length)]));
+                passwordChars.AddRange(Enumerable.Range(0, 4).Select(_ => chars[RandomNumberGenerator.GetInt32(chars.Length)]));
+                passwordChars.AddRange(Enumerable.Range(0, 3).Select(_ => nums[RandomNumberGenerator.GetInt32(nums.Length)]));
+                passwordChars.AddRange(Enumerable.Range(0, 1).Select(_ => special[RandomNumberGenerator.GetInt32(special.Length)]));
 
-                finalPassword = new string(passwordChars.OrderBy(_ => rng.Next()).ToArray());
+                for (int i = passwordChars.Count - 1; i > 0; i--)
+                {
+                    int j = RandomNumberGenerator.GetInt32(i + 1);
+                    (passwordChars[i], passwordChars[j]) = (passwordChars[j], passwordChars[i]);
+                }
+
+                finalPassword = new string(passwordChars.ToArray());
             }
             else
             {
@@ -760,11 +788,28 @@ t.Lecturer.FullName.Contains(search)));
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteUser(string userId, string role)
         {
+            var currentUserId = _userManager.GetUserId(User);
+            if (userId == currentUserId)
+            {
+                TempData["Error"] = "Bạn không thể tự xóa tài khoản đang đăng nhập.";
+                return RedirectToAction("UserManagement", new { role });
+            }
+
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 TempData["Error"] = "Không tìm thấy người dùng!";
                 return RedirectToAction("UserManagement");
+            }
+
+            if (await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                var adminCount = (await _userManager.GetUsersInRoleAsync("Admin")).Count;
+                if (adminCount <= 1)
+                {
+                    TempData["Error"] = "Không thể xóa Admin cuối cùng của hệ thống.";
+                    return RedirectToAction("UserManagement", new { role });
+                }
             }
 
             var result = await _userManager.DeleteAsync(user);
@@ -791,16 +836,36 @@ t.Lecturer.FullName.Contains(search)));
             string fullName, string email, string userCode, string role,
             string? Faculty, string? degree, string? position)
         {
+            var allowedRoles = new[] { "Admin", "Lecturer", "Student" };
+            if (!allowedRoles.Contains(role))
+            {
+                TempData["Error"] = "Role không hợp lệ.";
+                return RedirectToAction(nameof(UserManagement));
+            }
+
+            email = email?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+            {
+                TempData["Error"] = "Email không hợp lệ.";
+                return RedirectToAction(nameof(UserManagement), new { role });
+            }
+
+            if (await _userManager.FindByEmailAsync(email) != null)
+            {
+                TempData["Error"] = "Email đã tồn tại trong hệ thống.";
+                return RedirectToAction(nameof(UserManagement), new { role });
+            }
+
             var user = new ApplicationUser
             {
                 UserName = email,
                 Email = email,
-                FullName = fullName,
-                UserCode = userCode,
+                FullName = fullName?.Trim() ?? email,
+                UserCode = userCode?.Trim() ?? string.Empty,
                 EmailConfirmed = true,
-                Faculty = Faculty,
-                Degree = degree,
-                Position = position
+                Faculty = Faculty?.Trim(),
+                Degree = degree?.Trim(),
+                Position = position?.Trim()
             };
 
             var result = await _userManager.CreateAsync(user, "Password@123");
@@ -825,11 +890,12 @@ t.Lecturer.FullName.Contains(search)));
         public IActionResult ImportTopics() => View();
 
         [HttpPost, ValidateAntiForgeryToken]
+        [RequestSizeLimit(5 * 1024 * 1024)]
         public async Task<IActionResult> ImportTopics(IFormFile file)
         {
-            if (file == null || file.Length == 0)
+            if (!IsValidExcelUpload(file, out var topicImportError))
             {
-                TempData["Error"] = "Vui lòng chọn file Excel!";
+                TempData["Error"] = topicImportError;
                 return RedirectToAction(nameof(ThesisManagement));
             }
 
@@ -895,7 +961,7 @@ t.Lecturer.FullName.Contains(search)));
                     {
                         Title = title,
                         TopicCode = code,
-                        Description = desc,
+                        Description = desc ?? "",
                         Semester = semester,
                         Faculty = faculty,
                         CreatedAt = DateTime.Now,
@@ -935,11 +1001,19 @@ t.Lecturer.FullName.Contains(search)));
         }
 
         [HttpPost, ValidateAntiForgeryToken]
+        [RequestSizeLimit(5 * 1024 * 1024)]
         public async Task<IActionResult> ImportUsers(IFormFile file, string role)
         {
-            if (file == null || file.Length == 0)
+            var allowedRoles = new[] { "Admin", "Lecturer", "Student" };
+            if (!allowedRoles.Contains(role))
             {
-                TempData["Error"] = "Vui lòng chọn file Excel!";
+                TempData["Error"] = "Role import không hợp lệ.";
+                return RedirectToAction(nameof(UserManagement));
+            }
+
+            if (!IsValidExcelUpload(file, out var userImportError))
+            {
+                TempData["Error"] = userImportError;
                 return RedirectToAction("UserManagement", new { role });
             }
 
@@ -1200,11 +1274,52 @@ t.Lecturer.FullName.Contains(search)));
         // ============================================================
         public async Task<IActionResult> RegisterTopic()
         {
-            var currentUser = await _userManager.GetUserAsync(User);
-            var topics = _context.Topics
-                .Where(t => t.Faculty == currentUser!.Faculty && t.IsApproved)
-                .ToList();
-            return View(topics);
+            await Task.CompletedTask;
+            return RedirectToAction("Index", "Topic");
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([FromBody] Topic? topic)
+        {
+            if (topic == null)
+                return Json(new { success = false, message = "Không nhận được dữ liệu." });
+
+            ModelState.Remove("Lecturer");
+            ModelState.Remove("Major");
+            ModelState.Remove("Student");
+            ModelState.Remove("Registrations");
+            ModelState.Remove("Comments");
+
+            if (string.IsNullOrWhiteSpace(topic.Title))
+                return Json(new { success = false, message = "Tên đề tài không được để trống." });
+
+            topic.Title = topic.Title.Trim();
+            topic.Description = topic.Description?.Trim() ?? "";
+            topic.TopicCode = string.IsNullOrWhiteSpace(topic.TopicCode)
+                ? $"TOPIC-{Guid.NewGuid().ToString()[..8].ToUpper()}"
+                : topic.TopicCode.Trim();
+            topic.CreatedAt = DateTime.Now;
+            topic.Deadline = topic.Deadline == default ? DateTime.Now.AddMonths(3) : topic.Deadline;
+            topic.MaxStudents = Math.Clamp(topic.MaxStudents <= 0 ? 1 : topic.MaxStudents, 1, 10);
+            topic.Category = topic.MaxStudents > 1 ? "Nhóm" : (topic.Category ?? "Ứng dụng");
+            topic.Semester = string.IsNullOrWhiteSpace(topic.Semester) ? "HK2-2025-2026" : topic.Semester.Trim();
+            topic.IsStudentProposed = false;
+            topic.IsApproved = true;
+            topic.IsRegistrationOpen = topic.MaxStudents > 0;
+            topic.Status = TopicStatus.Available;
+
+            if (!ModelState.IsValid)
+            {
+                var message = string.Join("; ", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage));
+                return Json(new { success = false, message = string.IsNullOrWhiteSpace(message) ? "Dữ liệu không hợp lệ." : message });
+            }
+
+            _context.Topics.Add(topic);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Tạo đề tài thành công." });
         }
 
         // ============================================================
@@ -1260,13 +1375,68 @@ t.Lecturer.FullName.Contains(search)));
             // TRUYỀN DANH SÁCH (IEnumerable) VÀO VIEW
             return View(settings);
         }
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveSettings(List<string> names, IFormCollection form)
         {
-            foreach (var name in names)
+            if (names == null || names.Count == 0)
             {
-                var value = form["values_" + name].ToString();
+                TempData["Error"] = "Không có cấu hình nào được gửi lên.";
+                return RedirectToAction(nameof(Settings));
+            }
 
+            var settingNames = names
+                .Select(n => n?.Trim())
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Select(n => n!)
+                .Distinct();
+
+            var postedSettings = settingNames.ToDictionary(
+                name => name,
+                name =>
+                {
+                    var postedValues = form["values_" + name];
+                    return postedValues.Count > 0
+                        ? postedValues[postedValues.Count - 1]?.Trim() ?? string.Empty
+                        : string.Empty;
+                });
+
+            if (postedSettings.TryGetValue("Registration_Start", out var registrationStartValue)
+                && postedSettings.TryGetValue("Registration_End", out var registrationEndValue)
+                && DateTime.TryParse(registrationStartValue, out var registrationStart)
+                && DateTime.TryParse(registrationEndValue, out var registrationEnd)
+                && registrationStart > registrationEnd)
+            {
+                TempData["Error"] = "Thời gian mở đăng ký không được sau thời gian đóng đăng ký.";
+                return RedirectToAction(nameof(Settings));
+            }
+
+            if (postedSettings.TryGetValue("Semester_Start", out var semesterStartValue)
+                && postedSettings.TryGetValue("Semester_End", out var semesterEndValue)
+                && DateTime.TryParse(semesterStartValue, out var semesterStart)
+                && DateTime.TryParse(semesterEndValue, out var semesterEnd)
+                && semesterStart > semesterEnd)
+            {
+                TempData["Error"] = "Ngày bắt đầu học kỳ không được sau ngày kết thúc học kỳ.";
+                return RedirectToAction(nameof(Settings));
+            }
+
+            if (postedSettings.TryGetValue("Max_Student_Per_Topic", out var maxStudentValue)
+                && (!int.TryParse(maxStudentValue, out var maxStudent) || maxStudent < 1 || maxStudent > 5))
+            {
+                TempData["Error"] = "Số sinh viên tối đa mỗi đề tài phải nằm trong khoảng 1 đến 5.";
+                return RedirectToAction(nameof(Settings));
+            }
+
+            if (postedSettings.TryGetValue("Min_GPA", out var minGpaValue)
+                && (!double.TryParse(minGpaValue, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var minGpa)
+                    || minGpa < 0 || minGpa > 10))
+            {
+                TempData["Error"] = "GPA tối thiểu phải nằm trong khoảng 0 đến 10.";
+                return RedirectToAction(nameof(Settings));
+            }
+
+            foreach (var (name, value) in postedSettings)
+            {
                 var setting = await _context.Settings.FirstOrDefaultAsync(s => s.Name == name);
                 if (setting != null)
                 {
@@ -1491,13 +1661,26 @@ t.Lecturer.FullName.Contains(search)));
             TempData["Success"] = "Đã cập nhật thông tin!";
             return RedirectToAction(nameof(Settings));
         }
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateRegistrationStatus([FromBody] UpdateRegVM model)
         {
-            var topic = await _context.Topics.FindAsync(model.Id);
+            if (model == null)
+                return Json(new { success = false, message = "Dữ liệu gửi lên không hợp lệ." });
+
+            var topic = await _context.Topics
+                .Include(t => t.Registrations)
+                .FirstOrDefaultAsync(t => t.Id == model.Id);
 
             if (topic == null)
-                return Json(new { success = false });
+                return Json(new { success = false, message = "Không tìm thấy đề tài." });
+
+            var reservedCount = topic.Registrations?.Count(r => r.Status == "Pending" || r.Status == "Approved") ?? 0;
+
+            if (model.IsOpen && !topic.IsApproved)
+                return Json(new { success = false, message = "Đề tài chưa được duyệt nên chưa thể mở đăng ký." });
+
+            if (model.IsOpen && reservedCount >= topic.MaxStudents)
+                return Json(new { success = false, message = "Đề tài đã đủ số lượng sinh viên đăng ký/chờ duyệt." });
 
             topic.IsRegistrationOpen = model.IsOpen;
 
@@ -1507,10 +1690,7 @@ t.Lecturer.FullName.Contains(search)));
             }
             else
             {
-                topic.Status =
-                    topic.CurrentStudents >= topic.MaxStudents
-                    ? TopicStatus.Full
-                    : TopicStatus.Available;
+                topic.Status = TopicStatus.Available;
             }
 
             await _context.SaveChangesAsync();
@@ -1532,16 +1712,23 @@ t.Lecturer.FullName.Contains(search)));
             return View(registrations);
         }
         [Authorize(Roles = "Admin")]
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> BulkApproveTopics([FromBody] List<int> ids)
         {
+            if (ids == null || ids.Count == 0)
+                return Json(new { success = false, message = "Vui lòng chọn đề tài." });
+
             var topics = await _context.Topics
+                .Include(t => t.Registrations)
                 .Where(t => ids.Contains(t.Id))
                 .ToListAsync();
 
             foreach (var topic in topics)
             {
-                topic.Status = TopicStatus.Available;
+                var reservedCount = topic.Registrations?.Count(r => r.Status == "Pending" || r.Status == "Approved") ?? 0;
+                topic.IsApproved = true;
+                topic.IsRegistrationOpen = reservedCount < topic.MaxStudents;
+                topic.Status = reservedCount >= topic.MaxStudents ? TopicStatus.Full : TopicStatus.Available;
             }
 
             await _context.SaveChangesAsync();
@@ -1549,21 +1736,74 @@ t.Lecturer.FullName.Contains(search)));
             return Json(new { success = true });
         }
         [Authorize(Roles = "Admin")]
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> BulkRejectTopics([FromBody] List<int> ids)
         {
+            if (ids == null || ids.Count == 0)
+                return Json(new { success = false, message = "Vui lòng chọn đề tài." });
+
             var topics = await _context.Topics
+                .Include(t => t.Registrations)
                 .Where(t => ids.Contains(t.Id))
                 .ToListAsync();
 
+            var blocked = topics
+                .Where(t => (t.Registrations ?? new List<Registration>())
+                    .Any(r => r.Status == "Pending" || r.Status == "Approved"))
+                .ToList();
+
+            if (blocked.Any())
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = $"Không thể từ chối {blocked.Count} đề tài đã có sinh viên đăng ký/chờ duyệt."
+                });
+            }
+
             foreach (var topic in topics)
             {
-                topic.Status = TopicStatus.Closed;
+                topic.IsApproved = false;
+                topic.IsRegistrationOpen = false;
+                topic.Status = TopicStatus.Rejected;
             }
 
             await _context.SaveChangesAsync();
 
             return Json(new { success = true });
+        }
+
+        private static bool IsValidExcelUpload(IFormFile? file, out string error)
+        {
+            error = string.Empty;
+
+            if (file == null || file.Length == 0)
+            {
+                error = "Vui lòng chọn file Excel.";
+                return false;
+            }
+
+            const long maxFileSize = 5 * 1024 * 1024;
+            if (file.Length > maxFileSize)
+            {
+                error = "File Excel không được vượt quá 5MB.";
+                return false;
+            }
+
+            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".xls",
+                ".xlsx"
+            };
+
+            var extension = Path.GetExtension(file.FileName);
+            if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
+            {
+                error = "Chỉ hỗ trợ file Excel .xls hoặc .xlsx.";
+                return false;
+            }
+
+            return true;
         }
     }
 }

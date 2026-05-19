@@ -6,6 +6,7 @@ using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
 using KLTN_Registration_System.Models.Enums;
 using KLTN_Registration_System.Models.ViewModels.Student;
+using KLTN_Registration_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,13 +20,16 @@ namespace KLTN_Registration_System.Controllers.Student
     public class StudentController : BaseController
     {
         private readonly AppDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly NotificationService _notificationService;
 
-        public StudentController(AppDbContext context,UserManager<ApplicationUser> userManager)
+        public StudentController(
+            AppDbContext context,
+            UserManager<ApplicationUser> userManager,
+            NotificationService notificationService)
         :base(context, userManager)
         {
             _context = context;
-            _userManager = userManager;
+            _notificationService = notificationService;
         }
 
         // ============================================================
@@ -317,23 +321,24 @@ namespace KLTN_Registration_System.Controllers.Student
                 return RedirectToAction("Login", "Account");
 
             int pageSize = 6;
-            int pageNumber = page ?? 1;
+            int pageNumber = Math.Max(page ?? 1, 1);
 
             var query = _context.Notifications
                 .Where(n => n.UserId == user.Id)
                 .OrderByDescending(n => n.CreatedAt);
 
-            // đánh dấu đã đọc
-            var unread = await query
-                .Where(n => !n.IsRead)
-                .ToListAsync();
+            ViewBag.TotalUnreadCount = await _context.Notifications
+                .CountAsync(n => n.UserId == user.Id && !n.IsRead);
 
-            if (unread.Any())
-            {
-                unread.ForEach(n => n.IsRead = true);
-
-                await _context.SaveChangesAsync();
-            }
+            ViewBag.TopicNotificationCount = await _context.Notifications
+                .CountAsync(n =>
+                    n.UserId == user.Id &&
+                    (n.Type == "TopicApproved"
+                     || n.Type == "TopicRejected"
+                     || n.Type == "NewRegistration"
+                     || n.Type == "RegistrationApproved"
+                     || n.Type == "RegistrationRejected"
+                     || (n.Title != null && (n.Title.Contains("duyệt") || n.Title.Contains("từ chối")))));
 
             // phân trang
             var pagedNotifications =
@@ -345,20 +350,51 @@ namespace KLTN_Registration_System.Controllers.Student
         // ============================================================
         // ĐÁNH DẤU ĐÃ ĐỌC (AJAX)  →  POST /Student/MarkAllRead
         // ============================================================
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> MarkAllRead()
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Json(new { success = false });
 
-            var unread = await _context.Notifications
-                .Where(n => n.UserId == user.Id && !n.IsRead)
-                .ToListAsync();
+            var unreadCount = await _context.Notifications
+                .CountAsync(n => n.UserId == user.Id && !n.IsRead);
 
-            unread.ForEach(n => n.IsRead = true);
-            await _context.SaveChangesAsync();
+            await _notificationService.MarkAllAsRead(user.Id);
 
-            return Json(new { success = true, count = unread.Count });
+            if (!IsAjaxRequest())
+            {
+                TempData["Success"] = unreadCount > 0
+                    ? $"Đã đánh dấu {unreadCount} thông báo là đã đọc."
+                    : "Không có thông báo chưa đọc.";
+                return RedirectToAction(nameof(Notifications));
+            }
+
+            return Json(new { success = true, count = unreadCount });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> OpenNotification(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var notification = await _context.Notifications
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.Id == id && n.UserId == user.Id);
+
+            if (notification == null)
+            {
+                TempData["Error"] = "Không tìm thấy thông báo.";
+                return RedirectToAction(nameof(Notifications));
+            }
+
+            await _notificationService.MarkAsRead(id, user.Id);
+
+            var redirectUrl = NotificationService.NormalizeRedirectUrl(notification.RedirectUrl)
+                ?? Url.Action(nameof(Notifications), "Student")
+                ?? "/Student/Notifications";
+
+            return Redirect(redirectUrl);
         }
 
         // ============================================================
@@ -374,11 +410,18 @@ namespace KLTN_Registration_System.Controllers.Student
                 Title = title,
                 Content = content,
                 Type = type,
-                RedirectUrl = redirectUrl,
+                RedirectUrl = NotificationService.NormalizeRedirectUrl(redirectUrl),
                 IsRead = false,
                 CreatedAt = DateTime.Now
             });
             await _context.SaveChangesAsync();
+        }
+        private bool IsAjaxRequest()
+        {
+            return string.Equals(
+                Request.Headers["X-Requested-With"],
+                "XMLHttpRequest",
+                StringComparison.OrdinalIgnoreCase);
         }
         // GET /Student/UnreadCount  — trả JSON cho AJAX
         [HttpGet]
@@ -600,6 +643,7 @@ namespace KLTN_Registration_System.Controllers.Student
             return View(timelines);
         }
         [HttpPost, ValidateAntiForgeryToken]
+        [RequestSizeLimit(20 * 1024 * 1024)]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> SubmitTimeline(
             int timelineId,
@@ -616,7 +660,7 @@ namespace KLTN_Registration_System.Controllers.Student
                 return RedirectToAction(nameof(Timeline));
             }
 
-            if (!timeline.AllowSubmission)
+            if (!timeline.IsActive || !timeline.AllowSubmission)
             {
                 TempData["Error"] = "Mốc này không cho phép nộp bài.";
                 return RedirectToAction(nameof(Timeline));
@@ -642,14 +686,21 @@ namespace KLTN_Registration_System.Controllers.Student
                 return RedirectToAction(nameof(Timeline));
             }
 
-            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ".pdf", ".doc", ".docx", ".zip", ".rar", ".txt"
-            };
+            var allowedExtensions = GetAllowedTimelineExtensions(timeline.SubmissionType);
             var extension = Path.GetExtension(file.FileName);
             if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
             {
-                TempData["Error"] = "Định dạng file không hợp lệ. Chỉ hỗ trợ PDF, DOC, DOCX, ZIP, RAR hoặc TXT.";
+                TempData["Error"] = $"Định dạng file không hợp lệ. Chỉ hỗ trợ: {FormatTimelineExtensions(allowedExtensions)}.";
+                return RedirectToAction(nameof(Timeline));
+            }
+
+            var hasApprovedTopic = await _context.Registrations.AnyAsync(r =>
+                r.StudentId == user.Id &&
+                r.Status == "Approved");
+
+            if (!hasApprovedTopic)
+            {
+                TempData["Error"] = "Bạn cần có đề tài đã được duyệt trước khi nộp timeline.";
                 return RedirectToAction(nameof(Timeline));
             }
 
@@ -671,8 +722,10 @@ namespace KLTN_Registration_System.Controllers.Student
 
             Directory.CreateDirectory(uploads);
 
-            int nextVersion = (submission?.Versions.Count ?? 0) + 1;
-            var fileName = $"{user.Id}_{timelineId}_{now:yyyyMMddHHmmss}_v{nextVersion}{extension}";
+            int nextVersion = submission?.Versions.Any() == true
+                ? submission.Versions.Max(v => v.VersionNumber) + 1
+                : 1;
+            var fileName = $"{user.Id}_{timelineId}_{now:yyyyMMddHHmmss}_v{nextVersion}_{Guid.NewGuid():N}{extension}";
 
             var path = Path.Combine(uploads, fileName);
 
@@ -697,7 +750,7 @@ namespace KLTN_Registration_System.Controllers.Student
             }
 
             submission.FilePath = filePath;
-            submission.FileName = file.FileName;
+            submission.FileName = Path.GetFileName(file.FileName);
             submission.SubmittedAt = now;
             submission.Status = SubmissionStatus.Pending;
             submission.Comment = null;
@@ -705,11 +758,12 @@ namespace KLTN_Registration_System.Controllers.Student
             submission.ReviewedAt = null;
             submission.ReviewedById = null;
             submission.LecturerComment = null;
+            submission.IsCompleted = false;
 
             _context.TimelineSubmissionVersions.Add(new TimelineSubmissionVersion
             {
                 TimelineSubmissionId = submission.Id,
-                FileName = file.FileName,
+                FileName = Path.GetFileName(file.FileName),
                 FilePath = filePath,
                 VersionNumber = nextVersion,
                 UploadedAt = now
@@ -720,6 +774,45 @@ namespace KLTN_Registration_System.Controllers.Student
             TempData["Success"] = "Nộp file thành công. Vui lòng chờ giảng viên xem xét.";
 
             return RedirectToAction(nameof(Timeline));
+        }
+
+        private static HashSet<string> GetAllowedTimelineExtensions(string? submissionType)
+        {
+            var defaults = DefaultTimelineExtensions();
+            var configured = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (!string.IsNullOrWhiteSpace(submissionType))
+            {
+                var tokens = submissionType
+                    .Split(new[] { ',', ';', '|', '/', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim().TrimStart('*').ToLowerInvariant());
+
+                foreach (var token in tokens)
+                {
+                    var extension = token.StartsWith(".") ? token : "." + token;
+                    if (defaults.Contains(extension))
+                    {
+                        configured.Add(extension);
+                    }
+                }
+            }
+
+            return configured.Count > 0 ? configured : defaults;
+        }
+
+        private static HashSet<string> DefaultTimelineExtensions()
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".zip", ".rar", ".txt"
+            };
+        }
+
+        private static string FormatTimelineExtensions(IEnumerable<string> extensions)
+        {
+            return string.Join(", ", extensions
+                .OrderBy(e => e)
+                .Select(e => e.TrimStart('.').ToUpperInvariant()));
         }
     }
 }

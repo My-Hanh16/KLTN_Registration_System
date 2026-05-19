@@ -19,6 +19,7 @@ using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 using System.Security.Claims;
 using KLTN_Registration_System.Models.Enums;
+using KLTN_Registration_System.Services;
 
 namespace KLTN_Registration_System.Controllers
 {
@@ -26,13 +27,11 @@ namespace KLTN_Registration_System.Controllers
     public class LecturerController : BaseController
     {
         private readonly AppDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
 
         public LecturerController(AppDbContext context, UserManager<ApplicationUser> userManager)
             : base(context, userManager)
         {
             _context = context;
-            _userManager = userManager;
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -246,7 +245,7 @@ namespace KLTN_Registration_System.Controllers
                     Topic = g.First().Topic,
                     TopicTitle = g.Key.Title ?? "",
                     TopicId = g.Key.TopicId,
-                    Students = g.Select(x => x.Student).ToList(),
+                    Students = g.Where(x => x.Student != null).Select(x => x.Student!).ToList(),
                     RegistrationIds = g.Select(x => x.Id).ToList(),
                     CreatedAt = g.Max(x => x.CreatedAt)
                 })
@@ -262,15 +261,80 @@ namespace KLTN_Registration_System.Controllers
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var regs = await _context.Registrations
                 .Include(r => r.Topic)
+                .Include(r => r.Student)
                 .Where(r => ids.Contains(r.Id))
                 .ToListAsync();
 
+            if (regs.Count != ids.Distinct().Count())
+            {
+                TempData["Error"] = "Danh sách đăng ký không hợp lệ.";
+                return RedirectToAction(nameof(Approval));
+            }
+
+            if (regs.Any(r => r.Topic?.LecturerId != lid))
+                return Forbid();
+
+            if (regs.Any(r => r.Status != "Pending"))
+            {
+                TempData["Error"] = "Chỉ có thể duyệt đăng ký đang chờ.";
+                return RedirectToAction(nameof(Approval));
+            }
+
+            var topicIds = regs.Select(r => r.TopicId).Distinct().ToList();
+            if (topicIds.Count != 1)
+            {
+                TempData["Error"] = "Chỉ được duyệt một nhóm thuộc cùng một đề tài.";
+                return RedirectToAction(nameof(Approval));
+            }
+
+            var topic = regs.First().Topic!;
+            int approvedCount = await _context.Registrations
+                .CountAsync(r => r.TopicId == topic.Id && r.Status == "Approved");
+
+            if (approvedCount + regs.Count > topic.MaxStudents)
+            {
+                TempData["Error"] = $"Đề tài \"{topic.Title}\" không còn đủ chỗ cho nhóm này.";
+                return RedirectToAction(nameof(Approval));
+            }
+
+            var now = DateTime.Now;
             foreach (var reg in regs)
             {
-                if (reg.Topic?.LecturerId != lid) continue;
-                reg.Status = "Approved"; reg.ApprovedBy = lid; reg.UpdatedAt = DateTime.Now;
-                await Notify(reg.StudentId, "Đề tài được duyệt",
-                    $"Nhóm đã được duyệt đề tài: {reg.Topic?.Title}", "TopicApproved", "/Student/MyRegistration");
+                reg.Status = "Approved";
+                reg.ApprovedBy = lid;
+                reg.UpdatedAt = now;
+
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = reg.StudentId,
+                    Title = "Đề tài được duyệt",
+                    Content = $"Nhóm đã được duyệt đề tài: {topic.Title}",
+                    Type = "TopicApproved",
+                    RedirectUrl = "/Student/MyRegistration",
+                    IsRead = false,
+                    CreatedAt = now
+                });
+            }
+
+            if (approvedCount + regs.Count >= topic.MaxStudents)
+            {
+                topic.Status = TopicStatus.Full;
+                topic.IsRegistrationOpen = false;
+            }
+
+            var approvedStudentIds = regs.Select(r => r.StudentId).Distinct().ToList();
+            var approvedRegIds = regs.Select(r => r.Id).ToList();
+            var otherPending = await _context.Registrations
+                .Where(r => approvedStudentIds.Contains(r.StudentId)
+                    && !approvedRegIds.Contains(r.Id)
+                    && r.Status == "Pending")
+                .ToListAsync();
+
+            foreach (var other in otherPending)
+            {
+                other.Status = "Rejected";
+                other.Feedback = "Sinh viên đã được duyệt vào đề tài khác.";
+                other.UpdatedAt = now;
             }
 
             await _context.SaveChangesAsync();
@@ -282,17 +346,45 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> RejectGroup(List<int> ids, string? feedback)
         {
             if (ids == null || !ids.Any()) return RedirectToAction(nameof(Approval));
+            var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var regs = await _context.Registrations
                 .Include(r => r.Topic)
                 .Where(r => ids.Contains(r.Id))
                 .ToListAsync();
 
+            if (regs.Count != ids.Distinct().Count())
+            {
+                TempData["Error"] = "Danh sách đăng ký không hợp lệ.";
+                return RedirectToAction(nameof(Approval));
+            }
+
+            if (regs.Any(r => r.Topic?.LecturerId != lid))
+                return Forbid();
+
+            if (regs.Any(r => r.Status != "Pending"))
+            {
+                TempData["Error"] = "Chỉ có thể từ chối đăng ký đang chờ.";
+                return RedirectToAction(nameof(Approval));
+            }
+
+            var now = DateTime.Now;
             foreach (var reg in regs)
             {
-                reg.Status = "Rejected"; reg.Feedback = feedback; reg.UpdatedAt = DateTime.Now;
-                await Notify(reg.StudentId, "Yêu cầu bị từ chối",
-                    $"Đề tài: {reg.Topic?.Title}" + (string.IsNullOrEmpty(feedback) ? "" : $". Lý do: {feedback}"),
-                    "TopicRejected", "/Topic/Index");
+                reg.Status = "Rejected";
+                reg.Feedback = feedback;
+                reg.UpdatedAt = now;
+
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = reg.StudentId,
+                    Title = "Yêu cầu bị từ chối",
+                    Content = $"Đề tài: {reg.Topic?.Title}" +
+                        (string.IsNullOrEmpty(feedback) ? "" : $". Lý do: {feedback}"),
+                    Type = "TopicRejected",
+                    RedirectUrl = "/Topic/Index",
+                    IsRead = false,
+                    CreatedAt = now
+                });
             }
 
             await _context.SaveChangesAsync();
@@ -364,7 +456,23 @@ namespace KLTN_Registration_System.Controllers
         // ─────────────────────────────────────────────────────────────
         // TẠO ĐỀ TÀI  →  /Lecturer/Create
         // ─────────────────────────────────────────────────────────────
-        [HttpPost]
+        [HttpGet]
+        public async Task<IActionResult> Create()
+        {
+            ViewBag.MajorId = new SelectList(
+                await _context.Majors.Where(m => m.IsActive).ToListAsync(),
+                "Id", "Name");
+
+            return View(new Topic
+            {
+                MaxStudents = 1,
+                Deadline = DateTime.Now.AddMonths(3),
+                Semester = "HK2-2025-2026",
+                Level = TopicLevel.Easy
+            });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([FromBody] Topic? topic)
         {
             try
@@ -377,6 +485,13 @@ namespace KLTN_Registration_System.Controllers
                         message = "Không nhận được dữ liệu"
                     });
                 }
+
+                ModelState.Remove("Lecturer");
+                ModelState.Remove("Major");
+                ModelState.Remove("Student");
+                ModelState.Remove("Registrations");
+                ModelState.Remove("Comments");
+
                 if (!ModelState.IsValid)
                 {
                     var errors = ModelState.Values
@@ -400,13 +515,15 @@ namespace KLTN_Registration_System.Controllers
                     });
                 }
 
+                if (topic.MaxStudents < 1)
+                    topic.MaxStudents = 1;
+
+                if (topic.MaxStudents > 10)
+                    topic.MaxStudents = 10;
+
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-                // Nếu admin tạo mà chưa chọn GV
-                if (string.IsNullOrEmpty(topic.LecturerId))
-                {
-                    topic.LecturerId = userId;
-                }
+                topic.LecturerId = userId;
 
                 topic.CreatedAt = DateTime.Now;
 
@@ -421,6 +538,9 @@ namespace KLTN_Registration_System.Controllers
                     topic.TopicCode =
                         $"TOPIC-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString()[..4].ToUpper()}";
                 }
+
+                if (string.IsNullOrWhiteSpace(topic.Category))
+                    topic.Category = topic.MaxStudents > 1 ? "Nhóm" : "Cá nhân";
 
                 if (topic.Deadline == default)
                 {
@@ -437,14 +557,65 @@ namespace KLTN_Registration_System.Controllers
                     message = "Tạo đề tài thành công"
                 });
             }
-            catch (Exception ex)
+            catch
             {
                 return Json(new
                 {
                     success = false,
-                    message = ex.InnerException?.Message ?? ex.Message
+                    message = "Không thể tạo đề tài. Vui lòng kiểm tra lại dữ liệu."
                 });
             }
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateFromForm(Topic topic)
+        {
+            ModelState.Remove("Lecturer");
+            ModelState.Remove("Major");
+            ModelState.Remove("Student");
+            ModelState.Remove("Registrations");
+            ModelState.Remove("Comments");
+
+            if (string.IsNullOrWhiteSpace(topic.Title))
+                ModelState.AddModelError(nameof(topic.Title), "Tên đề tài không được để trống.");
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.MajorId = new SelectList(
+                    await _context.Majors.Where(m => m.IsActive).ToListAsync(),
+                    "Id", "Name", topic.MajorId);
+
+                return View("Create", topic);
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            topic.LecturerId = userId;
+            topic.CreatedAt = DateTime.Now;
+            topic.IsApproved = false;
+            topic.IsRegistrationOpen = false;
+            topic.Status = TopicStatus.Pending;
+
+            if (topic.MaxStudents < 1)
+                topic.MaxStudents = 1;
+
+            if (topic.MaxStudents > 10)
+                topic.MaxStudents = 10;
+
+            if (string.IsNullOrWhiteSpace(topic.Category))
+                topic.Category = topic.MaxStudents > 1 ? "Nhóm" : "Cá nhân";
+
+            if (string.IsNullOrWhiteSpace(topic.TopicCode))
+                topic.TopicCode = $"TOPIC-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString()[..4].ToUpper()}";
+
+            if (topic.Deadline == default)
+                topic.Deadline = DateTime.Now.AddMonths(3);
+
+            _context.Topics.Add(topic);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Tạo đề tài thành công. Vui lòng chờ Admin duyệt.";
+            return RedirectToAction(nameof(ThesisManagement));
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -471,31 +642,57 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Edit(int id, Topic topic)
         {
             if (id != topic.Id) return NotFound();
+            var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             ModelState.Remove("Lecturer"); ModelState.Remove("Major");
             ModelState.Remove("Student"); ModelState.Remove("Registrations");
+            ModelState.Remove("Comments");
 
             if (ModelState.IsValid)
             {
-                var existing = await _context.Topics.AsNoTracking()
+                var existing = await _context.Topics
+                    .Include(t => t.Registrations)
                     .FirstOrDefaultAsync(t => t.Id == id);
                 if (existing == null) return NotFound();
+                if (existing.LecturerId != lid && !User.IsInRole("Admin")) return Forbid();
 
-                topic.LecturerId = existing.LecturerId;
-                topic.CreatedAt = DateTime.Now;
-                topic.IsApproved = false;          // Reset: Admin duyệt lại
-                topic.IsRegistrationOpen = false;
-                topic.Status = TopicStatus.Pending;
+                var activeCount = existing.Registrations?
+                    .Count(r => r.Status == "Pending" || r.Status == "Approved") ?? 0;
+
+                if (topic.MaxStudents < activeCount)
+                {
+                    TempData["Error"] = $"Số sinh viên tối đa không thể nhỏ hơn số đăng ký hiện tại ({activeCount}).";
+                    ViewBag.MajorId = new SelectList(
+                        await _context.Majors.Where(m => m.IsActive).ToListAsync(),
+                        "Id", "Name", topic.MajorId);
+
+                    return View(topic);
+                }
+
+                existing.TopicCode = topic.TopicCode;
+                existing.Title = topic.Title.Trim();
+                existing.Description = topic.Description?.Trim() ?? "";
+                existing.Semester = topic.Semester?.Trim();
+                existing.MajorId = topic.MajorId;
+                existing.Level = topic.Level;
+                existing.MaxStudents = Math.Clamp(topic.MaxStudents, 1, 10);
+                existing.Category = topic.Category?.Trim();
+                existing.Deadline = topic.Deadline == default
+                    ? DateTime.Now.AddMonths(3)
+                    : topic.Deadline;
+                existing.Note = topic.Note?.Trim();
+                existing.IsApproved = false;          // Reset: Admin duyệt lại
+                existing.IsRegistrationOpen = false;
+                existing.Status = TopicStatus.Pending;
 
                 try
                 {
-                    _context.Update(topic);
                     await _context.SaveChangesAsync();
                     TempData["Success"] = "Cập nhật xong! Chờ Admin duyệt lại.";
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!_context.Topics.Any(t => t.Id == topic.Id)) return NotFound();
+                    if (!_context.Topics.Any(t => t.Id == id)) return NotFound();
                     throw;
                 }
                 return RedirectToAction(nameof(ThesisManagement));
@@ -540,25 +737,33 @@ namespace KLTN_Registration_System.Controllers
         // ─────────────────────────────────────────────────────────────
         // BẬT / TẮT ĐĂNG KÝ  (JSON)
         // ─────────────────────────────────────────────────────────────
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleRegistration(int id, bool isOpen)
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var topic = await _context.Topics.Include(t => t.Registrations).FirstOrDefaultAsync(t => t.Id == id);
-            if (topic == null) return NotFound();
-            if (topic.LecturerId != lid && !User.IsInRole("Admin")) return Forbid();
+            if (topic == null) return Json(new { success = false, message = "Không tìm thấy đề tài." });
+            if (topic.LecturerId != lid && !User.IsInRole("Admin"))
+                return Json(new { success = false, message = "Không có quyền cập nhật đề tài này." });
+
+            var reservedCount = topic.Registrations?.Count(r => r.Status == "Pending" || r.Status == "Approved") ?? 0;
+
+            if (isOpen && !topic.IsApproved)
+                return Json(new { success = false, message = "Đề tài chưa được Admin duyệt nên chưa thể mở đăng ký." });
+
+            if (isOpen && reservedCount >= topic.MaxStudents)
+                return Json(new { success = false, message = "Đề tài đã đủ số lượng sinh viên đăng ký/chờ duyệt." });
 
             topic.IsRegistrationOpen = isOpen;
             topic.Status = isOpen
-                ? (topic.Registrations != null && topic.Registrations.Count(r => r.Status == "Approved") >= topic.MaxStudents
-                    ? TopicStatus.Full : TopicStatus.Available)
+                ? TopicStatus.Available
                 : TopicStatus.Closed;
 
             await _context.SaveChangesAsync();
             return Json(new { success = true, isOpen, status = topic.Status.ToString() });
         }
 
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateRegistrationStatus([FromBody] System.Text.Json.JsonElement data)
         {
             try
@@ -572,40 +777,48 @@ namespace KLTN_Registration_System.Controllers
                 if (topic.LecturerId != lid && !User.IsInRole("Admin"))
                     return Json(new { success = false, message = "Không có quyền" });
 
+                var reservedCount = topic.Registrations?.Count(r => r.Status == "Pending" || r.Status == "Approved") ?? 0;
+
+                if (isOpen && !topic.IsApproved)
+                    return Json(new { success = false, message = "Đề tài chưa được Admin duyệt nên chưa thể mở đăng ký." });
+
+                if (isOpen && reservedCount >= topic.MaxStudents)
+                    return Json(new { success = false, message = "Đề tài đã đủ số lượng sinh viên đăng ký/chờ duyệt." });
+
                 topic.IsRegistrationOpen = isOpen;
                 topic.Status = !isOpen ? TopicStatus.Closed
-                    : ((topic.Registrations?.Count(r => r.Status == "Approved") ?? 0) >= topic.MaxStudents
-                        ? TopicStatus.Full : TopicStatus.Available);
+                    : TopicStatus.Available;
 
                 await _context.SaveChangesAsync();
                 return Json(new { success = true, isOpen, currentStatus = topic.Status.ToString() });
             }
-            catch (Exception ex)
+            catch
             {
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "Dữ liệu gửi lên không hợp lệ." });
             }
         }
 
         // ─────────────────────────────────────────────────────────────
         // IMPORT TOPICS TỪ EXCEL
         // ─────────────────────────────────────────────────────────────
-        [HttpPost]
-        public async Task<IActionResult> ImportTopics(IFormFile excelFile)
+        [HttpPost, ValidateAntiForgeryToken]
+        [RequestSizeLimit(5 * 1024 * 1024)]
+        public async Task<IActionResult> ImportTopics(IFormFile file)
         {
-            if (excelFile == null || excelFile.Length == 0)
+            if (!IsValidExcelUpload(file, out var uploadError))
             {
-                TempData["Error"] = "Chọn file Excel hợp lệ.";
+                TempData["Error"] = uploadError;
                 return RedirectToAction(nameof(ThesisManagement));
             }
 
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage.License.SetNonCommercialOrganization("KLTN Registration System");
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
             int count = 0;
 
             try
             {
                 using var stream = new MemoryStream();
-                await excelFile.CopyToAsync(stream);
+                await file.CopyToAsync(stream);
                 using var pkg = new ExcelPackage(stream);
                 var ws = pkg.Workbook.Worksheets[0];
 
@@ -629,7 +842,7 @@ namespace KLTN_Registration_System.Controllers
                         Status = TopicStatus.Pending,
                         IsRegistrationOpen = false,
                         Level = TopicLevel.Easy,
-                        MaxStudents = int.TryParse(ws.Cells[row, 5].Value?.ToString(), out int m) ? m : 1,
+                        MaxStudents = Math.Clamp(int.TryParse(ws.Cells[row, 5].Value?.ToString(), out int m) ? m : 1, 1, 10),
                         Deadline = DateTime.Now.AddMonths(3)
                     });
                     count++;
@@ -638,7 +851,7 @@ namespace KLTN_Registration_System.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Success"] = $"Đã nhập {count} đề tài.";
             }
-            catch (Exception ex) { TempData["Error"] = "Lỗi: " + ex.Message; }
+            catch { TempData["Error"] = "Không thể đọc file Excel. Vui lòng kiểm tra định dạng và nội dung file."; }
 
             return RedirectToAction(nameof(ThesisManagement));
         }
@@ -712,6 +925,28 @@ namespace KLTN_Registration_System.Controllers
             return File(stream.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"SV_DaDuyet_{DateTime.Now:yyyyMMdd_HHmm}.xlsx");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> TopicRegistrations(int id)
+        {
+            var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var topic = await _context.Topics
+                .Include(t => t.Major)
+                .FirstOrDefaultAsync(t => t.Id == id && t.LecturerId == lid);
+
+            if (topic == null) return NotFound();
+
+            var registrations = await _context.Registrations
+                .Include(r => r.Student)
+                .Include(r => r.Topic)
+                .Where(r => r.TopicId == id)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+
+            ViewBag.Topic = topic;
+            return View(registrations);
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -797,7 +1032,7 @@ namespace KLTN_Registration_System.Controllers
                 Title = title,
                 Content = content,
                 Type = type,
-                RedirectUrl = url,
+                RedirectUrl = NotificationService.NormalizeRedirectUrl(url),
                 IsRead = false,
                 CreatedAt = DateTime.Now
             });
@@ -812,7 +1047,7 @@ namespace KLTN_Registration_System.Controllers
             public Topic? Topic { get; set; }
             public string TopicTitle { get; set; } = "";
             public int TopicId { get; set; }
-            public List<ApplicationUser?> Students { get; set; } = new();
+            public List<ApplicationUser> Students { get; set; } = new();
             public List<int> RegistrationIds { get; set; } = new();
             public DateTime CreatedAt { get; set; }
         }
@@ -832,12 +1067,20 @@ namespace KLTN_Registration_System.Controllers
         {
             var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+            var myStudentIds = await _context.Registrations
+                .Where(r => r.Topic.LecturerId == lecturerId && r.Status == "Approved")
+                .Select(r => r.StudentId)
+                .Distinct()
+                .ToListAsync();
+
             var timelines = await _context.Timelines
 
-                .Include(t => t.TimelineSubmissions)
+                .Include(t => t.TimelineSubmissions
+                    .Where(s => s.StudentId != null && myStudentIds.Contains(s.StudentId)))
                     .ThenInclude(s => s.Student)
 
-                .Include(t => t.TimelineSubmissions)
+                .Include(t => t.TimelineSubmissions
+                    .Where(s => s.StudentId != null && myStudentIds.Contains(s.StudentId)))
                     .ThenInclude(s => s.Versions)
 
                 .OrderBy(t => t.Date)
@@ -846,9 +1089,13 @@ namespace KLTN_Registration_System.Controllers
 
             return View(timelines);
         }
-        [HttpPost]
+
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveSubmission(int id)
         {
+            var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var now = DateTime.Now;
+
             var sub = await _context.TimelineSubmissions
                 .Include(x => x.Timeline)
                 .FirstOrDefaultAsync(x => x.Id == id);
@@ -856,14 +1103,30 @@ namespace KLTN_Registration_System.Controllers
             if (sub == null)
                 return NotFound();
 
-            // cập nhật trạng thái
+            if (string.IsNullOrEmpty(sub.StudentId))
+                return NotFound();
+
+            bool isMyStudent = await IsMyApprovedStudent(sub.StudentId, lecturerId);
+            if (!isMyStudent)
+                return Forbid();
+
+            if (sub.Status != SubmissionStatus.Pending)
+            {
+                TempData["Error"] = "Bài nộp này đã được xử lý trước đó.";
+                return RedirectToAction(nameof(TimelineManagement));
+            }
+
+            if (sub.Timeline?.ReviewDeadline.HasValue == true && now > sub.Timeline.ReviewDeadline.Value)
+            {
+                TempData["Error"] = $"Đã quá hạn duyệt ({sub.Timeline.ReviewDeadline.Value:dd/MM/yyyy HH:mm}).";
+                return RedirectToAction(nameof(TimelineManagement));
+            }
+
             sub.Status = SubmissionStatus.Approved;
+            sub.IsCompleted = true;
+            sub.ReviewedAt = now;
 
-
-            sub.ReviewedAt = DateTime.Now;
-
-            sub.ReviewedById =
-                User.FindFirstValue(ClaimTypes.NameIdentifier);
+            sub.ReviewedById = lecturerId;
 
             // thêm notification
             _context.Notifications.Add(new Notification
@@ -877,9 +1140,11 @@ namespace KLTN_Registration_System.Controllers
 
                 Type = "Timeline",
 
-                RedirectUrl = "/StudentTimeline",
+                RedirectUrl = "/Student/Timeline",
 
-                CreatedAt = DateTime.Now
+                IsRead = false,
+
+                CreatedAt = now
             });
 
             // save một lần
@@ -889,11 +1154,15 @@ namespace KLTN_Registration_System.Controllers
 
             return RedirectToAction(nameof(TimelineManagement));
         }
-        [HttpPost]
+
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> RejectSubmission(
      int id,
      string? comment)
         {
+            var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var now = DateTime.Now;
+
             var sub = await _context.TimelineSubmissions
                 .Include(x => x.Timeline)
                 .FirstOrDefaultAsync(x => x.Id == id);
@@ -901,16 +1170,41 @@ namespace KLTN_Registration_System.Controllers
             if (sub == null)
                 return NotFound();
 
-            // cập nhật trạng thái
+            if (string.IsNullOrEmpty(sub.StudentId))
+                return NotFound();
+
+            bool isMyStudent = await IsMyApprovedStudent(sub.StudentId, lecturerId);
+            if (!isMyStudent)
+                return Forbid();
+
+            if (sub.Status != SubmissionStatus.Pending)
+            {
+                TempData["Error"] = "Bài nộp này đã được xử lý trước đó.";
+                return RedirectToAction(nameof(TimelineManagement));
+            }
+
+            if (sub.Timeline?.ReviewDeadline.HasValue == true && now > sub.Timeline.ReviewDeadline.Value)
+            {
+                TempData["Error"] = $"Đã quá hạn duyệt ({sub.Timeline.ReviewDeadline.Value:dd/MM/yyyy HH:mm}).";
+                return RedirectToAction(nameof(TimelineManagement));
+            }
+
+            if (string.IsNullOrWhiteSpace(comment) || comment.Trim().Length < 15)
+            {
+                TempData["Error"] = "Vui lòng nhập lý do từ chối tối thiểu 15 ký tự.";
+                return RedirectToAction(nameof(TimelineManagement));
+            }
+
             sub.Status = SubmissionStatus.Rejected;
 
             // lưu nhận xét giảng viên
-            sub.LecturerComment = comment;
+            sub.LecturerComment = comment.Trim();
+            sub.Comment = comment.Trim();
+            sub.IsCompleted = false;
 
-            sub.ReviewedAt = DateTime.Now;
+            sub.ReviewedAt = now;
 
-            sub.ReviewedById =
-                User.FindFirstValue(ClaimTypes.NameIdentifier);
+            sub.ReviewedById = lecturerId;
 
             // gửi notification
             _context.Notifications.Add(new Notification
@@ -924,9 +1218,11 @@ namespace KLTN_Registration_System.Controllers
 
                 Type = "Timeline",
 
-                RedirectUrl = "/StudentTimeline",
+                RedirectUrl = "/Student/Timeline",
 
-                CreatedAt = DateTime.Now
+                IsRead = false,
+
+                CreatedAt = now
             });
 
             // save một lần
@@ -935,6 +1231,45 @@ namespace KLTN_Registration_System.Controllers
             TempData["Error"] = "Đã từ chối bài nộp";
 
             return RedirectToAction(nameof(TimelineManagement));
+        }
+
+        private async Task<bool> IsMyApprovedStudent(string studentId, string? lecturerId)
+        {
+            if (string.IsNullOrEmpty(lecturerId))
+                return false;
+
+            return await _context.Registrations.AnyAsync(r =>
+                r.StudentId == studentId &&
+                r.Status == "Approved" &&
+                r.Topic.LecturerId == lecturerId);
+        }
+
+        private static bool IsValidExcelUpload(IFormFile? file, out string error)
+        {
+            error = string.Empty;
+
+            if (file == null || file.Length == 0)
+            {
+                error = "Chọn file Excel hợp lệ.";
+                return false;
+            }
+
+            const long maxFileSize = 5 * 1024 * 1024;
+            if (file.Length > maxFileSize)
+            {
+                error = "File Excel không được vượt quá 5MB.";
+                return false;
+            }
+
+            var extension = Path.GetExtension(file.FileName);
+            if (string.IsNullOrWhiteSpace(extension)
+                || (extension.ToLowerInvariant() != ".xlsx" && extension.ToLowerInvariant() != ".xls"))
+            {
+                error = "Chỉ hỗ trợ file Excel .xlsx hoặc .xls.";
+                return false;
+            }
+
+            return true;
         }
     }
 }

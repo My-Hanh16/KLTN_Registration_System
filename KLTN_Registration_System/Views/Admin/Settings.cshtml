@@ -7,7 +7,13 @@
     var settings = Model.ToDictionary(s => s.Name, s => s);
     
     // Hàm Helper để lấy giá trị hoặc trả về rỗng nếu chưa có trong DB
-    string GetVal(string name) => settings.ContainsKey(name) ? settings[name].Value : "";
+    string GetVal(string name, string fallback = "") => settings.ContainsKey(name) ? settings[name].Value : fallback;
+    string GetDateVal(string name, string fallback) => DateTime.TryParse(GetVal(name), out var dt)
+        ? dt.ToString("yyyy-MM-dd")
+        : fallback;
+    string GetDateTimeVal(string name) => DateTime.TryParse(GetVal(name), out var dt)
+        ? dt.ToString("yyyy-MM-ddTHH:mm")
+        : GetVal(name);
 }
 
 <!-- Chèn link CSS Tailwind và Material Symbols nếu _Layout chưa có -->
@@ -21,6 +27,13 @@
             <div class="max-w-6xl mx-auto mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-2xl flex items-center gap-3">
                 <span class="material-symbols-outlined">check_circle</span>
                 <span class="font-bold">@TempData["Success"]</span>
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="max-w-6xl mx-auto mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3">
+                <span class="material-symbols-outlined">error</span>
+                <span class="font-bold">@TempData["Error"]</span>
             </div>
         }
         <form asp-action="SaveSettings" method="post">
@@ -91,12 +104,22 @@
                             <div class="space-y-2">
                                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày bắt đầu học kỳ</label>
                                 <input type="hidden" name="names" value="Semester_Start" />
-                                <input type="date" name="values_Semester_Start" value="@GetVal("Semester_Start")" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
+                                <input type="date" name="values_Semester_Start" value="@GetDateVal("Semester_Start", DateTime.Today.ToString("yyyy-MM-dd"))" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
                             </div>
                             <div class="space-y-2">
                                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày kết thúc học kỳ</label>
                                 <input type="hidden" name="names" value="Semester_End" />
-                                <input type="date" name="values_Semester_End" value="@GetVal("Semester_End")" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
+                                <input type="date" name="values_Semester_End" value="@GetDateVal("Semester_End", DateTime.Today.AddMonths(4).ToString("yyyy-MM-dd"))" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mở đăng ký đề tài</label>
+                                <input type="hidden" name="names" value="Registration_Start" />
+                                <input type="datetime-local" name="values_Registration_Start" value="@GetDateTimeVal("Registration_Start")" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Đóng đăng ký đề tài</label>
+                                <input type="hidden" name="names" value="Registration_End" />
+                                <input type="datetime-local" name="values_Registration_End" value="@GetDateTimeVal("Registration_End")" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
                             </div>
                         </div>
                     </div>
@@ -131,16 +154,16 @@
                              <div class="space-y-2">
                                 <div class="flex justify-between items-center">
                                     <label class="text-sm font-semibold">SV tối đa / đề tài</label>
-                                    <span class="text-blue-600 font-bold text-lg">@GetVal("Max_Student_Per_Topic")</span>
+                                    <span class="text-blue-600 font-bold text-lg">@GetVal("Max_Student_Per_Topic", "3")</span>
                                 </div>
                                 <input type="hidden" name="names" value="Max_Student_Per_Topic" />
-                                <input type="range" name="values_Max_Student_Per_Topic" min="1" max="5" value="@GetVal("Max_Student_Per_Topic")" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                                <input type="range" name="values_Max_Student_Per_Topic" min="1" max="5" value="@GetVal("Max_Student_Per_Topic", "3")" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
                             </div>
                             <div class="pt-2">
                                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Điều kiện GPA tối thiểu</label>
                                 <div class="flex gap-4 mt-2">
                                     <input type="hidden" name="names" value="Min_GPA" />
-                                    <input type="number" name="values_Min_GPA" step="0.1" value="@GetVal("Min_GPA")" class="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold" />
+                                    <input type="number" name="values_Min_GPA" step="0.1" value="@GetVal("Min_GPA", "0")" class="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold" />
                                     <div class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-blue-200 shadow-md">OK</div>
                                 </div>
                             </div>

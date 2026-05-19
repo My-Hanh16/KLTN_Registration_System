@@ -27,7 +27,7 @@ namespace KLTN_Registration_System.Models
             builder.Entity<TopicComment>(e =>
             {
                 e.HasOne(c => c.Topic)
-                 .WithMany()
+                 .WithMany(t => t.Comments)
                  .HasForeignKey(c => c.TopicId)
                  .OnDelete(DeleteBehavior.Cascade);
 
@@ -93,6 +93,12 @@ namespace KLTN_Registration_System.Models
             builder.Entity<Notification>(e =>
             {
                 e.Property(n => n.Priority).HasDefaultValue(0);
+                e.Property(n => n.Title).HasMaxLength(200);
+                e.Property(n => n.Type).HasMaxLength(50);
+                e.Property(n => n.RedirectUrl).HasMaxLength(300);
+
+                e.HasIndex(n => new { n.UserId, n.IsRead, n.CreatedAt });
+                e.HasIndex(n => new { n.Type, n.CreatedAt });
 
                 e.HasOne(n => n.User)
                  .WithMany(u => u.Notifications)
@@ -130,6 +136,14 @@ namespace KLTN_Registration_System.Models
                  .WithMany()
                  .HasForeignKey(ts => ts.ReviewedById)
                  .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<TimelineSubmissionVersion>(e =>
+            {
+                e.HasOne(v => v.TimelineSubmission)
+                 .WithMany(s => s.Versions)
+                 .HasForeignKey(v => v.TimelineSubmissionId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

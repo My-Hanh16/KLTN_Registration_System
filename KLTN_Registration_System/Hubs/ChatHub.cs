@@ -30,6 +30,12 @@ namespace KLTN_Registration_System.Hubs
         {
             if (topicId <= 0) return;
 
+            var user = await _userManager.GetUserAsync(Context.User!);
+            if (user == null) return;
+
+            if (!await CanAccessTopic(topicId, user))
+                return;
+
             await Groups.AddToGroupAsync(
                 Context.ConnectionId,
                 $"topic-{topicId}");
@@ -48,6 +54,8 @@ namespace KLTN_Registration_System.Hubs
         public async Task Typing(int topicId)
         {
             var user = await _userManager.GetUserAsync(Context.User!);
+            if (user == null || !await CanAccessTopic(topicId, user)) return;
+
             var name = user?.FullName ?? user?.UserName ?? "Ai đó";
 
             await Clients.OthersInGroup($"topic-{topicId}")
@@ -59,7 +67,7 @@ namespace KLTN_Registration_System.Hubs
         // =====================================================
         public async Task SendMessage(
             int topicId,
-            string content,
+            string? content,
             string? attachmentUrl = null,
             string? attachmentName = null)
         {
@@ -99,11 +107,13 @@ namespace KLTN_Registration_System.Hubs
 
                 bool isStudent =
                     roles.Contains("Student") &&
-                    topic.Registrations.Any(r =>
+                    (topic.Registrations ?? new List<Registration>()).Any(r =>
                         r.StudentId == user.Id &&
                         r.Status == "Approved");
 
-                if (!isLecturer && !isStudent) return;
+                bool isAdmin = roles.Contains("Admin");
+
+                if (!isLecturer && !isStudent && !isAdmin) return;
 
                 var comment = new TopicComment
                 {
@@ -117,7 +127,7 @@ namespace KLTN_Registration_System.Hubs
 
                     CreatedAt = DateTime.UtcNow,
 
-                    SenderRole = isLecturer ? "Lecturer" : "Student",
+                    SenderRole = isLecturer ? "Lecturer" : isAdmin ? "Admin" : "Student",
 
                     IsDeleted = false,
                     IsRead = false
@@ -171,6 +181,24 @@ namespace KLTN_Registration_System.Hubs
 
             await Clients.Group($"topic-{comment.TopicId}")
                 .SendAsync("MessageDeleted", commentId);
+        }
+
+        private async Task<bool> CanAccessTopic(int topicId, ApplicationUser user)
+        {
+            var topic = await _db.Topics
+                .Include(t => t.Registrations)
+                .FirstOrDefaultAsync(t => t.Id == topicId);
+
+            if (topic == null) return false;
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return roles.Contains("Admin") ||
+                   (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
+                   (roles.Contains("Student") &&
+                    (topic.Registrations ?? new List<Registration>()).Any(r =>
+                        r.StudentId == user.Id &&
+                        r.Status == "Approved"));
         }
     }
 }

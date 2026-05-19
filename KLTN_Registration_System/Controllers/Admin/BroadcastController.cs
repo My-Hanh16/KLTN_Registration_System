@@ -5,9 +5,12 @@
 // ============================================================
 using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
+using KLTN_Registration_System.Hubs;
+using KLTN_Registration_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace KLTN_Registration_System.Controllers.Admin
@@ -18,11 +21,16 @@ namespace KLTN_Registration_System.Controllers.Admin
     {
         private readonly AppDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public BroadcastController(AppDbContext context, UserManager<ApplicationUser> userManager)
+        public BroadcastController(
+            AppDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IHubContext<NotificationHub> hubContext)
         {
             _context = context;
             _userManager = userManager;
+            _hubContext = hubContext;
         }
 
         // GET /Admin/Broadcast
@@ -87,6 +95,27 @@ namespace KLTN_Registration_System.Controllers.Admin
                 return RedirectToAction(nameof(Index));
             }
 
+            target = target?.Trim().ToLowerInvariant() ?? "all";
+            type = type?.Trim() ?? "System";
+
+            var allowedTargets = new[] { "all", "student", "lecturer" };
+            if (!allowedTargets.Contains(target))
+            {
+                TempData["Error"] = "Nhóm nhận thông báo không hợp lệ.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var allowedTypes = new[] { "System", "SystemAlert", "Deadline" };
+            if (!allowedTypes.Contains(type))
+            {
+                TempData["Error"] = "Loại thông báo không hợp lệ.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            title = title.Trim();
+            content = content.Trim();
+            var safeRedirectUrl = NotificationService.NormalizeRedirectUrl(redirectUrl);
+
             // Lấy danh sách userId theo target
             List<string> userIds;
             if (target == "student")
@@ -114,10 +143,10 @@ namespace KLTN_Registration_System.Controllers.Admin
             var notifications = userIds.Select(uid => new Notification
             {
                 UserId = uid,
-                Title = title.Trim(),
-                Content = content.Trim(),
+                Title = title,
+                Content = content,
                 Type = type,
-                RedirectUrl = redirectUrl?.Trim(),
+                RedirectUrl = safeRedirectUrl,
                 IsRead = false,
                 Priority = type == "SystemAlert" ? 1 : 0,
                 CreatedAt = DateTime.Now
@@ -125,6 +154,27 @@ namespace KLTN_Registration_System.Controllers.Admin
 
             _context.Notifications.AddRange(notifications);
             await _context.SaveChangesAsync();
+
+            foreach (var notification in notifications)
+            {
+                var unreadCount = await _context.Notifications
+                    .CountAsync(n => n.UserId == notification.UserId && !n.IsRead);
+
+                await _hubContext.Clients
+                    .Group(notification.UserId)
+                    .SendAsync("ReceiveNotification", new
+                    {
+                        id = notification.Id,
+                        title = notification.Title,
+                        content = notification.Content,
+                        type = notification.Type,
+                        priority = notification.Priority,
+                        redirectUrl = notification.RedirectUrl,
+                        createdAt = notification.CreatedAt.ToString("HH:mm dd/MM/yyyy"),
+                        unreadCount
+                    });
+            }
+
             TempData["Success"] = $"Đã gửi thông báo đến {userIds.Count} người dùng thành công!";
             return RedirectToAction(nameof(Index));
         }
@@ -133,6 +183,7 @@ namespace KLTN_Registration_System.Controllers.Admin
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteOld(int daysOld = 30)
         {
+            daysOld = Math.Clamp(daysOld, 1, 3650);
             var cutoff = DateTime.Now.AddDays(-daysOld);
             var old = await _context.Notifications
                 .Where(n => n.CreatedAt < cutoff && n.IsRead)

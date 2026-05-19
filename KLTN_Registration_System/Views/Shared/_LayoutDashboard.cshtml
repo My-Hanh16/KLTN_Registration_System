@@ -672,6 +672,12 @@
                     <span>Bài đã duyệt</span>
                 </a>
 
+                <a asp-controller="Timeline" asp-action="PendingAfterDeadline"
+                   class="@IsActive("Timeline", "PendingAfterDeadline")">
+                    <span class="material-symbols-outlined">running_with_errors</span>
+                    <span>Quá hạn duyệt</span>
+                </a>
+
                 <div class="menu-section">Hệ thống</div>
 
                 <a asp-controller="Broadcast" asp-action="Index"

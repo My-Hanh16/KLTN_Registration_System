@@ -148,9 +148,11 @@
                             </div>
                             <div class="flex items-center gap-3">
                                 <form asp-action="Reject" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Từ chối đăng ký này?')">
+                                    @Html.AntiForgeryToken()
                                     <button type="submit" class="px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors">Từ chối</button>
                                 </form>
                                 <form asp-action="Approve" asp-route-id="@item.Id" method="post">
+                                    @Html.AntiForgeryToken()
                                     <button type="submit" class="px-6 py-2 text-xs font-bold bg-primary text-white rounded-xl hover:shadow-lg transition-all active:scale-95">Duyệt</button>
                                 </form>
                             </div>
@@ -310,6 +312,7 @@
         </div>
 
         <div class="space-y-4">
+            @Html.AntiForgeryToken()
 
             <div>
                 <label class="font-semibold text-sm">
@@ -455,15 +458,15 @@
                 document.getElementById('majorId').value
             ),
 
-            deadline: deadlineElement
+            deadline: deadlineElement && deadlineElement.value
                 ? deadlineElement.value
-                : null,
+                : undefined,
 
-            maxMembers: parseInt(
+            maxStudents: parseInt(
                 document.getElementById('maxMembers').value
             ),
 
-            topicType:
+            category:
                 document.getElementById('topicType').value
         };
 
@@ -474,7 +477,8 @@
                 method: 'POST',
 
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('#createTopicModal input[name="__RequestVerificationToken"]')?.value ?? ''
                 },
 
                 body: JSON.stringify(topic)

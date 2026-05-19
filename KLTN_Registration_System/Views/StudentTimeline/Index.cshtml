@@ -129,6 +129,7 @@
                   asp-action="Submit"
                   enctype="multipart/form-data"
                   class="mt-6 space-y-4">
+                @Html.AntiForgeryToken()
 
                 <input type="hidden"
                        name="timelineId"
@@ -141,6 +142,7 @@
 
                 <input type="file"
                        name="file"
+                       accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.rar,.txt"
                        class="w-full border rounded-xl p-2" />
 
                 <button type="submit"
@@ -203,7 +205,7 @@
 
                                         <td class="p-3">
 
-                                            <a href="@v.FilePath"
+                                            <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = v.TimelineSubmissionId, versionId = v.Id })"
                                                target="_blank"
                                                class="text-blue-600 hover:underline">
 

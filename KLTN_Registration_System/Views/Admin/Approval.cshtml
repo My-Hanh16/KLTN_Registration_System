@@ -533,14 +533,14 @@
                                 {
                                     <div class="d-flex justify-content-end align-items-center gap-2">
                                         <!-- Fix: thêm AntiForgeryToken, sửa controller đúng Admin -->
-                                        <form asp-controller="Admin" asp-action="Approve"
+                                        <form asp-controller="Admin" asp-action="ApproveRegistration"
                                               asp-route-id="@item.Id" method="post" class="m-0">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn-approve" title="Duyệt">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
                                         </form>
-                                        <form asp-controller="Admin" asp-action="Reject"
+                                        <form asp-controller="Admin" asp-action="RejectRegistration"
                                               asp-route-id="@item.Id" method="post" class="m-0"
                                               onsubmit="return confirm('Từ chối đăng ký này?')">
                                             @Html.AntiForgeryToken()

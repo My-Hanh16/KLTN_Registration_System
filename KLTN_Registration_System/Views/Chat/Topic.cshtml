@@ -604,7 +604,7 @@
                             {
                                 <div>
                                     <a class="attachment-link"
-                                       href="@msg.AttachmentUrl"
+                                       href="@Url.Action("DownloadAttachment", "Chat", new { messageId = msg.Id })"
                                        target="_blank"
                                        rel="noopener noreferrer">
                                         <i class="fa-solid fa-paperclip"></i>
@@ -632,6 +632,7 @@
 
         <!-- INPUT AREA -->
         <div class="chat-input-area">
+            @Html.AntiForgeryToken()
 
             <div id="attach-preview" class="attach-preview" style="display:none;">
                 <i class="fa-solid fa-paperclip"></i>
@@ -854,11 +855,18 @@
 
             const formData = new FormData();
             formData.append("file", file);
+            formData.append("topicId", TOPIC_ID);
 
             document.getElementById("attach-preview").style.display = "flex";
             document.getElementById("attach-name").textContent = "Đang tải lên...";
 
-            const res  = await fetch("/Chat/UploadFile", { method: "POST", body: formData });
+            const res  = await fetch("/Chat/UploadFile", {
+                method: "POST",
+                headers: {
+                    "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? ""
+                },
+                body: formData
+            });
             const data = await res.json();
 
             if (data.error) {

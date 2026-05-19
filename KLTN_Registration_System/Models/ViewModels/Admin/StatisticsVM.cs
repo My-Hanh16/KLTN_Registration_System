@@ -32,7 +32,7 @@
 
     public class TopLecturerVM
     {
-        public string LecturerName { get; set; }
+        public string LecturerName { get; set; } = string.Empty;
         public int TopicCount { get; set; }
         public int ApprovedCount { get; set; }
     }

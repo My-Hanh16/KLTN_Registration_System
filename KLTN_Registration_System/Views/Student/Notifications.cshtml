@@ -7,18 +7,26 @@
     ViewData["Title"] = "Thông báo";
 
     int totalCount = Model.TotalItemCount;
-    int unreadCount = Model.Count(n => !n.IsRead);
+    int unreadCount = ViewBag.TotalUnreadCount is int totalUnread ? totalUnread : Model.Count(n => !n.IsRead);
 
-    int topicCount = Model.Count(n =>
+    int topicCount = ViewBag.TopicNotificationCount is int totalTopic ? totalTopic : Model.Count(n =>
         n.Type == "TopicApproved"
         || n.Type == "TopicRejected"
         || n.Type == "NewRegistration"
+        || n.Type == "RegistrationApproved"
+        || n.Type == "RegistrationRejected"
         || (n.Title != null &&
            (n.Title.Contains("duyệt")
-           || n.Title.Contains("từ chối")))
-    );
+           || n.Title.Contains("từ chối"))));
 
     int sysCount = totalCount - topicCount;
+
+    string SafeNotificationUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return "";
+        url = url.Trim();
+        return url.StartsWith("/") && !url.StartsWith("//") && !url.Contains("\\") ? url : "";
+    }
 }
 
 <style>
@@ -483,7 +491,7 @@
         }
         else
         {
-            <div class="notif-grid">
+            <div class="notif-grid" id="notification-list">
 
                 @foreach (var n in Model)
                 {
@@ -539,7 +547,8 @@
 
                     string unreadCls = n.IsRead ? "" : "unread";
 
-                    string url = n.RedirectUrl ?? "";
+                    string url = SafeNotificationUrl(n.RedirectUrl);
+                    string openUrl = Url.Action("OpenNotification", "Student", new { id = n.Id }) ?? url;
 
                     string timeStr =
                     (DateTime.Now - n.CreatedAt).TotalHours < 24
@@ -583,7 +592,7 @@
 
                             @if (!string.IsNullOrWhiteSpace(url))
                             {
-                                <a href="@url" class="nc-link">
+                                <a href="@openUrl" class="nc-link">
 
                                     Xem chi tiết
 

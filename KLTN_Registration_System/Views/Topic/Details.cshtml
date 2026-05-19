@@ -5,7 +5,9 @@
    ============================================================ *@
 @model KLTN_Registration_System.Models.Entities.Topic
 @{
-    Layout = "_LayoutDashboard";
+    Layout = User.IsInRole("Admin") || User.IsInRole("Lecturer")
+        ? "_LayoutDashboard"
+        : "_LayoutStudent";
     ViewData["Title"] = "Chi tiết đề tài";
 
     int approvedCount = ViewBag.ApprovedCount ?? 0;
@@ -278,7 +280,7 @@
                         }
                         else
                         {
-                            <form method="post" action="/Student/Register">
+                            <form asp-action="Register" asp-controller="Topic" method="post">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="topicId" value="@Model.Id" />
                                 <button type="submit"

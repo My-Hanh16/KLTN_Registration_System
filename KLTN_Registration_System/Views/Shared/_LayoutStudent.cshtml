@@ -636,10 +636,9 @@
                class="menu-item @(action == "Notifications" ? "active" : "")">
                 <i class="fa-regular fa-bell"></i>
                 <span>Thông báo</span>
-                @if (unread > 0)
-                {
-                    <span class="menu-badge">@(unread > 9 ? "9+" : unread.ToString())</span>
-                }
+                <span class="menu-badge"
+                      data-notif-badge
+                      style="@(unread > 0 ? "" : "display:none")">@(unread > 9 ? "9+" : unread.ToString())</span>
             </a>
 
             <a asp-controller="Student" asp-action="Profile"
@@ -682,10 +681,9 @@
                 <a asp-controller="Student" asp-action="Notifications"
                    class="topbar-icon-btn" title="Thông báo">
                     <i class="fa-regular fa-bell"></i>
-                    @if (unread > 0)
-                    {
-                        <span class="notif-dot">@(unread > 9 ? "9+" : unread.ToString())</span>
-                    }
+                    <span class="notif-dot"
+                          data-notif-badge
+                          style="@(unread > 0 ? "" : "display:none")">@(unread > 9 ? "9+" : unread.ToString())</span>
                 </a>
 
                 <div class="topbar-divider"></div>

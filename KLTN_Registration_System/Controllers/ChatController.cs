@@ -4,6 +4,7 @@ using KLTN_Registration_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 
 namespace KLTN_Registration_System.Controllers
@@ -43,7 +44,7 @@ namespace KLTN_Registration_System.Controllers
                 var topics = await _db.Topics
                     .Where(t => t.LecturerId == user.Id)
 
-                    .Include(t => t.Registrations)
+                    .Include(t => t.Registrations!)
                         .ThenInclude(r => r.Student)
 
                     .OrderByDescending(t => t.CreatedAt)
@@ -75,13 +76,16 @@ namespace KLTN_Registration_System.Controllers
             {
                 var topics = await _db.Registrations
                     .Include(r => r.Topic)
+                        .ThenInclude(t => t.Lecturer)
+                    .Include(r => r.Topic)
                         .ThenInclude(t => t.Comments)
 
                     .Where(r =>
                         r.StudentId == user.Id &&
-                        r.Status == "Approved")
+                        r.Status == "Approved" &&
+                        r.Topic != null)
 
-                    .Select(r => r.Topic)
+                    .Select(r => r.Topic!)
                     .ToListAsync();
 
                 // unread từ lecturer/admin gửi cho student
@@ -123,7 +127,7 @@ namespace KLTN_Registration_System.Controllers
 
             var topic = await _db.Topics
                 .Include(t => t.Lecturer)
-                .Include(t => t.Registrations)
+                .Include(t => t.Registrations!)
                     .ThenInclude(r => r.Student)
                 .FirstOrDefaultAsync(t => t.Id == topicId);
 
@@ -184,21 +188,19 @@ namespace KLTN_Registration_System.Controllers
             // =================================================
             // MARK AS READ
             // =================================================
-            if (isLecturer)
-            {
-                var unread = await _db.TopicComments
-                    .Where(c =>
-                        c.TopicId == topicId &&
-                        c.SenderRole == "Student" &&
-                        !c.IsDeleted &&
-                        !c.IsRead)
-                    .ToListAsync();
+            var unread = await _db.TopicComments
+                .Where(c =>
+                    c.TopicId == topicId &&
+                    c.SenderId != user.Id &&
+                    !c.IsDeleted &&
+                    !c.IsRead)
+                .ToListAsync();
 
-                foreach (var m in unread)
-                    m.IsRead = true;
+            foreach (var m in unread)
+                m.IsRead = true;
 
+            if (unread.Count > 0)
                 await _db.SaveChangesAsync();
-            }
 
             // =================================================
             // VIEWBAG
@@ -233,7 +235,7 @@ namespace KLTN_Registration_System.Controllers
                 roles.Contains("Admin") ||
                 (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
                 (roles.Contains("Student") &&
-                 topic.Registrations.Any(r =>
+                 (topic.Registrations ?? new List<Registration>()).Any(r =>
                      r.StudentId == user.Id &&
                      r.Status == "Approved"));
 
@@ -278,10 +280,30 @@ namespace KLTN_Registration_System.Controllers
         // =====================================================
         // UPLOAD FILE
         // =====================================================
-        [HttpPost]
+        [HttpPost, ValidateAntiForgeryToken]
         [RequestSizeLimit(10 * 1024 * 1024)]
-        public async Task<IActionResult> UploadFile(IFormFile file)
+        public async Task<IActionResult> UploadFile(IFormFile file, int topicId)
         {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized(new { error = "Bạn cần đăng nhập." });
+
+            var topic = await _db.Topics
+                .Include(t => t.Registrations)
+                .FirstOrDefaultAsync(t => t.Id == topicId);
+
+            if (topic == null) return NotFound(new { error = "Không tìm thấy đề tài." });
+
+            var roles = await _userManager.GetRolesAsync(user);
+            bool canAccess =
+                roles.Contains("Admin") ||
+                (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
+                (roles.Contains("Student") &&
+                 (topic.Registrations ?? new List<Registration>()).Any(r =>
+                     r.StudentId == user.Id &&
+                     r.Status == "Approved"));
+
+            if (!canAccess) return Forbid();
+
             if (file == null || file.Length == 0)
                 return BadRequest(new { error = "Không có file." });
 
@@ -293,9 +315,9 @@ namespace KLTN_Registration_System.Controllers
                 ".pdf",".doc",".docx",".png",".jpg",".jpeg",".zip",".rar",".xlsx"
             };
 
-            var ext = Path.GetExtension(file.FileName).ToLower();
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
 
-            if (!allowedExt.Contains(ext))
+            if (string.IsNullOrWhiteSpace(ext) || !allowedExt.Contains(ext))
                 return BadRequest(new { error = "File không hợp lệ." });
 
             var uploadDir = Path.Combine(_env.WebRootPath, "uploads", "chat");
@@ -310,9 +332,74 @@ namespace KLTN_Registration_System.Controllers
             return Ok(new
             {
                 success = true,
-                url = $"/uploads/chat/{fileName}",
+                url = Url.Action(nameof(DownloadUploadedFile), "Chat", new { topicId, fileName }),
                 name = Path.GetFileName(file.FileName)
             });
+        }
+
+        public async Task<IActionResult> DownloadAttachment(int messageId)
+        {
+            var comment = await _db.TopicComments
+                .Include(c => c.Topic)
+                    .ThenInclude(t => t!.Registrations)
+                .FirstOrDefaultAsync(c => c.Id == messageId && !c.IsDeleted);
+
+            if (comment == null || comment.Topic == null || string.IsNullOrWhiteSpace(comment.AttachmentUrl))
+                return NotFound();
+
+            if (!await CanAccessTopic(comment.Topic))
+                return Forbid();
+
+            return DownloadChatFile(comment.AttachmentUrl, comment.AttachmentName);
+        }
+
+        public async Task<IActionResult> DownloadUploadedFile(int topicId, string fileName)
+        {
+            var topic = await _db.Topics
+                .Include(t => t.Registrations)
+                .FirstOrDefaultAsync(t => t.Id == topicId);
+
+            if (topic == null) return NotFound();
+            if (!await CanAccessTopic(topic)) return Forbid();
+
+            return DownloadChatFile(fileName, fileName);
+        }
+
+        private async Task<bool> CanAccessTopic(Topic topic)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return false;
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return roles.Contains("Admin") ||
+                   (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
+                   (roles.Contains("Student") &&
+                    (topic.Registrations ?? new List<Registration>()).Any(r =>
+                        r.StudentId == user.Id &&
+                        r.Status == "Approved"));
+        }
+
+        private IActionResult DownloadChatFile(string storedPathOrName, string? downloadName)
+        {
+            var storedName = Path.GetFileName(storedPathOrName);
+            if (string.IsNullOrWhiteSpace(storedName)) return NotFound();
+
+            var uploadsRoot = Path.GetFullPath(Path.Combine(_env.WebRootPath, "uploads", "chat"));
+            var physicalPath = Path.GetFullPath(Path.Combine(uploadsRoot, storedName));
+
+            if (!physicalPath.StartsWith(uploadsRoot, StringComparison.OrdinalIgnoreCase)
+                || !System.IO.File.Exists(physicalPath))
+            {
+                return NotFound();
+            }
+
+            var provider = new FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(physicalPath, out var contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+
+            return PhysicalFile(physicalPath, contentType, Path.GetFileName(downloadName ?? storedName));
         }
     }
 

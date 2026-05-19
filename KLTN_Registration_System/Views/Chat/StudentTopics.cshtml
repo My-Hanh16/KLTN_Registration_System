@@ -1,0 +1,66 @@
+@model List<KLTN_Registration_System.Models.Entities.Topic>
+
+@{
+    Layout = "_LayoutStudent";
+    ViewData["Title"] = "Trao đổi với giảng viên";
+    var unreadMap = ViewBag.UnreadMap as Dictionary<int, int> ?? new Dictionary<int, int>();
+}
+
+<div class="max-w-5xl mx-auto py-8 px-4">
+    <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+            <h2 class="text-2xl font-black text-slate-900 mb-1">Trao đổi với giảng viên</h2>
+            <p class="text-sm text-slate-500">Theo dõi trao đổi theo đề tài đã được duyệt.</p>
+        </div>
+        <a asp-controller="Student" asp-action="Home"
+           class="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold no-underline hover:bg-slate-200">
+            Quay lại
+        </a>
+    </div>
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="bg-white border border-slate-200 rounded-2xl p-8 text-center">
+            <div class="text-4xl mb-3 text-slate-300">
+                <i class="fa-regular fa-comments"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 mb-1">Chưa có phòng chat</h3>
+            <p class="text-sm text-slate-500 mb-0">Phòng chat sẽ xuất hiện sau khi đăng ký đề tài của bạn được duyệt.</p>
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @foreach (var topic in Model)
+            {
+                var unread = unreadMap.TryGetValue(topic.Id, out var count) ? count : 0;
+                var lecturerName = topic.Lecturer?.FullName ?? topic.Lecturer?.UserName ?? "Giảng viên hướng dẫn";
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h3 class="font-black text-slate-900 text-base mb-1">@topic.Title</h3>
+                            <p class="text-xs text-slate-500 mb-2">GVHD: @lecturerName</p>
+                        </div>
+                        @if (unread > 0)
+                        {
+                            <span class="px-2 py-1 rounded-full bg-red-500 text-white text-xs font-bold">@unread</span>
+                        }
+                    </div>
+
+                    <p class="text-sm text-slate-600 line-clamp-2 mb-4">
+                        @(string.IsNullOrWhiteSpace(topic.Description)
+                            ? "Trao đổi tiến độ, tài liệu và các phản hồi liên quan đến đề tài."
+                            : topic.Description)
+                    </p>
+
+                    <a asp-controller="Chat" asp-action="Topic" asp-route-topicId="@topic.Id"
+                       class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold no-underline hover:bg-blue-700">
+                        <i class="fa-regular fa-comment-dots"></i>
+                        @(unread > 0 ? "Xem tin mới" : "Vào chat")
+                    </a>
+                </div>
+            }
+        </div>
+    }
+</div>

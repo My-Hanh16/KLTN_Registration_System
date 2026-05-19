@@ -4,7 +4,7 @@
 @model IPagedList<Topic>
 
 @{
-    Layout = "_layoutStudent";
+    Layout = "_LayoutStudent";
     ViewData["Title"] = "Danh sách đề tài KLTN";
     var fullTopicIds = ViewBag.FullTopicIds as List<int> ?? new List<int>();
 }
@@ -781,6 +781,7 @@
                         else
                         {
                             <form asp-action="Register" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
                                 <input type="hidden" name="topicId" value="@item.Id" />
                                 <button type="submit" class="btn-register"
                                         onclick="return confirm('Đăng ký đề tài này?')">

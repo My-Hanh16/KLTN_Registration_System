@@ -5,6 +5,7 @@ using KLTN_Registration_System.Models.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace KLTN_Registration_System.Services
 {
@@ -39,8 +40,12 @@ namespace KLTN_Registration_System.Services
             string content,
             string type = "System",
             int priority = 0,
-            int? relatedId = null)
+            int? relatedId = null,
+            string? redirectUrl = null)
         {
+            if (string.IsNullOrWhiteSpace(userId))
+                return;
+
             // ====================================================
             // 1. Lưu Database
             // ====================================================
@@ -55,9 +60,9 @@ namespace KLTN_Registration_System.Services
                 Type = type,
                 Priority = priority,
                 RelatedId = relatedId,
-                RedirectUrl = relatedId != null
+                RedirectUrl = NormalizeRedirectUrl(redirectUrl) ?? (relatedId != null
                     ? $"/Topic/Details/{relatedId}"
-                    : "/Notification"
+                    : "/Student/Notifications")
             };
 
             _context.Notifications.Add(notification);
@@ -92,30 +97,37 @@ namespace KLTN_Registration_System.Services
             // 3. Gửi Email
             // ====================================================
 
-            var student = await _userManager.FindByIdAsync(userId);
-
-            if (student != null &&
-                !string.IsNullOrEmpty(student.Email))
+            try
             {
-                string emailBody = $@"
+                var student = await _userManager.FindByIdAsync(userId);
+
+                if (student != null &&
+                    !string.IsNullOrEmpty(student.Email))
+                {
+                    string emailBody = $@"
                     <h3>Thông báo từ Hệ thống Quản lý Khóa luận</h3>
 
                     <p>
-                        <b>Tiêu đề:</b> {title}
+                        <b>Tiêu đề:</b> {WebUtility.HtmlEncode(title)}
                     </p>
 
                     <p>
-                        <b>Nội dung:</b> {content}
+                        <b>Nội dung:</b> {WebUtility.HtmlEncode(content)}
                     </p>
 
                     <p>
                         Vui lòng đăng nhập vào website để biết thêm chi tiết.
                     </p>";
 
-                await _emailService.SendEmailAsync(
-                    student.Email,
-                    title,
-                    emailBody);
+                    await _emailService.SendEmailAsync(
+                        student.Email,
+                        title,
+                        emailBody);
+                }
+            }
+            catch
+            {
+                // Không để lỗi email làm hỏng nghiệp vụ chính sau khi notification đã được lưu.
             }
         }
 
@@ -172,6 +184,23 @@ namespace KLTN_Registration_System.Services
             await _hubContext.Clients
                 .Group(userId)
                 .SendAsync("UpdateBadge", 0);
+        }
+
+        public static string? NormalizeRedirectUrl(string? redirectUrl)
+        {
+            if (string.IsNullOrWhiteSpace(redirectUrl))
+                return null;
+
+            var url = redirectUrl.Trim();
+
+            if (!url.StartsWith("/", StringComparison.Ordinal) ||
+                url.StartsWith("//", StringComparison.Ordinal) ||
+                url.Contains('\\'))
+            {
+                return null;
+            }
+
+            return url.Length > 300 ? url[..300] : url;
         }
     }
 }

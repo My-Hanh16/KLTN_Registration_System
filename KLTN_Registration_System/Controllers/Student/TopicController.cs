@@ -3,6 +3,7 @@
 // ============================================================
 using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
+using KLTN_Registration_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -17,13 +18,11 @@ namespace KLTN_Registration_System.Controllers
     public class TopicController : BaseController
     {
         private readonly AppDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
 
         public TopicController(AppDbContext context, UserManager<ApplicationUser> userManager)
             : base(context, userManager)
         {
             _context = context;
-            _userManager = userManager;
         }
 
         // ============================================================
@@ -160,7 +159,7 @@ namespace KLTN_Registration_System.Controllers
             var topic = await _context.Topics
                 .Include(t => t.Lecturer)
                 .Include(t => t.Major)
-                .Include(t => t.Registrations).ThenInclude(r => r.Student)
+                .Include(t => t.Registrations!).ThenInclude(r => r.Student)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (topic == null) return NotFound();
@@ -195,10 +194,17 @@ namespace KLTN_Registration_System.Controllers
         {
             var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var registrations = await _context.Registrations
+            var query = _context.Registrations
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
-                .Where(r => r.Topic!.LecturerId == uid)
+                .AsQueryable();
+
+            if (!User.IsInRole("Admin"))
+            {
+                query = query.Where(r => r.Topic!.LecturerId == uid);
+            }
+
+            var registrations = await query
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
@@ -699,7 +705,7 @@ namespace KLTN_Registration_System.Controllers
                 Title = title,
                 Content = content,
                 Type = type,
-                RedirectUrl = redirectUrl,
+                RedirectUrl = NotificationService.NormalizeRedirectUrl(redirectUrl),
                 IsRead = false,
                 CreatedAt = DateTime.Now
             });
@@ -724,7 +730,9 @@ namespace KLTN_Registration_System.Controllers
         [Authorize(Roles = "Admin,Lecturer")]
         public IActionResult Create()
         {
-            return View();
+            return User.IsInRole("Lecturer")
+                ? RedirectToAction("Create", "Lecturer")
+                : RedirectToAction("ManageTopics", "Admin");
         }
 
         [HttpPost]
@@ -738,19 +746,27 @@ namespace KLTN_Registration_System.Controllers
             ModelState.Remove("Major");
             ModelState.Remove("Student");
             ModelState.Remove("Registrations");
+            ModelState.Remove("Comments");
 
             if (!ModelState.IsValid)
             {
                 TempData["Error"] = "Dữ liệu không hợp lệ!";
-                return RedirectToAction("ManageTopics", "Admin");
+                return User.IsInRole("Lecturer")
+                    ? RedirectToAction("Create", "Lecturer")
+                    : RedirectToAction("ManageTopics", "Admin");
             }
 
+            topic.Title = topic.Title?.Trim() ?? string.Empty;
+            topic.Description = topic.Description?.Trim() ?? string.Empty;
+            topic.Semester = string.IsNullOrWhiteSpace(topic.Semester) ? "HK2-2025-2026" : topic.Semester.Trim();
+            topic.MaxStudents = Math.Clamp(topic.MaxStudents <= 0 ? 1 : topic.MaxStudents, 1, 10);
+            topic.Deadline = topic.Deadline == default ? DateTime.Now.AddMonths(3) : topic.Deadline;
             topic.CreatedAt = DateTime.Now;
-            topic.LecturerId = uid;
+            topic.LecturerId = User.IsInRole("Lecturer") ? uid : topic.LecturerId;
 
             topic.IsApproved = User.IsInRole("Admin");
-            topic.IsRegistrationOpen = true;
-            topic.Status = TopicStatus.Available;
+            topic.IsRegistrationOpen = topic.IsApproved;
+            topic.Status = topic.IsApproved ? TopicStatus.Available : TopicStatus.Pending;
 
             topic.TopicCode = $"TP{DateTime.Now.Ticks.ToString()[^5..]}";
 
@@ -759,7 +775,9 @@ namespace KLTN_Registration_System.Controllers
 
             TempData["Success"] = "Tạo đề tài thành công!";
 
-            return RedirectToAction("ManageTopics", "Admin");
+            return User.IsInRole("Lecturer")
+                ? RedirectToAction("ThesisManagement", "Lecturer")
+                : RedirectToAction("ManageTopics", "Admin");
         }
     }
 }

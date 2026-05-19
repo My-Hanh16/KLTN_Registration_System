@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Hangfire;
+using Hangfire.Dashboard;
 using System.Text.Json.Serialization;
 using KLTN_Registration_System.Hubs;
 
@@ -58,6 +59,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 // ================= SESSION =================
@@ -66,6 +70,8 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 // ================= MVC =================
@@ -90,6 +96,17 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/uploads/timeline")
+        || context.Request.Path.StartsWithSegments("/uploads/chat"))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    await next();
+});
 app.UseStaticFiles();
 app.UseWebSockets();
 app.UseRouting();
@@ -97,7 +114,10 @@ app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseHangfireDashboard();
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireAdminAuthorizationFilter() }
+});
 
 // ================= ROUTE =================
 app.MapControllerRoute(
@@ -177,22 +197,30 @@ using (var scope = app.Services.CreateScope())
     }
 
     // ── 4. Seed Settings (thời gian đăng ký) ──────────────────
-    if (!context.Settings.Any())
+    var defaultSettings = new Dictionary<string, string>
     {
-        context.Settings.AddRange(
-            new Setting
+        ["IsPortalOpen"] = "true",
+        ["Registration_Start"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"),
+        ["Registration_End"] = DateTime.UtcNow.AddMonths(1).ToString("yyyy-MM-ddTHH:mm:ss"),
+        ["Semester_Start"] = DateTime.UtcNow.Date.ToString("yyyy-MM-dd"),
+        ["Semester_End"] = DateTime.UtcNow.Date.AddMonths(4).ToString("yyyy-MM-dd"),
+        ["Max_Student_Per_Topic"] = "3",
+        ["Min_GPA"] = "0"
+    };
+
+    foreach (var setting in defaultSettings)
+    {
+        if (!context.Settings.Any(s => s.Name == setting.Key))
+        {
+            context.Settings.Add(new Setting
             {
-                Name = "Registration_Start",
-                Value = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")
-            },
-            new Setting
-            {
-                Name = "Registration_End",
-                Value = DateTime.UtcNow.AddMonths(1).ToString("yyyy-MM-ddTHH:mm:ss")
-            }
-        );
-        context.SaveChanges();
+                Name = setting.Key,
+                Value = setting.Value
+            });
+        }
     }
+
+    context.SaveChanges();
 
     // ── 5. Seed Timelines mẫu ─────────────────────────────────
     if (!context.Timelines.Any())
@@ -289,3 +317,13 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+public sealed class HangfireAdminAuthorizationFilter : IDashboardAuthorizationFilter
+{
+    public bool Authorize(DashboardContext context)
+    {
+        var httpContext = context.GetHttpContext();
+        return httpContext.User.Identity?.IsAuthenticated == true
+            && httpContext.User.IsInRole("Admin");
+    }
+}

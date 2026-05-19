@@ -1,0 +1,102 @@
+@using KLTN_Registration_System.Models.Entities
+@model IEnumerable<Registration>
+
+@{
+    Layout = "_LayoutDashboard";
+    var topic = ViewBag.Topic as Topic;
+    ViewData["Title"] = "Danh sách đăng ký";
+    var registrations = Model?.ToList() ?? new List<Registration>();
+    var approved = registrations.Count(r => r.Status == "Approved");
+    var pending = registrations.Count(r => r.Status == "Pending");
+    var rejected = registrations.Count(r => r.Status == "Rejected");
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Danh sách đăng ký</h2>
+            <div class="text-muted">
+                @(topic?.Title ?? "Đề tài") · Mã: @(topic?.TopicCode ?? "N/A")
+            </div>
+        </div>
+        <a asp-action="ThesisManagement" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="border rounded-3 p-3 bg-white">
+                <div class="text-muted small">Tổng đăng ký</div>
+                <div class="fs-4 fw-bold">@registrations.Count</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="border rounded-3 p-3 bg-white">
+                <div class="text-muted small">Đã duyệt</div>
+                <div class="fs-4 fw-bold text-success">@approved</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="border rounded-3 p-3 bg-white">
+                <div class="text-muted small">Chờ duyệt</div>
+                <div class="fs-4 fw-bold text-warning">@pending</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="border rounded-3 p-3 bg-white">
+                <div class="text-muted small">Từ chối</div>
+                <div class="fs-4 fw-bold text-danger">@rejected</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Sinh viên</th>
+                        <th>MSSV</th>
+                        <th>Email</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày đăng ký</th>
+                        <th>Phản hồi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!registrations.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Chưa có sinh viên đăng ký đề tài này.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in registrations)
+                    {
+                        var badgeClass = item.Status switch
+                        {
+                            "Approved" => "bg-success",
+                            "Pending" => "bg-warning text-dark",
+                            "Rejected" => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+
+                        <tr>
+                            <td class="fw-semibold">@(item.Student?.FullName ?? "N/A")</td>
+                            <td>@(item.Student?.UserCode ?? "N/A")</td>
+                            <td>@(item.Student?.Email ?? "N/A")</td>
+                            <td><span class="badge @badgeClass">@item.Status</span></td>
+                            <td>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.Feedback) ? "-" : item.Feedback)</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

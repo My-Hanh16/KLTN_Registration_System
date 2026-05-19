@@ -1,0 +1,292 @@
+@model KLTN_Registration_System.Models.Entities.TimelineSubmission
+
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Chi tiet bai nop";
+
+    var versions = Model.Versions
+        .OrderByDescending(v => v.VersionNumber)
+        .ThenByDescending(v => v.UploadedAt)
+        .ToList();
+}
+
+@section Styles {
+<style>
+    body {
+        background: #f6f8fb;
+        color: #0f172a;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .page-wrapper {
+        max-width: 1180px;
+        margin: auto;
+        padding: 32px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .page-title {
+        margin: 0 0 8px;
+        font-size: 26px;
+        font-weight: 800;
+    }
+
+    .page-desc {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .btn-soft {
+        min-height: 40px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        padding: 9px 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #475569;
+        background: #fff;
+        font-size: 13.5px;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .btn-soft:hover {
+        background: #f8fafc;
+        color: #0f172a;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: 1.1fr .9fr;
+        gap: 18px;
+    }
+
+    .panel {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+        overflow: hidden;
+    }
+
+    .panel-title {
+        padding: 16px 18px;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 800;
+        background: #fbfdff;
+    }
+
+    .info-list {
+        padding: 4px 18px 18px;
+    }
+
+    .info-row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 14px;
+        padding: 13px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 14px;
+    }
+
+    .info-row:last-child {
+        border-bottom: 0;
+    }
+
+    .label {
+        color: #64748b;
+        font-weight: 700;
+    }
+
+    .value {
+        color: #0f172a;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    .badge-approved {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        color: #15803d;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .version-list {
+        padding: 10px 18px 18px;
+    }
+
+    .version-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 13px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .version-item:last-child {
+        border-bottom: 0;
+    }
+
+    .version-name {
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .version-meta {
+        margin-top: 4px;
+        color: #64748b;
+        font-size: 12.5px;
+    }
+
+    @@media(max-width: 900px) {
+        .grid {
+            grid-template-columns: 1fr;
+        }
+
+        .page-header {
+            flex-direction: column;
+        }
+
+        .info-row {
+            grid-template-columns: 1fr;
+            gap: 5px;
+        }
+    }
+</style>
+}
+
+<div class="page-wrapper">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Chi ti&#7871;t b&#224;i n&#7897;p</h1>
+            <p class="page-desc">Th&#244;ng tin b&#224;i timeline &#273;&#227; &#273;&#432;&#7907;c gi&#7843;ng vi&#234;n duy&#7879;t.</p>
+        </div>
+
+        <a href="@Url.Action("ApprovedSubmissions", "Timeline", new { timelineId = Model.TimelineId })" class="btn-soft">
+            <span class="material-symbols-outlined text-[17px]">arrow_back</span>
+            Quay l&#7841;i
+        </a>
+    </div>
+
+    <div class="grid">
+        <section class="panel">
+            <div class="panel-title">Th&#244;ng tin b&#224;i n&#7897;p</div>
+            <div class="info-list">
+                <div class="info-row">
+                    <div class="label">Sinh vi&#234;n</div>
+                    <div class="value">@($"{Model.Student?.FullName ?? "Chua co ten"} - {Model.Student?.UserCode ?? "Chua co ma SV"}")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Email</div>
+                    <div class="value">@(Model.Student?.Email ?? "Chua co")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Timeline</div>
+                    <div class="value">@(Model.Timeline?.Title ?? "Chua co timeline")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Ng&#224;y n&#7897;p</div>
+                    <div class="value">@Model.SubmittedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Tr&#7841;ng th&#225;i</div>
+                    <div class="value">
+                        <span class="badge-approved">
+                            <span class="material-symbols-outlined text-[15px]">task_alt</span>
+                            &#272;&#227; duy&#7879;t
+                        </span>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="label">File hi&#7879;n t&#7841;i</div>
+                    <div class="value">
+                        @if (!string.IsNullOrWhiteSpace(Model.FilePath))
+                        {
+                            <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = Model.Id })" target="_blank" class="btn-soft">
+                                <span class="material-symbols-outlined text-[17px]">visibility</span>
+                                @(Model.FileName ?? "Xem file")
+                            </a>
+                        }
+                        else
+                        {
+                            <span>Kh&#244;ng c&#243; file</span>
+                        }
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="label">M&#244; t&#7843; ti&#7871;n &#273;&#7897;</div>
+                    <div class="value">@(string.IsNullOrWhiteSpace(Model.ProgressDescription) ? "Khong co" : Model.ProgressDescription)</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-title">K&#7871;t qu&#7843; duy&#7879;t</div>
+            <div class="info-list">
+                <div class="info-row">
+                    <div class="label">Gi&#7843;ng vi&#234;n duy&#7879;t</div>
+                    <div class="value">@(Model.ReviewedBy?.FullName ?? Model.ReviewedBy?.Email ?? "Chua ghi nhan")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Ng&#224;y duy&#7879;t</div>
+                    <div class="value">@(Model.ReviewedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chua co")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">&#272;i&#7875;m</div>
+                    <div class="value">@(Model.Score?.ToString("0.##") ?? "Chua cham")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Nh&#7853;n x&#233;t</div>
+                    <div class="value">@(string.IsNullOrWhiteSpace(Model.Comment) ? "Khong co" : Model.Comment)</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="panel" style="margin-top:18px;">
+        <div class="panel-title">L&#7883;ch s&#7917; phi&#234;n b&#7843;n</div>
+        <div class="version-list">
+            @if (!versions.Any())
+            {
+                <div class="version-meta">Ch&#432;a c&#243; phi&#234;n b&#7843;n &#273;&#432;&#7907;c l&#432;u.</div>
+            }
+            else
+            {
+                foreach (var version in versions)
+                {
+                    <div class="version-item">
+                        <div>
+                            <div class="version-name">Phi&#234;n b&#7843;n @version.VersionNumber</div>
+                            <div class="version-meta">
+                                @version.UploadedAt.ToString("dd/MM/yyyy HH:mm")
+                                @if (!string.IsNullOrWhiteSpace(version.Note))
+                                {
+                                    <span> - @version.Note</span>
+                                }
+                            </div>
+                        </div>
+                        <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = version.TimelineSubmissionId, versionId = version.Id })" target="_blank" class="btn-soft">
+                            <span class="material-symbols-outlined text-[17px]">download</span>
+                            File
+                        </a>
+                    </div>
+                }
+            }
+        </div>
+    </section>
+</div>

@@ -1,5 +1,10 @@
-﻿@using KLTN_Registration_System.Models.Entities
+@using KLTN_Registration_System.Models.Entities
 @model List<Registration>
+
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Danh sách sinh viên đăng ký";
+}
 
 <h2>Danh sách sinh viên đăng ký</h2>
 
@@ -21,17 +26,23 @@
         <th>Hành động</th>
     </tr>
 
-    @foreach (var item in Model)
+    @foreach (var item in Model ?? new List<Registration>())
     {
         <tr>
-            <td>@item.Topic.Title</td>
-            <td>@item.Student.UserName</td>
+            <td>@(item.Topic?.Title ?? "N/A")</td>
+            <td>@(item.Student?.UserName ?? item.Student?.Email ?? "N/A")</td>
             <td>@item.Status</td>
             <td>
                 @if (item.Status == "Pending")
                 {
-                    <a href="/Topic/Approve/@item.Id">✔ Duyệt</a>
-                    <a href="/Topic/Reject/@item.Id">❌ Từ chối</a>
+                    <form asp-action="Approve" asp-route-id="@item.Id" method="post" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit">Duyệt</button>
+                    </form>
+                    <form asp-action="Reject" asp-route-id="@item.Id" method="post" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit">Từ chối</button>
+                    </form>
                 }
             </td>
         </tr>

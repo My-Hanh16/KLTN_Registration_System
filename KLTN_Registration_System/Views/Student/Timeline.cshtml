@@ -574,7 +574,17 @@
 
             var collapseId = "tl_" + item.Id;
 
-            bool isExpired = item.Date < DateTime.Now;
+            var now = DateTime.Now;
+            bool isExpired = item.SubmissionDeadline.HasValue && item.SubmissionDeadline.Value < now;
+            bool canSubmit = item.AllowSubmission && !isExpired;
+            var allowedTypes = string.IsNullOrWhiteSpace(item.SubmissionType)
+                ? "pdf, doc, docx, ppt, pptx, zip, rar, txt"
+                : item.SubmissionType;
+            var acceptTypes = string.Join(",", allowedTypes
+                .Split(new[] { ',', ';', '|', '/', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim().TrimStart('*'))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.StartsWith(".") ? x : "." + x));
 
             string statusClass = "status-default";
             string statusText = "Chưa nộp";
@@ -601,6 +611,11 @@
             {
                 statusClass = "status-expired";
                 statusText = "Quá hạn";
+            }
+            else if (!item.AllowSubmission)
+            {
+                statusClass = "status-default";
+                statusText = "Chưa mở nộp";
             }
 
             <div class="tl-card">
@@ -654,7 +669,7 @@
                     <hr class="tl-divider" />
 
                     <!-- FORM -->
-                    @if (!isExpired && (latestSub == null || latestSub.Status == SubmissionStatus.Rejected))
+                    @if (canSubmit && (latestSub == null || latestSub.Status == SubmissionStatus.Rejected))
                     {
                         <div class="resubmit-box">
 
@@ -681,9 +696,13 @@
                                     <div class="col-md-9">
                                         <input type="file"
                                                name="file"
+                                               accept="@acceptTypes"
                                                class="form-control"
                                                style="border-radius:12px;font-size:13px;"
                                                required />
+                                        <div class="text-muted mt-1" style="font-size:12px;">
+                                            Định dạng cho phép: @allowedTypes
+                                        </div>
                                     </div>
 
                                     <div class="col-md-3">
@@ -768,7 +787,7 @@
                                                 @subStatusText
                                             </span>
 
-                                            <a href="@sub.FilePath"
+                                            <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = sub.Id })"
                                                target="_blank"
                                                class="btn-view-file">
 

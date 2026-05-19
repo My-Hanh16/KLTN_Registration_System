@@ -17,7 +17,7 @@ namespace KLTN_Registration_System.Controllers
         public IActionResult Index()
         {
             // Chưa đăng nhập
-            if (!User.Identity!.IsAuthenticated)
+            if (User.Identity?.IsAuthenticated != true)
                 return RedirectToAction("Login", "Account");
 
             // Điều hướng theo role

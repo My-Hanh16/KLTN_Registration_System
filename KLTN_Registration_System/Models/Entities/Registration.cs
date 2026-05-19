@@ -8,17 +8,17 @@ namespace KLTN_Registration_System.Models.Entities
         public int Id { get; set; }
 
         // 🔥 FIX: int → string
-        public string StudentId { get; set; }
+        public string StudentId { get; set; } = string.Empty;
 
         public int TopicId { get; set; }
 
-        public string Status { get; set; } // Ví dụ: "Pending", "Approved", "Rejected"
+        public string Status { get; set; } = "Pending"; // Ví dụ: "Pending", "Approved", "Rejected"
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         // 🔥 FIX: User → IdentityUser
-        public virtual ApplicationUser Student { get; set; }
-        public Topic Topic { get; set; }
+        public virtual ApplicationUser Student { get; set; } = null!;
+        public Topic Topic { get; set; } = null!;
 
         // --- PHẦN BỔ SUNG MỚI ĐỂ KHỚP UI & QUẢN LÝ ---
 

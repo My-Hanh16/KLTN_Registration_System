@@ -16,11 +16,14 @@ namespace KLTN_Registration_System.Services
 
         public async Task SendEmailAsync(string toEmail, string subject, string body)
         {
-            // Thêm dòng này để debug
-            Console.WriteLine($"[DEBUG] Đang chuẩn bị gửi mail đến: {toEmail}...");
-
             var senderEmail = _config["EmailSettings:SenderEmail"];
             var appPassword = _config["EmailSettings:AppPassword"];
+
+            if (string.IsNullOrWhiteSpace(senderEmail) || string.IsNullOrWhiteSpace(appPassword))
+                throw new InvalidOperationException("Thiếu cấu hình EmailSettings:SenderEmail hoặc EmailSettings:AppPassword.");
+
+            if (string.IsNullOrWhiteSpace(toEmail))
+                throw new ArgumentException("Email người nhận không được để trống.", nameof(toEmail));
 
             var email = new MimeMessage();
             email.From.Add(MailboxAddress.Parse(senderEmail));
@@ -29,16 +32,11 @@ namespace KLTN_Registration_System.Services
             email.Body = new TextPart(TextFormat.Html) { Text = body };
 
             using var smtp = new MailKit.Net.Smtp.SmtpClient();
-            // Thêm dòng này để bỏ qua kiểm tra chứng chỉ lỗi
-            smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
 
             await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
             await smtp.AuthenticateAsync(senderEmail, appPassword);
 
             await smtp.SendAsync(email);
-
-            // Thêm dòng này để xác nhận
-            Console.WriteLine($"[DEBUG] ===> ĐÃ GỬI THÀNH CÔNG ĐẾN: {toEmail}");
 
             await smtp.DisconnectAsync(true);
         }

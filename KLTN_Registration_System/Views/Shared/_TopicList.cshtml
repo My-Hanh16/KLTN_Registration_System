@@ -8,6 +8,7 @@
     // Fix: resolve server-side thay vì kiểm tra role phía client
     bool isAdmin   = User.IsInRole("Admin");
     string createUrl = isAdmin ? "/Admin/Create" : "/Lecturer/Create";
+    string updateRegistrationUrl = isAdmin ? "/Admin/UpdateRegistrationStatus" : "/Lecturer/UpdateRegistrationStatus";
 }
 
 @section Styles {
@@ -613,6 +614,7 @@
 
         @* Import Excel *@
         <form asp-action="ImportTopics" method="post" enctype="multipart/form-data" id="importExcelForm" style="display:none;">
+            @Html.AntiForgeryToken()
             <input type="file" name="file" id="excelInput" accept=".xlsx,.xls" onchange="handleFileSelect()">
         </form>
 
@@ -847,7 +849,10 @@
                 </div>
 
                 <div class="action-row">
-                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn-card-action">
+                    <a asp-controller="@(isAdmin ? "Admin" : "Lecturer")"
+                       asp-action="@(isAdmin ? "EditTopic" : "Edit")"
+                       asp-route-id="@item.Id"
+                       class="btn-card-action">
                         <i class="fa-solid fa-pen"></i> Sửa
                     </a>
                     <form asp-action="DeleteTopic" method="post"
@@ -988,6 +993,7 @@
 
     // Fix: resolve URL server-side, không check role phía client
     const CREATE_URL = '@createUrl';
+    const UPDATE_REGISTRATION_URL = '@updateRegistrationUrl';
     const IS_ADMIN   = @(isAdmin ? "true" : "false");
 
     // ── FILTER ──
@@ -1031,7 +1037,7 @@
         const isOpen   = checkbox.checked;
 
         try {
-            const res  = await fetch('/Admin/UpdateRegistrationStatus', {
+            const res  = await fetch(UPDATE_REGISTRATION_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
