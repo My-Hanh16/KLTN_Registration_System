@@ -1,0 +1,111 @@
+﻿@model KLTN_Registration_System.Models.Entities.Topic
+
+@{
+    Layout = "_layoutStudent";
+    ViewData["Title"] = "Đăng ký nhóm";
+    var currentUserName = User.Identity?.Name ?? "Bạn";
+}
+
+<div class="max-w-4xl mx-auto py-8 px-4">
+    @* --- Nút quay lại --- *@
+    <a href="@Url.Action("Index", "Topic")" class="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors mb-6 no-underline font-semibold text-sm">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        Quay lại danh sách
+    </a>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
+        @* --- Header của Form --- *@
+        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-10 text-white">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-widest">
+                    Đồ án nhóm
+                </span>
+            </div>
+            <h2 class="text-3xl font-black font-headline mb-2">@Model.Title</h2>
+            <p class="text-white/80 text-sm max-w-2xl">
+                Bạn đang thực hiện đăng ký nhóm cho đề tài này. Vui lòng nhập thông tin các thành viên cùng thực hiện.
+            </p>
+        </div>
+
+        <form asp-action="SubmitGroupRegistration" method="post" class="p-8">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="topicId" value="@Model.Id" />
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                @* --- Cột trái: Thông tin quy định --- *@
+                <div class="md:col-span-1 space-y-6">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Quy định nhóm</h4>
+                        <div class="space-y-4">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                                    <span class="material-symbols-outlined text-sm">person</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-700">Trưởng nhóm</p>
+                                    <p class="text-[11px] text-slate-500">Chính là tài khoản bạn đang đăng nhập.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                    <span class="material-symbols-outlined text-sm">group</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-700">Số lượng tối đa</p>
+                                    <p class="text-[11px] text-slate-500">Đề tài này cho phép tối đa <b>@Model.MaxStudents</b> sinh viên.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+                        <p class="text-[11px] text-amber-700 leading-relaxed">
+                <span class="font-bold">Lưu ý:</span> Sau khi bạn nhấn đăng ký, các thành viên được thêm sẽ cùng nằm trong yêu cầu chờ giảng viên duyệt.
+                        </p>
+                    </div>
+                </div>
+
+                @* --- Cột phải: Nhập thành viên --- *@
+                <div class="md:col-span-2 space-y-6">
+                    <h4 class="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Thành viên nhóm</h4>
+
+                    @* Ô hiển thị Trưởng nhóm (Read-only) *@
+                    <div class="relative group">
+                        <label class="text-[11px] font-bold text-slate-400 absolute -top-2 left-4 bg-white px-1 z-10">Trưởng nhóm (Bạn)</label>
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <img src="https://ui-avatars.com/api/?name=@currentUserName&background=7c3aed&color=fff" class="w-8 h-8 rounded-full" />
+                            <span class="text-sm font-semibold text-slate-600">@currentUserName (Hiện tại)</span>
+                            <span class="ml-auto material-symbols-outlined text-green-500">check_circle</span>
+                        </div>
+                    </div>
+
+                    @* Hiển thị các ô nhập thành viên dựa trên MaxStudents *@
+                    @for (int i = 1; i < Model.MaxStudents; i++)
+                    {
+                        <div class="relative group">
+                            <label class="text-[11px] font-bold text-primary absolute -top-2 left-4 bg-white px-1 z-10">Thành viên @i</label>
+                            <div class="flex items-center gap-3 p-1 bg-white rounded-2xl border-2 border-slate-100 focus-within:border-primary transition-all">
+                                <div class="w-10 h-10 flex items-center justify-center text-slate-400">
+                                    <span class="material-symbols-outlined">alternate_email</span>
+                                </div>
+                                <input type="text" name="memberEmails"
+                                       placeholder="Nhập Email hoặc MSSV thành viên..."
+                                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3" />
+                            </div>
+                        </div>
+                    }
+
+                    <div class="pt-6 border-t border-slate-100 mt-8 flex justify-end gap-3">
+                        <button type="button" onclick="history.back()" class="px-6 py-3 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-2xl transition-all">
+                            Hủy bỏ
+                        </button>
+                        <button type="submit" class="px-8 py-3 bg-primary text-white text-sm font-bold rounded-2xl shadow-lg shadow-primary/30 hover:bg-blue-700 active:scale-95 transition-all flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">send</span>
+                            Xác nhận đăng ký nhóm
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

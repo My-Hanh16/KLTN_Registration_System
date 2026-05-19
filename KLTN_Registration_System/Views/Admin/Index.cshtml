@@ -1,0 +1,302 @@
+﻿@model KLTN_Registration_System.Models.ViewModels.AdminDashboard
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Bảng điều khiển Quản trị";
+}
+
+<div class="space-y-8">
+    @* --- 1. Banner chào mừng --- *@
+    <section class="bg-gradient-to-r from-primary to-primary-container rounded-[2rem] p-10 text-white relative overflow-hidden shadow-xl shadow-blue-100">
+        <div class="relative z-10 max-w-2xl">
+            <h2 class="font-headline text-4xl font-extrabold mb-3">Xin chào buổi sáng, Quản trị viên!</h2>
+            <p class="text-lg opacity-90 leading-relaxed">
+                Hệ thống ghi nhận <span class="font-bold underline decoration-2 offset-4">@Model.PendingApprovals đề tài mới</span> đang chờ bạn phê duyệt.
+            </p>
+            <div class="mt-8 flex gap-4">
+                <button class="bg-white text-primary px-8 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg active:scale-95">Duyệt nhanh đề tài</button>
+                <button class="bg-white/20 backdrop-blur-md text-white px-8 py-3 rounded-xl font-bold border border-white/30 hover:bg-white/30 transition-all">Xem báo cáo tháng</button>
+            </div>
+        </div>
+        <div class="absolute right-0 top-0 h-full w-1/3 bg-white/10 skew-x-12 -mr-20"></div>
+    </section>
+
+    @* --- 2. Thẻ KPI (4 cột) --- *@
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        @* Thẻ 1: Tổng số đề tài *@
+        <div class="bg-white p-6 rounded-2xl tonal-shadow border border-slate-100">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-3 bg-blue-50 rounded-xl text-primary"><span class="material-symbols-outlined fill-1">book</span></div>
+                <span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">▲ 12%</span>
+            </div>
+            <p class="text-slate-500 text-sm font-medium">Tổng số đề tài</p>
+            <h3 class="text-3xl font-black mt-1">@Model.TotalTopics.ToString("N0")</h3>
+        </div>
+
+        @* Thẻ 2: Tỉ lệ đăng ký *@
+        <div class="bg-white p-6 rounded-2xl tonal-shadow border border-slate-100">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-3 bg-purple-50 rounded-xl text-purple-600"><span class="material-symbols-outlined fill-1">groups</span></div>
+                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">@Model.RegistrationRate%</span>
+            </div>
+            <p class="text-slate-500 text-sm font-medium">Tỉ lệ đăng ký</p>
+            <h3 class="text-3xl font-black mt-1">@Model.RegistrationRate%</h3>
+        </div>
+
+        @* Thẻ 3: Chờ phê duyệt *@
+        <div class="bg-white p-6 rounded-2xl tonal-shadow border border-red-100 bg-red-50/10">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-3 bg-red-50 rounded-xl text-red-600"><span class="material-symbols-outlined fill-1">pending_actions</span></div>
+                <span class="animate-pulse w-2 h-2 bg-red-500 rounded-full"></span>
+            </div>
+            <p class="text-slate-500 text-sm font-medium">Chờ phê duyệt</p>
+            <h3 class="text-3xl font-black mt-1 text-red-600">@Model.PendingApprovals</h3>
+        </div>
+
+        @* Thẻ 4: Giảng viên *@
+        <div class="bg-white p-6 rounded-2xl tonal-shadow border border-slate-100">
+            <div class="flex justify-between items-start mb-4">
+                <div class="p-3 bg-orange-50 rounded-xl text-orange-600"><span class="material-symbols-outlined fill-1">school</span></div>
+            </div>
+            <p class="text-slate-500 text-sm font-medium">Giảng viên tham gia</p>
+            <h3 class="text-3xl font-black mt-1">@Model.TotalLecturers</h3>
+        </div>
+    </div>
+
+    @* --- 3. Bố cục chính (Grid 12 cột) --- *@
+    <div class="grid grid-cols-12 gap-8 items-start">
+
+        @* CỘT TRÁI (8 cột): Chuyên chứa các biểu đồ thống kê *@
+        <div class="col-span-12 lg:col-span-8 space-y-8">
+            
+
+            @* 3b. Biểu đồ đường: Tiến độ đăng ký *@
+            <div class="bg-white p-8 rounded-[2rem] tonal-shadow border border-slate-100">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h3 class="font-headline text-xl font-bold text-slate-800">Tiến độ đăng ký</h3>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">7 ngày gần nhất</p>
+                    </div>
+                    <div class="bg-blue-50 p-1 rounded-xl">
+                        <span class="px-3 py-1 text-[10px] font-black text-primary uppercase tracking-widest">Thời gian thực</span>
+                    </div>
+                </div>
+                <div class="relative h-64 w-full">
+                    <canvas id="registrationLineChart"></canvas>
+                </div>
+            </div>
+            @* 3c. Đề tài mới gửi *@
+            <section class="bg-white rounded-[2rem] tonal-shadow border border-slate-100 overflow-hidden">
+
+                <!-- HEADER -->
+                <div class="px-8 py-7 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h4 class="text-[22px] font-black text-slate-800 leading-none">
+                            Đề tài mới gửi cần xem xét
+                        </h4>
+
+                        <p class="text-xs text-slate-400 uppercase tracking-wider font-bold mt-2">
+                            Danh sách đề tài đang chờ quản trị viên duyệt
+                        </p>
+                    </div>
+
+                    <button class="text-primary text-sm font-bold hover:underline">
+                        Xem tất cả
+                    </button>
+                </div>
+
+                <!-- TABLE -->
+                <div>
+                    <table class="w-full table-fixed border-collapse">
+
+                        <!-- THEAD -->
+                        <thead class="bg-slate-50/70">
+                            <tr>
+
+                                <!-- TÊN -->
+                                <th class="w-[58%] px-8 py-5 text-left text-[11px] font-black uppercase tracking-[2px] text-slate-400">
+                                    Tên đề tài
+                                </th>
+
+                                <!-- TRẠNG THÁI -->
+                                <th class="w-[22%] px-4 py-5 text-center text-[11px] font-black uppercase tracking-[2px] text-slate-400">
+                                    Trạng thái
+                                </th>
+
+                                <!-- THAO TÁC -->
+                                <th class="w-[20%] px-4 py-5 text-center text-[11px] font-black uppercase tracking-[2px] text-slate-400">
+                                    Thao tác
+                                </th>
+
+                            </tr>
+                        </thead>
+
+                        <!-- BODY -->
+                        <tbody class="divide-y divide-slate-100">
+
+                            @foreach (var topic in Model.NewTopics.Take(3))
+                            {
+                                <tr class="hover:bg-slate-50 transition-all duration-200">
+
+                                    <!-- TÊN ĐỀ TÀI -->
+                                    <td class="px-8 py-6 align-middle">
+
+                                        <div class="max-w-full overflow-hidden">
+
+                                            <p class="text-[13px] font-semibold text-slate-700 truncate leading-6 max-w-[400px]">
+                                                @topic.Name
+                                            </p>
+
+                                            <p class="text-xs text-slate-400 font-semibold mt-1">
+                                                Mã số: #@topic.Id
+                                            </p>
+
+                                        </div>
+
+                                    </td>
+
+                                    <!-- TRẠNG THÁI -->
+                                    <td class="px-4 py-6 align-middle">
+
+                                        <div class="flex justify-center">
+
+                                            <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 text-orange-600 text-xs font-bold whitespace-nowrap">
+
+                                                <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+
+                                                Đang chờ duyệt
+
+                                            </span>
+
+                                        </div>
+
+                                    </td>
+
+                                    <!-- THAO TÁC -->
+                                    <td class="px-4 py-6 align-middle">
+
+                                        <div class="flex items-center justify-center gap-3">
+
+                                            <!-- APPROVE -->
+                                            <button class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center shadow-sm">
+
+                                                <span class="material-symbols-outlined text-[20px]">
+                                                    check
+                                                </span>
+
+                                            </button>
+
+                                            <!-- REJECT -->
+                                            <button class="w-11 h-11 rounded-xl bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all flex items-center justify-center shadow-sm">
+
+                                                <span class="material-symbols-outlined text-[20px]">
+                                                    close
+                                                </span>
+
+                                            </button>
+
+                                        </div>
+
+                                    </td>
+
+                                </tr>
+                            }
+
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </section>
+        </div>
+
+        @* CỘT PHẢI (4 cột): Thao tác nhanh & Hoạt động gần đây *@
+        <aside class="col-span-12 lg:col-span-4 space-y-8">
+            @* 3c. Thao tác nhanh (Khối tối màu như Ảnh 1) *@
+            <div class="bg-slate-900 text-white p-8 rounded-[2rem] shadow-xl">
+                <h4 class="font-headline text-lg font-bold mb-6">Thao tác nhanh</h4>
+                <div class="space-y-4">
+                    <button class="w-full flex items-center justify-between p-4 bg-white/10 rounded-2xl hover:bg-white/20 transition-all group">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-blue-400">file_export</span>
+                            <span class="text-sm font-semibold">Xuất báo cáo PDF</span>
+                        </div>
+                        <span class="material-symbols-outlined text-white/40 group-hover:translate-x-1 transition-transform">chevron_right</span>
+                    </button>
+                    <button class="w-full flex items-center justify-between p-4 bg-white/10 rounded-2xl hover:bg-white/20 transition-all group">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-green-400">table_view</span>
+                            <span class="text-sm font-semibold">Xuất dữ liệu Excel</span>
+                        </div>
+                        <span class="material-symbols-outlined text-white/40 group-hover:translate-x-1 transition-transform">chevron_right</span>
+                    </button>
+                </div>
+                <button class="w-full bg-primary py-4 rounded-2xl font-bold mt-8 shadow-lg shadow-blue-900/40 active:scale-95 transition-all">
+                    Duyệt tất cả (@Model.PendingApprovals)
+                </button>
+            </div>
+
+            @* 3d. Hoạt động gần đây (Đúng vị trí như Ảnh 1) *@
+            <div class="bg-white p-8 rounded-[2rem] tonal-shadow border border-slate-100">
+                <div class="flex justify-between items-center mb-8">
+                    <h4 class="font-headline text-lg font-bold text-slate-800">Hoạt động gần đây</h4>
+                    <button class="text-primary text-xs font-bold hover:underline">Tất cả</button>
+                </div>
+                <div class="space-y-8 relative before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-px before:bg-slate-100">
+                    @foreach (var activity in Model.RecentActivities.Take(3))
+                    {
+                        <div class="flex gap-4 relative z-10">
+                            <div class="w-8 h-8 rounded-full @activity.ColorClass flex items-center justify-center ring-4 ring-white">
+                                <span class="material-symbols-outlined text-sm">@activity.Icon</span>
+                            </div>
+                            <div>
+                                <p class="text-sm text-slate-700 leading-snug">@activity.Message</p>
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">@activity.TimeAgo</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </aside>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('registrationLineChart').getContext('2d');
+        const chartGradient = ctx.createLinearGradient(0, 0, 0, 400);
+        chartGradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
+        chartGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+                datasets: [{
+                    label: 'Đăng ký',
+                    data: [15, 45, 30, 55, 85, 70, 60],
+                    borderColor: '#2563eb',
+                    borderWidth: 4,
+                    fill: true,
+                    backgroundColor: chartGradient,
+                    tension: 0.4,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { display: false, beginAtZero: true },
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    </script>
+}

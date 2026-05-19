@@ -1,0 +1,531 @@
+﻿@model IEnumerable<KLTN_Registration_System.Models.Entities.Registration>
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Dashboard Giảng viên";
+
+    // Ép kiểu dữ liệu an toàn từ ViewBag
+    var guidingGroups = ViewBag.GuidingGroups as List<KLTN_Registration_System.Models.Entities.Registration> ?? new List<KLTN_Registration_System.Models.Entities.Registration>();
+    var upcomingSchedules = ViewBag.UpcomingSchedules as List<dynamic> ?? new List<dynamic>();
+
+    // Logic tính toán phân bổ đề tài
+    var total = (int)(ViewBag.TotalTopics ?? 0);
+    var app = (int)(ViewBag.AppCount ?? 0);
+    var res = (int)(ViewBag.ResCount ?? 0);
+
+    // Tính toán phần trăm chính xác (làm tròn 1 chữ số thập phân)
+    double appRate = total > 0 ? ((double)app / total * 100) : 0;
+    double resRate = total > 0 ? (100 - appRate) : 0;
+}
+
+<style>
+    .glass-effect {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+    }
+
+    .status-orb {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+</style>
+<style>
+
+    .toast-show {
+        display: block !important;
+        animation: slideIn 0.3s ease;
+    }
+
+    @@keyframes slideIn {
+
+        from {
+            opacity: 0;
+            transform: translateX(50px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+</style>
+
+<section class="mb-10 bg-gradient-to-br from-primary to-primary-container rounded-3xl p-8 text-on-primary flex justify-between items-center relative overflow-hidden shadow-xl">
+    <div class="z-10 relative">
+        <h1 class="font-headline text-4xl font-extrabold mb-2">Chào buổi sáng, @ViewBag.LecturerName</h1>
+        <p class="font-body opacity-90 max-w-lg">
+            Bạn có <b>@ViewBag.TotalPending</b> yêu cầu mới cần xem xét và <b>@upcomingSchedules.Count</b> buổi hẹn hướng dẫn hôm nay.
+        </p>
+    </div>
+    <div class="z-10 relative">
+        <button onclick="openCreateModal()"
+                class="bg-surface-container-lowest text-primary font-bold px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-slate-50 transition-all shadow-lg active:scale-95 border-0">
+
+            <span class="material-symbols-outlined">add</span>
+
+            Tạo đề tài mới
+        </button>
+    </div>
+    <div class="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+</section>
+
+<div class="grid grid-cols-12 gap-8">
+    <div class="col-span-12 lg:col-span-8 space-y-8">
+
+        <div>
+            <div class="flex justify-between items-end mb-4">
+                <h3 class="font-headline text-xl font-bold text-on-surface">Nhóm Đang Hướng Dẫn</h3>
+                <a class="text-sm font-semibold text-primary hover:underline no-underline" href="#">Xem tất cả (@ViewBag.TotalApproved)</a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                @if (!guidingGroups.Any())
+                {
+                    <div class="col-span-2 py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200 text-slate-400">
+                        Chưa có nhóm nào được phê duyệt hướng dẫn.
+                    </div>
+                }
+                else
+                {
+                    @foreach (var group in guidingGroups)
+                    {
+                        <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/10 hover:translate-y-[-4px] transition-all duration-300">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold rounded-full uppercase">
+                                    @(group.Topic?.Major?.Name ?? "KLTN")
+                                </span>
+                                <span class="material-symbols-outlined text-slate-300 cursor-pointer">more_vert</span>
+                            </div>
+                            <h4 class="font-headline text-lg font-bold mb-2 leading-tight text-on-surface">@group.Topic?.Title</h4>
+                            <div class="flex items-center gap-2 text-xs text-on-surface-variant mb-6">
+                                <span class="material-symbols-outlined text-sm">group</span>
+                                <span>Trưởng nhóm: <b>@(!string.IsNullOrEmpty(group.Student?.FullName) ? group.Student.FullName : group.Student?.UserName)</b></span>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs font-semibold">
+                                    <span>Tiến độ thực hiện</span>
+                                    <span class="text-primary">5%</span>
+                                </div>
+                                <div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+                                    <div class="bg-primary h-full rounded-full" style="width: 5%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="bg-surface-container-low rounded-3xl p-8 border border-outline-variant/10">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="material-symbols-outlined text-primary p-2 bg-white rounded-xl shadow-sm">mark_email_unread</span>
+                <h3 class="font-headline text-xl font-bold text-on-surface">Yêu cầu đăng ký mới</h3>
+            </div>
+
+            <div class="space-y-4">
+                @if (Model == null || !Model.Any(r => r.Status == "Pending"))
+                {
+                    <div class="text-center py-6">
+                        <span class="material-symbols-outlined text-slate-300 text-4xl block mb-2">inventory_2</span>
+                        <p class="text-slate-500 italic text-sm">Không có yêu cầu chờ duyệt nào.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var item in Model.Where(r => r.Status == "Pending"))
+                    {
+                        <div class="bg-white p-5 rounded-2xl flex items-center justify-between group hover:shadow-md transition-all border border-transparent hover:border-primary/10">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-primary/10 text-primary flex items-center justify-center rounded-full font-bold uppercase">
+                                    @((item.Student?.UserName?.Length >= 2) ? item.Student.UserName.Substring(0, 2) : "SV")
+                                </div>
+                                <div>
+                                    <h5 class="text-sm font-bold text-on-surface">@(!string.IsNullOrEmpty(item.Student?.FullName) ? item.Student.FullName : item.Student?.UserName)</h5>
+                                    <p class="text-[11px] text-on-surface-variant">Đề tài: @item.Topic?.Title</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <form asp-action="Reject" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Từ chối đăng ký này?')">
+                                    <button type="submit" class="px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors">Từ chối</button>
+                                </form>
+                                <form asp-action="Approve" asp-route-id="@item.Id" method="post">
+                                    <button type="submit" class="px-6 py-2 text-xs font-bold bg-primary text-white rounded-xl hover:shadow-lg transition-all active:scale-95">Duyệt</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-span-12 lg:col-span-4 space-y-8">
+        <div class="bg-white p-8 rounded-3xl shadow-sm border border-outline-variant/10">
+            <h3 class="font-headline text-lg font-bold mb-6 text-on-surface">Phân bổ đề tài</h3>
+            <div class="relative flex justify-center mb-8">
+                @* LOGIC MÀU: 
+           - Ứng dụng (12.5%): Xám đậm (#475569 - Slate 600)
+           - Nghiên cứu (87.5%): Xanh dương (#0284c7 - Sky 600) cho nổi bật
+        *@
+                <div class="w-40 h-40 rounded-full flex items-center justify-center relative shadow-md"
+                     style="background: conic-gradient(#475569 0% @(appRate)%, #0284c7 @(appRate)% 100%);">
+
+                    @* Lỗ Donut trắng ở giữa *@
+                    <div class="w-[130px] h-[130px] bg-white rounded-full flex items-center justify-center shadow-inner">
+                        <div class="text-center">
+                            <span class="text-4xl font-black text-on-surface">@total</span>
+                            <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest mt-1">Đề tài</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Chú thích màu sắc *@
+            <div class="space-y-3">
+                @* Mục Ứng dụng - Xám đậm *@
+                <div class="flex items-center justify-between p-3 bg-slate-100 rounded-xl border border-slate-200">
+                    <span class="text-xs font-medium text-slate-700">
+                        <span class="status-orb bg-[#475569] me-2"></span>Ứng dụng (@app)
+                    </span>
+                    <span class="text-xs font-bold text-slate-600">@appRate.ToString("0.#")%</span>
+                </div>
+
+                @* Mục Nghiên cứu - Xanh dương (Nổi bật) *@
+                <div class="flex items-center justify-between p-3 bg-sky-50 border border-sky-100 rounded-xl">
+                    <span class="text-xs font-medium text-sky-900">
+                        <span class="status-orb bg-[#0284c7] me-2 shadow-sm"></span>Nghiên cứu (@res)
+                    </span>
+                    <span class="text-xs font-bold text-sky-600">@resRate.ToString("0.#")%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-effect p-8 rounded-3xl shadow-sm border border-white/20">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-headline text-lg font-bold text-on-surface">Lịch hướng dẫn</h3>
+                <span class="material-symbols-outlined text-primary p-2 bg-white rounded-xl shadow-sm">calendar_month</span>
+            </div>
+
+            <div class="space-y-4">
+                @{
+                    var schedules = ViewBag.UpcomingSchedules as List<KLTN_Registration_System.Controllers.LecturerController.LecturerScheduleVM>
+                    ?? new List<KLTN_Registration_System.Controllers.LecturerController.LecturerScheduleVM>();
+                }
+
+                @if (ViewBag.HasNoTimeline == true || !schedules.Any())
+                {
+                    <div class="flex flex-col items-center justify-center py-10 text-center">
+                        <span class="material-symbols-outlined text-5xl text-slate-300 mb-2">event_busy</span>
+                        <p class="text-slate-400 text-sm">Không có mốc thời gian sắp tới.</p>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <a href="/Admin/Settings" class="mt-2 text-blue-600 text-sm hover:underline no-underline font-medium">
+                                + Thêm mốc thời gian
+                            </a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    @foreach (var s in schedules)
+                    {
+                        <div class="flex items-center gap-4 p-4 bg-white/60 rounded-2xl hover:bg-white/90 transition-all border-l-4 border-@(s.Color) shadow-sm @(s.IsUrgent ? "bg-red-50/50 border-red-500" : "")">
+                            <!-- Ngày -->
+                            <div class="min-w-[52px] h-[52px] rounded-xl bg-@(s.Color)/10 text-@(s.Color) flex flex-col items-center justify-center shrink-0">
+                                <span class="text-[10px] font-bold uppercase">@s.Day</span>
+                                <span class="text-xl font-extrabold leading-none">@s.Date</span>
+                            </div>
+
+                            <!-- Nội dung -->
+                            <div class="flex-1 min-w-0">
+                                <p class="font-bold text-on-surface text-sm truncate">
+                                    @if (s.IsUrgent)
+                                    {
+                                        <span class="text-red-500 font-bold mr-1">⚠</span>
+                                    }
+                                    @s.Title
+                                </p>
+                                <p class="text-[11px] text-on-surface-variant mt-0.5 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px]">schedule</span> @s.Time
+                                </p>
+                            </div>
+
+                            <!-- Badge ngày còn lại -->
+                            <div class="shrink-0">
+                                @if (s.DaysLeft == 0)
+                                {
+                                    <span class="text-[10px] bg-red-100 text-red-700 font-bold px-2 py-1 rounded-lg uppercase">Hôm nay</span>
+                                }
+                                else
+                                {
+                                    <span class="text-[10px] bg-@(s.Color)/10 text-@(s.Color) font-bold px-2 py-1 rounded-lg uppercase whitespace-nowrap">
+                                        còn @s.DaysLeft ngày
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+<!-- CREATE TOPIC MODAL -->
+
+<div id="createModal"
+     style="
+        display:none;
+        position:fixed;
+        inset:0;
+        overflow-y:auto;
+        padding:20px;
+        background:rgba(0,0,0,0.5);
+        z-index:9999;
+        backdrop-filter:blur(4px);
+     ">
+
+    <div style="
+        width:600px;
+        max-width:95%;
+        max-height:90vh;
+        overflow-y:auto;
+        background:white;
+        margin:30px auto;
+        padding:30px;
+        border-radius:24px;
+        box-shadow:0 20px 60px rgba(0,0,0,0.2);
+     ">
+
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">
+                Tạo đề tài mới
+            </h2>
+
+            <button onclick="closeCreateModal()"
+                    class="border-0 bg-transparent text-2xl">
+                ×
+            </button>
+        </div>
+
+        <div class="space-y-4">
+
+            <div>
+                <label class="font-semibold text-sm">
+                    Tên đề tài
+                </label>
+
+                <input id="topicTitle"
+                       class="w-full border rounded-xl p-3 mt-1"
+                       placeholder="Nhập tên đề tài..." />
+            </div>
+
+            <div>
+                <label class="font-semibold text-sm">
+                    Mô tả
+                </label>
+
+                <textarea id="topicDescription"
+                          rows="4"
+                          class="w-full border rounded-xl p-3 mt-1"
+                          placeholder="Mô tả đề tài..."></textarea>
+            </div>
+
+            <div>
+                <label class="font-semibold text-sm">
+                    Chuyên ngành
+                </label>
+
+                <select id="majorId"
+                        class="w-full border rounded-xl p-3 mt-1">
+
+                    @foreach (var major in ViewBag.Majors)
+                    {
+                        <option value="@major.Id">
+                            @major.Name
+                        </option>
+                    }
+
+                </select>
+            </div>
+            <div>
+                <label class="font-semibold text-sm">
+                    Số lượng sinh viên
+                </label>
+
+                <input type="number"
+                       id="maxMembers"
+                       min="1"
+                       max="10"
+                       value="1"
+                       class="w-full border rounded-xl p-3 mt-1" />
+            </div>
+
+            <div>
+                <label class="font-semibold text-sm">
+                    Loại đề tài
+                </label>
+
+                <select id="topicType"
+                        class="w-full border rounded-xl p-3 mt-1">
+
+                    <option value="Cá nhân">
+                        Cá nhân
+                    </option>
+
+                    <option value="Nhóm">
+                        Nhóm
+                    </option>
+
+                </select>
+            </div>
+            <div>
+                <label class="font-semibold text-sm">
+                    Ngày kết thúc đăng ký
+                </label>
+
+                <input type="date"
+                       id="deadline"
+                       class="w-full border rounded-xl p-3 mt-1" />
+            </div>
+
+        </div>
+
+        <div class="flex justify-end gap-3 mt-8">
+
+            <button onclick="closeCreateModal()"
+                    class="px-5 py-3 rounded-xl bg-slate-100 font-semibold">
+                Hủy
+            </button>
+
+            <button onclick="createTopic()"
+                    class="px-6 py-3 rounded-xl bg-primary text-white font-bold">
+                Tạo đề tài
+            </button>
+
+        </div>
+
+    </div>
+</div>
+<!-- TOAST -->
+<div id="toast"
+     class="fixed top-5 right-5 bg-green-500 text-white px-6 py-4 rounded-2xl shadow-2xl z-[99999] hidden transition-all duration-300">
+
+    <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined">check_circle</span>
+        <span id="toastMessage">Thành công</span>
+    </div>
+</div>
+<script>
+
+    function openCreateModal() {
+
+        document.getElementById('createModal').style.display = 'block';
+    }
+
+    function closeCreateModal() {
+
+        document.getElementById('createModal').style.display = 'none';
+    }
+
+        async function createTopic() {
+
+        const title =
+            document.getElementById('topicTitle').value;
+
+        if (!title.trim()) {
+
+            alert('Vui lòng nhập tên đề tài');
+
+            return;
+        }
+
+        const deadlineElement =
+            document.getElementById('deadline');
+
+        const topic = {
+
+            title: title,
+
+            description:
+                document.getElementById('topicDescription').value,
+
+            majorId: parseInt(
+                document.getElementById('majorId').value
+            ),
+
+            deadline: deadlineElement
+                ? deadlineElement.value
+                : null,
+
+            maxMembers: parseInt(
+                document.getElementById('maxMembers').value
+            ),
+
+            topicType:
+                document.getElementById('topicType').value
+        };
+
+        try {
+
+            const response = await fetch('/Lecturer/Create', {
+
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                body: JSON.stringify(topic)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+
+                showToast(result.message, true);
+
+                closeCreateModal();
+
+                location.reload();
+            }
+            else {
+
+                showToast(result.message || 'Tạo đề tài thất bại', false);
+            }
+        }
+        catch (err) {
+
+            console.error(err);
+
+            showToast('Có lỗi xảy ra', false);
+        }
+    }
+        function showToast(message, isSuccess = true) {
+
+        const toast = document.getElementById('toast');
+        const text = document.getElementById('toastMessage');
+
+        text.innerText = message;
+
+        if (isSuccess) {
+
+            toast.classList.remove('bg-red-500');
+            toast.classList.add('bg-green-500');
+        }
+        else {
+
+            toast.classList.remove('bg-green-500');
+            toast.classList.add('bg-red-500');
+        }
+
+        toast.classList.add('toast-show');
+
+        setTimeout(() => {
+
+            toast.classList.remove('toast-show');
+
+        }, 3000);
+    }
+</script>

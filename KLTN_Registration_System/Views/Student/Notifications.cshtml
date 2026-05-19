@@ -1,0 +1,693 @@
+﻿@using X.PagedList
+@using X.PagedList.Mvc.Core
+@model IPagedList<KLTN_Registration_System.Models.Entities.Notification>
+
+@{
+    Layout = "~/Views/Shared/_LayoutStudent.cshtml";
+    ViewData["Title"] = "Thông báo";
+
+    int totalCount = Model.TotalItemCount;
+    int unreadCount = Model.Count(n => !n.IsRead);
+
+    int topicCount = Model.Count(n =>
+        n.Type == "TopicApproved"
+        || n.Type == "TopicRejected"
+        || n.Type == "NewRegistration"
+        || (n.Title != null &&
+           (n.Title.Contains("duyệt")
+           || n.Title.Contains("từ chối")))
+    );
+
+    int sysCount = totalCount - topicCount;
+}
+
+<style>
+
+    body {
+        background: #f5f7fb;
+        overflow-x: hidden;
+    }
+
+    .main-content,
+    .content-wrapper,
+    .container-fluid {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    /* ===================================================
+           PAGE
+        =================================================== */
+
+    .notif-page {
+        width: 100%;
+        padding: 18px 0 40px;
+    }
+
+    /* ===================================================
+           ALIGN LEFT giống "Đăng ký của tôi"
+        =================================================== */
+
+    .nh,
+    .filter-row,
+    .notif-grid,
+    .pagination-wrap {
+        margin-left: 0;
+        padding-left: 0;
+    }
+
+    /* ================= HEADER ================= */
+
+    .nh {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+
+    .nh-left h2 {
+        margin: -20px 0 0 -6px;
+        font-size: 20px;
+        font-weight: 800;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        line-height: 1.2;
+    }
+
+    .nh-left p {
+        margin-top: 4px;
+        margin-left: -6px;
+        font-size: 13.5px;
+        color: #94a3b8;
+        line-height: 1.6;
+    }
+
+    .upill {
+        min-width: 24px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: #2b4eff;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .mark-btn {
+        border: none;
+        background: transparent;
+        color: #2b4eff;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 0;
+        cursor: pointer;
+        transition: .2s;
+    }
+
+        .mark-btn:hover {
+            color: #1a3bd1;
+        }
+
+    /* ================= FILTER ================= */
+
+    .filter-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+
+    .ftab {
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #475569;
+        border-radius: 999px;
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: .2s;
+    }
+
+        .ftab:hover {
+            border-color: #2b4eff;
+            color: #2b4eff;
+        }
+
+        .ftab.active {
+            background: #2b4eff;
+            color: #fff;
+            border-color: #2b4eff;
+        }
+
+    .fcnt {
+        min-width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #2b4eff;
+        font-size: 11px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 6px;
+    }
+
+    .ftab.active .fcnt {
+        background: rgba(255,255,255,.18);
+        color: #fff;
+    }
+
+    /* ================= LIST ================= */
+
+    .notif-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px; /* giảm khoảng cách giữa các card */
+    }
+
+    .nc {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        /* GIẢM SIZE CARD */
+        padding: 16px 20px;
+        transition: box-shadow 0.25s ease, transform 0.25s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        /* giảm chiều cao */
+        min-height: 96px;
+    }
+
+        .nc:hover {
+            box-shadow: 0 8px 24px rgba(43,78,255,0.07);
+            transform: translateY(-1px);
+        }
+
+        .nc.unread {
+            border-left: 5px solid #2b4eff;
+            background: #fcfcff;
+        }
+
+    /* ================= ICON ================= */
+
+    .ni {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        background: #f1f5f9;
+        color: #2b4eff;
+    }
+
+    /* ================= CONTENT ================= */
+
+    .nc-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .nc-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 4px;
+    }
+
+    .nc-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.4;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .udot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #2b4eff;
+        flex-shrink: 0;
+    }
+
+    .nc-time {
+        font-size: 11.5px;
+        font-weight: 500;
+        color: #94a3b8;
+        white-space: nowrap;
+    }
+
+    .nc-text {
+        font-size: 13px;
+        color: #64748b;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .nc-link {
+        margin-top: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #2b4eff;
+        text-decoration: none;
+        font-size: 12.5px;
+        font-weight: 700;
+        transition: .2s;
+    }
+
+        .nc-link:hover {
+            color: #1a3bd1;
+        }
+
+    /* ================= EMPTY ================= */
+
+    .notif-empty {
+        background: #fff;
+        border: 1px dashed #dbeafe;
+        border-radius: 14px;
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+        .notif-empty i {
+            font-size: 42px;
+            color: #cbd5e1;
+            margin-bottom: 14px;
+        }
+
+        .notif-empty h4 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #334155;
+        }
+
+        .notif-empty p {
+            color: #94a3b8;
+            font-size: 13.5px;
+            margin: 0;
+        }
+
+    /* ================= PAGINATION ================= */
+
+    .pagination-wrap {
+        margin-top: 30px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .pagination {
+        gap: 8px;
+    }
+
+        .pagination li {
+            list-style: none;
+        }
+
+            .pagination li a,
+            .pagination li span {
+                min-width: 40px;
+                height: 40px;
+                border-radius: 10px !important;
+                border: 1px solid #e2e8f0 !important;
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                font-weight: 600;
+                color: #475569;
+                background: #fff;
+            }
+
+                .pagination li a:hover {
+                    background: #2b4eff;
+                    color: #fff;
+                    border-color: #2b4eff !important;
+                }
+
+        .pagination .active span {
+            background: #2b4eff !important;
+            color: #fff !important;
+            border-color: #2b4eff !important;
+        }
+
+    /* ================= MOBILE ================= */
+
+    @@media(max-width:768px) {
+
+        .notif-page {
+            width: 100%;
+            padding: 18px 0 40px;
+        }
+
+        .filter-row {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+        }
+
+        .nc {
+            padding: 18px;
+        }
+
+        .nc-top {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .nc-time {
+            white-space: normal;
+        }
+
+        .nh-left h2 {
+            font-size: 18px;
+        }
+    }
+
+</style>
+
+<div class="notif-page">
+
+    <!-- HEADER -->
+    <div class="nh">
+
+        <div class="nh-left">
+
+            <h2>
+                Thông báo
+
+                @if (unreadCount > 0)
+                {
+                    <span class="upill">@unreadCount</span>
+                }
+            </h2>
+
+            <p>
+                Theo dõi trạng thái đề tài, tiến độ đăng ký và các thông báo mới nhất từ hệ thống KLTN Portal.
+            </p>
+
+        </div>
+
+        @if (unreadCount > 0)
+        {
+            <form asp-controller="Student"
+                  asp-action="MarkAllRead"
+                  method="post">
+
+                @Html.AntiForgeryToken()
+
+                <button type="submit" class="mark-btn">
+                    ✓ Đánh dấu tất cả đã đọc
+                </button>
+
+            </form>
+        }
+
+    </div>
+
+    <!-- FILTER -->
+    <div class="filter-row" id="filterRow">
+
+        <button class="ftab active"
+                onclick="filterNotif(this,'all')">
+
+            Tất cả
+            <span class="fcnt">@totalCount</span>
+
+        </button>
+
+        <button class="ftab"
+                onclick="filterNotif(this,'unread')">
+
+            Chưa đọc
+            <span class="fcnt">@unreadCount</span>
+
+        </button>
+
+        <button class="ftab"
+                onclick="filterNotif(this,'topic')">
+
+            Đề tài
+            <span class="fcnt">@topicCount</span>
+
+        </button>
+
+        <button class="ftab"
+                onclick="filterNotif(this,'system')">
+
+            Hệ thống
+            <span class="fcnt">@sysCount</span>
+
+        </button>
+
+    </div>
+
+    <!-- LIST -->
+    <div id="notifList">
+
+        @if (!Model.Any())
+        {
+            <div class="notif-empty">
+
+                <i class="fa-regular fa-bell-slash"></i>
+
+                <h4>Chưa có thông báo</h4>
+
+                <p>
+                    Hiện tại bạn chưa có thông báo nào từ hệ thống.
+                </p>
+
+            </div>
+        }
+        else
+        {
+            <div class="notif-grid">
+
+                @foreach (var n in Model)
+                {
+                    string iconTag;
+                    string cat;
+
+                    switch (n.Type ?? "")
+                    {
+                        case "TopicApproved":
+                            iconTag = "fa-circle-check";
+                            cat = "topic";
+                            break;
+
+                        case "TopicRejected":
+                            iconTag = "fa-circle-xmark";
+                            cat = "topic";
+                            break;
+
+                        case "NewRegistration":
+                            iconTag = "fa-file-signature";
+                            cat = "topic";
+                            break;
+
+                        case "Deadline":
+                            iconTag = "fa-clock";
+                            cat = "system";
+                            break;
+
+                        default:
+
+                            bool isTopicWord =
+                            (n.Title?.Contains("duyệt") == true)
+                            || (n.Title?.Contains("từ chối") == true);
+
+                            if (isTopicWord && n.Title!.Contains("duyệt"))
+                            {
+                                iconTag = "fa-circle-check";
+                                cat = "topic";
+                            }
+                            else if (isTopicWord)
+                            {
+                                iconTag = "fa-circle-xmark";
+                                cat = "topic";
+                            }
+                            else
+                            {
+                                iconTag = "fa-bell";
+                                cat = "system";
+                            }
+
+                            break;
+                    }
+
+                    string unreadCls = n.IsRead ? "" : "unread";
+
+                    string url = n.RedirectUrl ?? "";
+
+                    string timeStr =
+                    (DateTime.Now - n.CreatedAt).TotalHours < 24
+                    ? n.CreatedAt.ToString("HH:mm") + " hôm nay"
+                    : n.CreatedAt.ToString("HH:mm")
+                    + " • "
+                    + n.CreatedAt.ToString("dd/MM/yyyy");
+
+                    <div class="nc @unreadCls"
+                         data-cat="@cat"
+                         data-read="@(n.IsRead ? "1" : "0")">
+
+                        <div class="ni">
+                            <i class="fa-solid @iconTag"></i>
+                        </div>
+
+                        <div class="nc-body">
+
+                            <div class="nc-top">
+
+                                <div class="nc-title">
+
+                                    @n.Title
+
+                                    @if (!n.IsRead)
+                                    {
+                                        <span class="udot"></span>
+                                    }
+
+                                </div>
+
+                                <div class="nc-time">
+                                    @timeStr
+                                </div>
+
+                            </div>
+
+                            <p class="nc-text">
+                                @n.Content
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(url))
+                            {
+                                <a href="@url" class="nc-link">
+
+                                    Xem chi tiết
+
+                                    <i class="fa-solid fa-arrow-right"
+                                       style="font-size:11px;"></i>
+
+                                </a>
+                            }
+
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+        }
+
+    </div>
+
+    <!-- EMPTY FILTER -->
+    <div id="filteredEmpty"
+         class="notif-empty"
+         style="display:none;">
+
+        <i class="fa-regular fa-bell-slash"></i>
+
+        <h4>Không có dữ liệu</h4>
+
+        <p id="filteredMsg">
+            Không có thông báo nào.
+        </p>
+
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="pagination-wrap">
+
+        @Html.PagedListPager(
+        Model,
+        page => Url.Action("Notifications", new { page }),
+                new PagedListRenderOptions
+                {
+                    DisplayLinkToFirstPage = PagedListDisplayMode.Never,
+                    DisplayLinkToLastPage = PagedListDisplayMode.Never,
+                    DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                    DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                    MaximumPageNumbersToDisplay = 5,
+                    UlElementClasses = new[] { "pagination" },
+                    LiElementClasses = new[] { "page-item" },
+                    PageClasses = new[] { "page-link" }
+                })
+
+    </div>
+
+</div>
+
+@section Scripts {
+
+    <script>
+
+        function filterNotif(btn, filter) {
+
+            document
+                .querySelectorAll('#filterRow .ftab')
+                .forEach(x => x.classList.remove('active'));
+
+            btn.classList.add('active');
+
+            const items = document.querySelectorAll('#notifList .nc');
+
+            let shown = 0;
+
+            items.forEach(el => {
+
+                const match =
+                    filter === 'all' ? true :
+                    filter === 'unread' ? el.dataset.read === '0' :
+                    filter === 'topic' ? el.dataset.cat === 'topic' :
+                    filter === 'system' ? el.dataset.cat === 'system' :
+                    true;
+
+                el.style.display = match ? '' : 'none';
+
+                if (match) shown++;
+            });
+
+            const empty = document.getElementById('filteredEmpty');
+
+            const msg = document.getElementById('filteredMsg');
+
+            const msgs = {
+                all: 'Bạn chưa có thông báo nào.',
+                unread: 'Không có thông báo chưa đọc.',
+                topic: 'Không có thông báo đề tài.',
+                system: 'Không có thông báo hệ thống.'
+            };
+
+            msg.textContent =
+                msgs[filter] || 'Không có thông báo nào.';
+
+            empty.style.display =
+                shown === 0 ? '' : 'none';
+        }
+
+    </script>
+
+}

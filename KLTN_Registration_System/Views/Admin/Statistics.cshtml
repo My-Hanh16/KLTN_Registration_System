@@ -1,0 +1,573 @@
+﻿@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Thống kê & Báo cáo";
+
+    // Fix: null-safe ViewBag defaults để tránh JS lỗi
+    var monthLabels  = ViewBag.MonthLabels  as IEnumerable<string>  ?? Enumerable.Empty<string>();
+    var monthCounts  = ViewBag.MonthCounts  as IEnumerable<int>     ?? Enumerable.Empty<int>();
+    var majorLabels  = ViewBag.MajorLabels  as IEnumerable<string>  ?? Enumerable.Empty<string>();
+    var majorCounts  = ViewBag.MajorCounts  as IEnumerable<int>     ?? Enumerable.Empty<int>();
+
+    int totalStudents     = ViewBag.TotalStudents  ?? 0;
+    int approvedCount     = ViewBag.ApprovedCount  ?? 0;
+    int pendingCount      = ViewBag.PendingCount   ?? 0;
+    int totalLecturers    = ViewBag.TotalLecturers ?? 0;
+    double regRate        = ViewBag.RegistrationRate ?? 0.0;
+
+    // Filter từ query string
+    string curSemester = Context.Request.Query["semester"].ToString();
+    string curYear     = Context.Request.Query["year"].ToString();
+    if (string.IsNullOrEmpty(curSemester)) curSemester = "HK2";
+    if (string.IsNullOrEmpty(curYear))     curYear     = "2024-2025";
+}
+
+@section Styles {
+<style>
+    /* ══════════════════════════════════════
+       HEADER
+    ══════════════════════════════════════ */
+    .page-title {
+        font-size: 20px;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+
+    .page-sub {
+        font-size: 13.5px;
+        color: #94a3b8;
+        margin: 0;
+    }
+
+    /* Filter + export row */
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .filter-select-inline {
+        font-size: 13px;
+        font-weight: 600;
+        border: 1.5px solid #e8edf4;
+        border-radius: 10px;
+        padding: 7px 12px;
+        background: #f8fafc;
+        color: #475569;
+        outline: none;
+        cursor: pointer;
+        transition: border-color .15s;
+    }
+
+    .filter-select-inline:focus {
+        border-color: #4f46e5;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(79,70,229,.08);
+    }
+
+    .btn-export {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 8px 18px;
+        border-radius: 10px;
+        border: 1.5px solid #c7d2fe;
+        background: #eef2ff;
+        color: #4f46e5;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all .15s;
+        cursor: pointer;
+    }
+
+    .btn-export:hover {
+        background: #4f46e5;
+        border-color: #4f46e5;
+        color: #fff;
+    }
+
+    /* ══════════════════════════════════════
+       STATS GRID
+    ══════════════════════════════════════ */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    @@media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 600px)  { .stats-grid { grid-template-columns: 1fr; } }
+
+    .stat-card {
+        background: #fff;
+        border: 1px solid #e8edf4;
+        border-radius: 14px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        transition: box-shadow .2s;
+    }
+
+    .stat-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.07); }
+
+    .stat-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #94a3b8;
+        margin-bottom: 6px;
+    }
+
+    .stat-number {
+        font-size: 26px;
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1.1;
+        margin-bottom: 8px;
+    }
+
+    .stat-meta {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11.5px;
+        font-weight: 600;
+    }
+
+    .stat-meta i { font-size: 11px; }
+    .stat-meta.blue   { color: #2563eb; }
+    .stat-meta.green  { color: #16a34a; }
+    .stat-meta.orange { color: #ea580c; }
+
+    /* Progress bar trong stat card */
+    .stat-progress {
+        height: 4px;
+        border-radius: 99px;
+        background: #f1f5f9;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+
+    .stat-progress-fill {
+        height: 100%;
+        border-radius: 99px;
+        background: #4f46e5;
+        transition: width .6s ease;
+    }
+
+    /* ══════════════════════════════════════
+       CHART GRID
+    ══════════════════════════════════════ */
+    .chart-row-top {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .chart-row-bottom {
+        display: grid;
+        grid-template-columns: 1fr 220px;
+        gap: 16px;
+    }
+
+    @@media (max-width: 1024px) {
+        .chart-row-top    { grid-template-columns: 1fr; }
+        .chart-row-bottom { grid-template-columns: 1fr; }
+    }
+
+    /* Chart card */
+    .chart-card {
+        background: #fff;
+        border: 1px solid #e8edf4;
+        border-radius: 14px;
+        padding: 20px 22px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+
+    .chart-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 2px;
+    }
+
+    .chart-sub {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-bottom: 16px;
+    }
+
+    .chart-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    /* Realtime badge */
+    .badge-realtime {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        font-weight: 700;
+        background: #eff6ff;
+        color: #2563eb;
+        border-radius: 99px;
+        padding: 3px 10px;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-realtime::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #2563eb;
+        animation: pulse-dot 1.5s infinite;
+    }
+
+    @@keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.3; }
+    }
+
+    /* Chart canvas wrapper */
+    .canvas-wrap { position: relative; }
+    .canvas-wrap-line { height: 280px; }
+    .canvas-wrap-pie  { height: 220px; display: flex; align-items: center; justify-content: center; }
+    .canvas-wrap-bar  { height: 300px; }
+
+    /* Pie legend */
+    .pie-legend {
+        margin-top: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .pie-legend-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 9px;
+        padding: 8px 12px;
+        font-size: 12.5px;
+    }
+
+    .pie-legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .pie-legend-label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #475569;
+        font-weight: 500;
+    }
+
+    .pie-legend-val {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 13px;
+    }
+
+    /* ══════════════════════════════════════
+       LECTURER CARD
+    ══════════════════════════════════════ */
+    .lecturer-card {
+        background: #fff;
+        border: 1px solid #e8edf4;
+        border-radius: 14px;
+        padding: 20px 22px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .lecturer-number {
+        font-size: 36px;       /* Fix: text-5xl (~48px) → 36px */
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1.1;
+        margin: 10px 0 6px;
+    }
+
+    .lecturer-sub {
+        font-size: 12.5px;
+        color: #94a3b8;
+        line-height: 1.5;
+    }
+
+    .lecturer-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #eef2ff;
+        color: #4f46e5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        margin-top: 20px;
+    }
+</style>
+}
+
+<!-- PAGE HEADER -->
+<div class="d-flex justify-content-between align-items-start mb-4 gap-3 flex-wrap">
+    <div>
+        <h2 class="page-title">Báo cáo & Thống kê</h2>
+        <p class="page-sub">Theo dõi tiến độ đăng ký và phân tích dữ liệu đề tài nghiên cứu.</p>
+    </div>
+
+    <!-- Fix: filter có form action + export có href -->
+    <div class="header-actions">
+        <form method="get" asp-action="Statistics" asp-controller="Admin"
+              id="filterForm" class="d-flex gap-2">
+            <select name="semester" class="filter-select-inline"
+                    onchange="document.getElementById('filterForm').submit()">
+                <option value="HK1" selected="@(curSemester == "HK1")">Học kỳ I</option>
+                <option value="HK2" selected="@(curSemester == "HK2")">Học kỳ II</option>
+            </select>
+            <select name="year" class="filter-select-inline"
+                    onchange="document.getElementById('filterForm').submit()">
+                <option value="2023-2024" selected="@(curYear == "2023-2024")">2023-2024</option>
+                <option value="2024-2025" selected="@(curYear == "2024-2025")">2024-2025</option>
+            </select>
+        </form>
+
+        <a href="/Admin/ExportStatistics?semester=@curSemester&year=@curYear"
+           class="btn-export">
+            <i class="fa-solid fa-download"></i> Xuất báo cáo
+        </a>
+    </div>
+</div>
+
+<!-- STATS CARDS -->
+<div class="stats-grid">
+
+    <div class="stat-card">
+        <div class="stat-label">Tổng sinh viên</div>
+        <div class="stat-number">@totalStudents</div>
+        <div class="stat-meta blue">
+            <i class="fa-solid fa-arrow-trend-up"></i>
+            Dữ liệu toàn hệ thống
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Đề tài đã duyệt</div>
+        <div class="stat-number">@approvedCount</div>
+        <div class="stat-meta green">
+            <i class="fa-solid fa-circle-check"></i>
+            Đã sẵn sàng thực hiện
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Đang chờ duyệt</div>
+        <div class="stat-number">@pendingCount</div>
+        <div class="stat-meta orange">
+            <i class="fa-solid fa-clock"></i>
+            Cần xử lý sớm
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Tỷ lệ đăng ký</div>
+        <div class="stat-number">@regRate%</div>
+        <div class="stat-progress">
+            <div class="stat-progress-fill" style="width: @regRate%"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- CHART ROW TOP: Line + Pie -->
+<div class="chart-row-top">
+
+    <!-- Line chart -->
+    <div class="chart-card">
+        <div class="chart-head">
+            <div>
+                <div class="chart-title">Tiến độ đăng ký</div>
+                <div class="chart-sub">Số lượng sinh viên đăng ký theo thời gian</div>
+            </div>
+            <span class="badge-realtime">Realtime</span>
+        </div>
+        <div class="canvas-wrap canvas-wrap-line">
+            <canvas id="lineChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Pie chart -->
+    <div class="chart-card">
+        <div class="chart-title">Tỷ lệ đăng ký</div>
+        <div class="chart-sub">Phân bổ sinh viên theo trạng thái</div>
+        <div class="canvas-wrap canvas-wrap-pie">
+            <canvas id="pieChart"></canvas>
+        </div>
+        <div class="pie-legend">
+            <div class="pie-legend-item">
+                <div class="pie-legend-label">
+                    <div class="pie-legend-dot" style="background:#4f46e5;"></div>
+                    Đã có đề tài
+                </div>
+                <span class="pie-legend-val">@approvedCount</span>
+            </div>
+            <div class="pie-legend-item">
+                <div class="pie-legend-label">
+                    <div class="pie-legend-dot" style="background:#e2e8f0;"></div>
+                    Chưa đăng ký
+                </div>
+                <span class="pie-legend-val">@(totalStudents - approvedCount)</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- CHART ROW BOTTOM: Bar + Lecturer -->
+<div class="chart-row-bottom">
+
+    <!-- Bar chart -->
+    <div class="chart-card">
+        <div class="chart-title">Phân bố đề tài theo khoa</div>
+        <div class="chart-sub">Số lượng đề tài của từng chuyên ngành</div>
+        <div class="canvas-wrap canvas-wrap-bar">
+            <canvas id="majorChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Lecturer card -->
+    <div class="lecturer-card">
+        <div>
+            <div class="stat-label">Tổng giảng viên</div>
+            <div class="lecturer-number">@totalLecturers</div>
+            <div class="lecturer-sub">Đang tham gia hướng dẫn khóa luận trong hệ thống.</div>
+        </div>
+        <div class="lecturer-icon">
+            <i class="fa-solid fa-users"></i>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+    // Fix: không load Chart.js ở đây vì layout cha đã load
+    // Dùng biến Razor đã null-safe từ đầu file
+
+    const CHART_PRIMARY = '#4f46e5';
+    const CHART_LIGHT   = 'rgba(79,70,229,0.1)';
+    const CHART_GRAY    = '#e2e8f0';
+
+    const tooltipDefaults = {
+        backgroundColor: '#1e293b',
+        padding: 10,
+        titleFont: { size: 13, family: 'Inter' },
+        bodyFont:  { size: 12, family: 'Inter' },
+        cornerRadius: 8,
+    };
+
+    // ── PIE CHART ──
+    new Chart(document.getElementById('pieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Đã có đề tài', 'Chưa đăng ký'],
+            datasets: [{
+                data: [@approvedCount, @(totalStudents - approvedCount)],
+                backgroundColor: [CHART_PRIMARY, CHART_GRAY],
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            cutout: '72%',
+            maintainAspectRatio: false,
+            plugins: {
+                legend:  { display: false },
+                tooltip: { ...tooltipDefaults }
+            }
+        }
+    });
+
+    // ── LINE CHART ──
+    new Chart(document.getElementById('lineChart'), {
+        type: 'line',
+        data: {
+            labels:   @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthLabels)),
+            datasets: [{
+                label: 'Đăng ký mới',
+                data:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthCounts)),
+                borderColor:     CHART_PRIMARY,
+                backgroundColor: CHART_LIGHT,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: CHART_PRIMARY,
+                pointBorderColor:     '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: {
+                legend:  { display: false },
+                tooltip: { ...tooltipDefaults }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    // ── BAR CHART ──
+    const barCtx  = document.getElementById('majorChart');
+    const barGrad = barCtx.getContext('2d').createLinearGradient(0, 0, 0, 300);
+    barGrad.addColorStop(0, '#6366f1');
+    barGrad.addColorStop(1, '#4f46e5');
+
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels:   @Html.Raw(System.Text.Json.JsonSerializer.Serialize(majorLabels)),
+            datasets: [{
+                label: 'Số đề tài',
+                data:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(majorCounts)),
+                backgroundColor: barGrad,
+                borderRadius: 8,
+                borderSkipped: false,
+                barThickness: 36
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            animation: { duration: 1200, easing: 'easeOutQuart' },
+            plugins: {
+                legend:  { display: false },
+                tooltip: { ...tooltipDefaults }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+}

@@ -1,0 +1,930 @@
+﻿@* ============================================================
+   FILE: Views/Student/Profile.cshtml
+   UI VERSION: MODERN ACADEMIC DASHBOARD
+   ============================================================ *@
+
+@model KLTN_Registration_System.Models.Entities.ApplicationUser
+
+@{
+    Layout = "_layoutStudent";
+    ViewData["Title"] = "Hồ sơ của tôi";
+
+    var reg = ViewBag.CurrentRegistration as KLTN_Registration_System.Models.Entities.Registration;
+
+    var majors = ViewBag.Majors as List<KLTN_Registration_System.Models.Entities.Major>
+                 ?? new List<KLTN_Registration_System.Models.Entities.Major>();
+
+    string initials = string.IsNullOrEmpty(Model.FullName)
+        ? (Model.Email?.Substring(0, 1).ToUpper() ?? "?")
+        : string.Concat(Model.FullName.Split(' ')
+            .TakeLast(2)
+            .Select(w => w.Substring(0, 1).ToUpper()));
+
+    string statusLabel = reg?.Status switch
+    {
+        "Approved" => "Đã được duyệt",
+        "Pending" => "Chờ phê duyệt",
+        "Rejected" => "Bị từ chối",
+        _ => "Chưa đăng ký"
+    };
+
+    string statusClass = reg?.Status switch
+    {
+        "Approved" => "status-success",
+        "Pending" => "status-warning",
+        "Rejected" => "status-danger",
+        _ => "status-gray"
+    };
+}
+
+<style>
+
+    /* =========================================================
+           GLOBAL
+        ========================================================= */
+
+    body {
+        background: #f8fafc;
+    }
+
+    .profile-page,
+    .profile-page * {
+        font-family: "Inter", "Segoe UI", sans-serif;
+    }
+
+    .profile-page {
+        max-width: 1450px;
+        margin: auto;
+    }
+
+    /* =========================================================
+           PAGE HEADER
+        ========================================================= */
+
+    .profile-header {
+        margin-bottom: 24px;
+    }
+
+        .profile-header h2 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 6px;
+            line-height: 1.2;
+            letter-spacing: -.3px;
+        }
+
+        .profile-header p {
+            font-size: 13.5px;
+            color: #64748b;
+            margin: 0;
+            font-weight: 500;
+        }
+
+    /* =========================================================
+           CARD
+        ========================================================= */
+
+    .profile-card {
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        transition: .25s ease;
+    }
+
+        .profile-card:hover {
+            box-shadow: 0 10px 28px rgba(15,23,42,.06);
+        }
+
+    .card-header {
+        padding: 26px 30px;
+        border-bottom: 1px solid #eef2f7;
+        background: #fff;
+    }
+
+    .card-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 4px;
+        line-height: 1.3;
+    }
+
+    .card-subtitle {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .card-body {
+        padding: 30px;
+    }
+
+    /* =========================================================
+           LEFT SUMMARY
+        ========================================================= */
+
+    .user-summary {
+        background: linear-gradient(135deg, #2563eb 0%, #2b4eff 100%);
+        padding: 34px 28px;
+        color: #fff;
+        text-align: center;
+    }
+
+    .avatar-box {
+        width: 102px;
+        height: 102px;
+        border-radius: 28px;
+        margin: auto;
+        background: rgba(255,255,255,.14);
+        border: 1px solid rgba(255,255,255,.16);
+        backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        font-weight: 800;
+        margin-bottom: 20px;
+        box-shadow: inset 0 1px 4px rgba(255,255,255,.08);
+    }
+
+    .student-name {
+        font-size: 19px;
+        font-weight: 800;
+        margin-bottom: 6px;
+        line-height: 1.3;
+    }
+
+    .student-email {
+        font-size: 13px;
+        opacity: .95;
+        font-weight: 500;
+    }
+
+    .student-code {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 18px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.14);
+        margin-top: 18px;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    /* =========================================================
+           STATS
+        ========================================================= */
+
+    .stats-list {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        .stat-item span {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .stat-item strong {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+    .stat-danger {
+        color: #dc2626 !important;
+    }
+
+    /* =========================================================
+           FORM
+        ========================================================= */
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 22px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+        .form-group.full {
+            grid-column: span 2;
+        }
+
+    .form-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: #64748b;
+        margin-bottom: 8px;
+    }
+
+    .form-control,
+    .form-select {
+        width: 100%;
+        height: 58px;
+        border-radius: 16px;
+        border: 1px solid #dbe4f0;
+        padding: 0 18px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        background: #fff;
+        transition: all .2s ease;
+        box-shadow: none !important;
+    }
+
+        .form-control::placeholder {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37,99,235,.10) !important;
+            outline: none;
+        }
+
+    .form-disabled {
+        background: #f8fafc !important;
+        color: #94a3b8 !important;
+        cursor: not-allowed;
+    }
+
+    /* =========================================================
+           BUTTON
+        ========================================================= */
+
+    .btn-primary-custom {
+        height: 56px;
+        border: none;
+        border-radius: 18px;
+        padding: 0 28px;
+        background: linear-gradient(135deg, #2563eb 0%, #2b4eff 100%);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: .2s ease;
+        box-shadow: 0 10px 24px rgba(37,99,235,.15);
+    }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-1px);
+            color: #fff;
+            box-shadow: 0 14px 28px rgba(37,99,235,.22);
+        }
+
+    .btn-dark {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        box-shadow: 0 10px 24px rgba(15,23,42,.18);
+    }
+
+    /* =========================================================
+           STATUS
+        ========================================================= */
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 14px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        margin-top: 14px;
+        letter-spacing: .3px;
+    }
+
+    .status-success {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .status-warning {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .status-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .status-gray {
+        background: #e2e8f0;
+        color: #475569;
+    }
+
+    /* =========================================================
+           CURRENT TOPIC
+        ========================================================= */
+
+    .topic-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.5;
+        margin-bottom: 10px;
+    }
+
+    .topic-meta {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* =========================================================
+           EMPTY STATE
+        ========================================================= */
+
+    .empty-topic {
+        text-align: center;
+        padding: 10px 0;
+    }
+
+        .empty-topic i {
+            font-size: 54px;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+        }
+
+        .empty-topic p {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+    .btn-topic {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #2b4eff;
+        color: #fff;
+        border-radius: 999px;
+        padding: 10px 20px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        transition: .2s ease;
+    }
+
+        .btn-topic:hover {
+            background: #1f3fff;
+            color: #fff;
+        }
+
+    /* =========================================================
+           ALERT
+        ========================================================= */
+
+    .custom-alert {
+        background: #fff5f5;
+        border: 1px solid #fecaca;
+        color: #b91c1c;
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin-top: 18px;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    /* =========================================================
+           RESPONSIVE
+        ========================================================= */
+
+    @@media(max-width: 992px) {
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group.full {
+            grid-column: span 1;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        .card-header {
+            padding: 22px 24px;
+        }
+    }
+    /* PASSWORD TOGGLE */
+    .password-wrapper {
+        position: relative;
+    }
+
+        .password-wrapper .form-control {
+            padding-right: 50px;
+        }
+
+    .toggle-password {
+        position: absolute;
+        top: 50%;
+        right: 16px;
+        transform: translateY(-50%);
+        border: none;
+        background: none;
+        color: #64748b;
+        cursor: pointer;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+
+        .toggle-password i {
+            font-size: 16px;
+        }
+
+</style>
+
+<div class="profile-page">
+
+    <!-- HEADER -->
+    <div class="profile-header">
+        <h2>Hồ sơ cá nhân</h2>
+
+        <p>
+            Quản lý thông tin sinh viên và bảo mật tài khoản hệ thống khóa luận tốt nghiệp.
+        </p>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- LEFT -->
+        <div class="col-lg-4">
+
+            <!-- PROFILE -->
+            <div class="profile-card mb-4">
+
+                <div class="user-summary">
+
+                    <div class="avatar-box">
+                        @initials
+                    </div>
+
+                    <div class="student-name">
+                        @(Model.FullName ?? "Chưa cập nhật")
+                    </div>
+
+                    <div class="student-email">
+                        @Model.Email
+                    </div>
+
+                    <div class="student-code">
+                        <i class="fa-regular fa-id-card"></i>
+                        MSSV: @(Model.UserCode ?? "SV000")
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- STATS -->
+            <div class="profile-card mb-4">
+
+                <div class="card-header">
+
+                    <div class="card-title">
+                        Hoạt động hệ thống
+                    </div>
+
+                    <div class="card-subtitle">
+                        Tổng quan tài khoản sinh viên
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="stats-list">
+
+                        <div class="stat-item">
+                            <span>Thông báo</span>
+                            <strong>@(ViewBag.TotalNotifications ?? 0)</strong>
+                        </div>
+
+                        <div class="stat-item">
+                            <span>Chưa đọc</span>
+                            <strong class="stat-danger">
+                                @(ViewBag.UnreadNotifications ?? 0)
+                            </strong>
+                        </div>
+
+                        <div class="stat-item">
+                            <span>Lịch sử đăng ký</span>
+                            <strong>@(ViewBag.TotalRegistrations ?? 0)</strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- TOPIC -->
+            <div class="profile-card">
+
+                <div class="card-header">
+
+                    <div class="card-title">
+                        Đề tài hiện tại
+                    </div>
+
+                    <div class="card-subtitle">
+                        Thông tin khóa luận đang đăng ký
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    @if (reg != null)
+                    {
+                        <div class="topic-title">
+                            @reg.Topic?.Title
+                        </div>
+
+                        <div class="topic-meta">
+                            GVHD:
+                            @(reg.Topic?.Lecturer?.FullName ?? "Chưa cập nhật")
+                        </div>
+
+                        <div class="status-badge @statusClass">
+                            @statusLabel
+                        </div>
+
+                        @if (reg.Status == "Rejected" &&
+                                            !string.IsNullOrEmpty(reg.Feedback))
+                        {
+                            <div class="custom-alert">
+                                @reg.Feedback
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-topic">
+
+                            <i class="fa-regular fa-folder-open"></i>
+
+                            <p>
+                                Bạn chưa đăng ký đề tài nào
+                            </p>
+
+                            <a href="/Topic/Index"
+                               class="btn-topic">
+
+                                <i class="fa-solid fa-book-open"></i>
+
+                                Xem danh sách đề tài
+
+                            </a>
+
+                        </div>
+                    }
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT -->
+        <div class="col-lg-8">
+
+            <!-- PROFILE INFO -->
+            <div class="profile-card mb-4">
+
+                <div class="card-header">
+
+                    <div class="card-title">
+                        Thông tin cá nhân
+                    </div>
+
+                    <div class="card-subtitle">
+                        Cập nhật dữ liệu hiển thị trên hệ thống khóa luận.
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    <form method="post"
+                          asp-action="UpdateProfile"
+                          asp-controller="Student">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="form-grid">
+
+                            <div class="form-group">
+
+                                <label class="form-label">
+                                    Họ và tên *
+                                </label>
+
+                                <input type="text"
+                                       name="fullName"
+                                       value="@Model.FullName"
+                                       required
+                                       class="form-control" />
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label class="form-label">
+                                    Mã số sinh viên
+                                </label>
+
+                                <input type="text"
+                                       name="userCode"
+                                       value="@Model.UserCode"
+                                       class="form-control" />
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label class="form-label">
+                                    Email
+                                </label>
+
+                                <input type="email"
+                                       value="@Model.Email"
+                                       disabled
+                                       class="form-control form-disabled" />
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label class="form-label">
+                                    Số điện thoại
+                                </label>
+
+                                <input type="tel"
+                                       name="phoneNumber"
+                                       value="@Model.PhoneNumber"
+                                       placeholder="Nhập số điện thoại"
+                                       class="form-control" />
+
+                            </div>
+
+                            <div class="form-group full">
+
+                                <label class="form-label">
+                                    Chuyên ngành
+                                </label>
+
+                                <select name="majorId"
+                                        class="form-select">
+
+                                    <option value="">
+                                        -- Chọn chuyên ngành --
+                                    </option>
+
+                                    @foreach (var m in majors)
+                                    {
+                                        <option value="@m.Id"
+                                                selected="@(Model.MajorId == m.Id)">
+                                            @m.Name
+                                        </option>
+                                    }
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+
+                            <button type="submit"
+                                    class="btn-primary-custom">
+
+                                <i class="fa-regular fa-floppy-disk"></i>
+
+                                Lưu thay đổi
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+            <!-- PASSWORD -->
+            <!-- PASSWORD -->
+            <div class="profile-card">
+
+                <div class="card-header">
+
+                    <div class="card-title">
+                        Bảo mật tài khoản
+                    </div>
+
+                    <div class="card-subtitle">
+                        Thay đổi mật khẩu đăng nhập hệ thống.
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    <form method="post"
+                          asp-action="ChangePassword"
+                          asp-controller="Account">
+
+                        @Html.AntiForgeryToken()
+
+                        <div class="form-group mb-4">
+
+                            <label class="form-label">
+                                Mật khẩu hiện tại *
+                            </label>
+
+                            <div class="password-wrapper">
+
+                                <input type="password"
+                                       name="currentPassword"
+                                       id="currentPwd"
+                                       required
+                                       class="form-control" />
+
+                                <button type="button"
+                                        class="toggle-password"
+                                        onclick="togglePassword('currentPwd', this)">
+
+                                    <i class="fa-regular fa-eye"></i>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                        <div class="form-grid">
+
+                            <div class="form-group">
+
+                                <label class="form-label">
+                                    Mật khẩu mới *
+                                </label>
+
+                                <div class="password-wrapper">
+
+                                    <input type="password"
+                                           name="newPassword"
+                                           id="newPwd"
+                                           minlength="6"
+                                           required
+                                           class="form-control" />
+
+                                    <button type="button"
+                                            class="toggle-password"
+                                            onclick="togglePassword('newPwd', this)">
+
+                                        <i class="fa-regular fa-eye"></i>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                            <div class="form-group">
+
+                                <label class="form-label">
+                                    Xác nhận mật khẩu *
+                                </label>
+
+                                <div class="password-wrapper">
+
+                                    <input type="password"
+                                           id="confirmPwd"
+                                           minlength="6"
+                                           required
+                                           oninput="checkMatch()"
+                                           class="form-control" />
+
+                                    <button type="button"
+                                            class="toggle-password"
+                                            onclick="togglePassword('confirmPwd', this)">
+
+                                        <i class="fa-regular fa-eye"></i>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <p id="matchMsg"
+                           class="small mt-3 fw-semibold"></p>
+
+                        <div class="d-flex justify-content-end mt-4">
+
+                            <button type="submit"
+                                    id="changePwdBtn"
+                                    class="btn-primary-custom btn-dark">
+
+                                <i class="fa-solid fa-lock"></i>
+
+                                Đổi mật khẩu
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    function checkMatch() {
+
+        const pwd = document.getElementById('newPwd').value;
+        const cfm = document.getElementById('confirmPwd').value;
+        const msg = document.getElementById('matchMsg');
+
+        if (!cfm) {
+            msg.innerHTML = "";
+            return;
+        }
+
+        if (pwd === cfm) {
+
+            msg.innerHTML = "✓ Mật khẩu khớp";
+            msg.style.color = "#16a34a";
+
+        } else {
+
+            msg.innerHTML = "✗ Mật khẩu không khớp";
+            msg.style.color = "#dc2626";
+        }
+    }
+
+    function togglePassword(inputId, button) {
+
+        const input = document.getElementById(inputId);
+        const icon = button.querySelector('i');
+
+        if (input.type === "password") {
+
+            input.type = "text";
+
+            icon.classList.remove("fa-eye");
+            icon.classList.add("fa-eye-slash");
+
+        } else {
+
+            input.type = "password";
+
+            icon.classList.remove("fa-eye-slash");
+            icon.classList.add("fa-eye");
+        }
+    }
+
+</script>
+
+

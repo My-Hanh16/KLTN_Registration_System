@@ -1,0 +1,904 @@
+﻿@model IEnumerable<KLTN_Registration_System.Models.Entities.TimelineSubmission>
+
+@using KLTN_Registration_System.Models.Entities
+@using KLTN_Registration_System.Models.Enums
+
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Bài đã duyệt";
+
+    var timelines = ViewBag.Timelines as List<Timeline>;
+
+    int stt = ((ViewBag.CurrentPage - 1) * 10) + 1;
+
+    var totalApproved = ViewBag.TotalApproved ?? 0;
+
+    var report1Count = Model.Count(x =>
+        x.Timeline != null &&
+        x.Timeline.Title.Contains("1"));
+
+    var report2Count = Model.Count(x =>
+        x.Timeline != null &&
+        x.Timeline.Title.Contains("2"));
+
+    var latestDeadline = timelines?
+        .OrderBy(x => x.Date)
+        .FirstOrDefault();
+
+    var rejectRate = ViewBag.RejectRate ?? 4.2;
+}
+
+@section Styles{
+<style>
+
+    body{
+        font-family:'Inter',sans-serif;
+        background:#f8fafc;
+        color:#0f172a;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .page-wrapper{
+        max-width:1550px;
+        margin:auto;
+    }
+
+    /* HERO */
+    .hero-title{
+        font-size:28px;
+        line-height:1.2;
+        font-weight:700;
+        letter-spacing:-0.5px;
+        color:#0f172a;
+        margin-bottom:6px;
+    }
+
+    .hero-desc{
+        font-size:13.5px;
+        color:#64748b;
+        line-height:1.6;
+        max-width:720px;
+    }
+
+    /* CARD */
+    .soft-card{
+        background:#fff;
+        border:1px solid #e2e8f0;
+        border-radius:16px;
+        box-shadow:
+            0 1px 3px rgba(15,23,42,.03),
+            0 8px 24px rgba(15,23,42,.04);
+    }
+
+    .stat-card{
+        padding:20px;
+        height:145px;
+        display:flex;
+        flex-direction:column;
+        justify-content:between;
+        transition:.2s ease;
+        box-sizing: border-box;
+    }
+
+    .stat-card:hover{
+        transform:translateY(-1px);
+        box-shadow:
+            0 10px 24 rgba(15,23,42,.06);
+    }
+
+    .stat-label{
+        font-size:11px;
+        font-weight:600;
+        letter-spacing:.05em;
+        text-transform:uppercase;
+        color:#64748b;
+        margin-bottom:8px;
+    }
+
+    .stat-value{
+        font-size:32px;
+        line-height:1;
+        font-weight:700;
+        color:#0f172a;
+        letter-spacing:-0.5px;
+    }
+
+    .stat-deadline-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.4;
+        margin-top: 4px;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .stat-sub{
+        display:flex;
+        align-items:center;
+        gap:4px;
+        font-size:12.5px;
+        font-weight:600;
+    }
+
+    .icon-box{
+        width:40px;
+        height:40px;
+        border-radius:10px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        flex-shrink:0;
+    }
+
+    /* PROGRESS */
+    .progress-wrap{
+        height:6px;
+        background:#f1f5f9;
+        border-radius:999px;
+        overflow:hidden;
+    }
+
+    .progress-bar{
+        height:100%;
+        border-radius:999px;
+    }
+
+    /* TOOLBAR - Đã tối ưu triệt để liên kết trục */
+    .toolbar{
+        padding:14px 20px;
+        border-bottom:1px solid #f1f5f9;
+        background:#fafbfc;
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: space-between;
+        align-items: center !important;
+    }
+
+    .toolbar form {
+        display: flex !important;
+        flex-wrap: wrap;
+        align-items: center !important;
+        gap: 16px;
+    }
+
+    .toolbar-actions {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px;
+    }
+
+    .input-soft{
+        height:40px !important;
+        border-radius:10px;
+        border:1px solid #cbd5e1;
+        background:#fff;
+        transition:.15s ease;
+        font-size:13.5px;
+        color:#0f172a;
+        box-sizing: border-box !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    .input-soft:focus{
+        background:#fff;
+        border-color:#2563eb;
+        box-shadow:0 0 0 3px rgba(37,99,235,.1);
+        outline:none;
+    }
+
+    .btn-soft{
+        height:40px !important;
+        border-radius:10px;
+        font-weight:600;
+        font-size:13.5px;
+        transition:.15s ease;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px;
+        box-sizing: border-box !important;
+        border: 1px solid transparent;
+        cursor: pointer;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: normal !important;
+    }
+
+    .btn-primary{
+        background:#2563eb;
+        color:white;
+    }
+
+    .btn-primary:hover{
+        background:#1d4ed8;
+    }
+
+    .btn-outline{
+        background:white;
+        border:1px solid #cbd5e1;
+        color:#475569;
+    }
+
+    .btn-outline:hover{
+        background:#f8fafc;
+        border-color:#94a3b8;
+        color:#0f172a;
+    }
+
+    /* Đảm bảo icon kính lúp bên trong ô tìm kiếm không kéo lệch trục dọc */
+    .toolbar .relative span.material-symbols-outlined {
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        line-height: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* TABLE */
+    .table-wrap{
+        overflow-x:auto;
+    }
+
+    table{
+        width:100%;
+        border-collapse:separate;
+        border-spacing:0;
+    }
+
+    thead tr{
+        background:#f8fafc;
+    }
+
+    thead th{
+        padding:12px 20px;
+        font-size:11px;
+        font-weight:600;
+        color:#475569;
+        text-transform:uppercase;
+        letter-spacing:.05em;
+        border-bottom:1px solid #e2e8f0;
+        white-space:nowrap;
+    }
+
+    tbody td{
+        padding:14px 20px;
+        border-bottom:1px solid #f1f5f9;
+        vertical-align:middle;
+    }
+
+    tbody tr{
+        transition:.15s ease;
+    }
+
+    tbody tr:hover{
+        background:#f8fafc;
+    }
+
+    /* STUDENT */
+    .student-box{
+        display:flex;
+        align-items:center;
+        gap:10px;
+    }
+
+    .avatar{
+        width:36px;
+        height:36px;
+        border-radius:10px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-weight:700;
+        font-size:13px;
+        color:#2563eb;
+        background:#eff6ff;
+        flex-shrink:0;
+    }
+
+    .student-name{
+        font-size:13.5px;
+        font-weight:600;
+        color:#0f172a;
+        line-height:1.4;
+    }
+
+    .student-code{
+        font-size:12px;
+        color:#64748b;
+        margin-top:1px;
+    }
+
+    /* BADGE */
+    .timeline-badge{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding:4px 10px;
+        border-radius:6px;
+        font-size:12px;
+        font-weight:600;
+        white-space:nowrap;
+    }
+
+    .badge-green{
+        background:#f0fdf4;
+        color:#166534;
+        border:1px solid #bbf7d0;
+    }
+
+    .badge-blue{
+        background:#f0f9ff;
+        color:#075985;
+        border:1px solid #bae6fd;
+    }
+
+    .badge-orange{
+        background:#fff7ed;
+        color:#9a3412;
+        border:1px solid #ffedd5;
+    }
+
+    /* DATE */
+    .date-text{
+        font-size:13.5px;
+        font-weight:600;
+        color:#334155;
+        line-height:1.4;
+    }
+
+    .time-text{
+        font-size:12px;
+        color:#64748b;
+        margin-top:1px;
+    }
+
+    /* ACTION */
+    .action-btn{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding:6px 12px;
+        border-radius:8px;
+        border:1px solid #cbd5e1;
+        color:#475569;
+        background:#fff;
+        font-size:12.5px;
+        font-weight:600;
+        transition:.15s ease;
+        text-decoration:none;
+        line-height: 1;
+    }
+
+    .action-btn:hover{
+        background:#f8fafc;
+        border-color:#94a3b8;
+        color:#0f172a;
+    }
+
+    /* PAGINATION */
+    .pagination-btn{
+        width:32px;
+        height:32px;
+        border-radius:8px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:13px;
+        font-weight:600;
+        color:#475569;
+        transition:.15s ease;
+    }
+
+    .pagination-btn:hover{
+        background:#f1f5f9;
+    }
+
+    .pagination-active{
+        background:#2563eb;
+        color:white !important;
+    }
+
+    /* RESPONSIVE */
+    @@media(max-width:1024px){
+
+        .hero-title{
+            font-size:24px;
+        }
+
+        .stat-card{
+            height:auto;
+            min-height:130px;
+        }
+
+        thead{
+            display:none;
+        }
+
+        table,
+        tbody,
+        tr,
+        td{
+            display:block;
+            width:100%;
+        }
+
+        tbody tr{
+            padding:14px;
+            border-bottom:1px solid #e2e8f0;
+        }
+
+        tbody td{
+            padding:6px 0;
+            border:none;
+        }
+    }
+
+</style>
+}
+
+<div class="page-wrapper p-5 xl:p- min-h-screen">
+
+    <div class="mb-5">
+
+        <h1 class="hero-title">
+            Bài đã duyệt
+        </h1>
+
+        <p class="hero-desc">
+            Theo dõi toàn bộ bài tiến độ đã được giảng viên phê duyệt trong hệ thống khóa luận tốt nghiệp.
+        </p>
+
+    </div>
+
+    <div class="grid grid-cols-12 gap-5 mb-7">
+
+        <div class="col-span-12 lg:col-span-3">
+
+            <div class="soft-card stat-card">
+
+                <div class="flex items-start justify-between">
+
+                    <div>
+
+                        <div class="stat-label">
+                            Tổng bài đã duyệt
+                        </div>
+
+                        <div class="stat-value">
+                            @totalApproved
+                        </div>
+
+                    </div>
+
+                    <div class="icon-box bg-blue-50">
+
+                        <span class="material-symbols-outlined text-[20px] text-blue-600">
+                            task_alt
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="stat-sub text-emerald-600">
+
+                    <span class="material-symbols-outlined text-[16px]">
+                        trending_up
+                    </span>
+
+                    +@(Model.Count()) bài mới hôm nay
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-span-12 lg:col-span-3">
+
+            <div class="soft-card stat-card">
+
+                <div class="flex items-start justify-between">
+
+                    <div>
+
+                        <div class="stat-label">
+                            Tỉ lệ reject
+                        </div>
+
+                        <div class="stat-value">
+                            @rejectRate%
+                        </div>
+
+                    </div>
+
+                    <div class="icon-box bg-red-50">
+
+                        <span class="material-symbols-outlined text-[20px] text-red-500">
+                            cancel
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="flex items-center gap-3">
+
+                    <div class="progress-wrap flex-1">
+
+                        <div class="progress-bar bg-red-500"
+                             style="width:@rejectRate%">
+                        </div>
+
+                    </div>
+
+                    <span class="text-slate-500 text-[12px] font-semibold">
+                        Thấp
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-span-12 lg:col-span-3">
+
+            <div class="soft-card stat-card">
+
+                <div class="flex items-start justify-between gap-4">
+
+                    <div class="flex-1 min-w-0">
+
+                        <div class="stat-label">
+                            Deadline gần nhất
+                        </div>
+
+                        <div class="stat-deadline-title">
+
+                            @(latestDeadline?.Title ?? "Chưa có")
+
+                        </div>
+
+                    </div>
+
+                    <div class="icon-box bg-indigo-50">
+
+                        <span class="material-symbols-outlined text-[20px] text-indigo-600">
+                            calendar_month
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="text-slate-500 font-medium text-[12.5px]">
+
+                    @(latestDeadline?.Date.ToString("dd/MM/yyyy"))
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-span-12 lg:col-span-3">
+
+            <div class="soft-card stat-card justify-center gap-3">
+
+                <div>
+
+                    <div class="flex items-center justify-between mb-1">
+
+                        <span class="text-[13px] font-medium text-slate-600">
+                            Báo cáo lần 1
+                        </span>
+
+                        <span class="font-semibold text-blue-600 text-[12px]">
+                            @report1Count bài
+                        </span>
+
+                    </div>
+
+                    <div class="progress-wrap">
+
+                        <div class="progress-bar bg-blue-600"
+                             style="width:@(totalApproved > 0 ? (report1Count * 100 / totalApproved) : 0)%">
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <div class="flex items-center justify-between mb-1">
+
+                        <span class="text-[13px] font-medium text-slate-600">
+                            Báo cáo lần 2
+                        </span>
+
+                        <span class="font-semibold text-emerald-600 text-[12px]">
+                            @report2Count bài
+                        </span>
+
+                    </div>
+
+                    <div class="progress-wrap">
+
+                        <div class="progress-bar bg-emerald-500"
+                             style="width:@(totalApproved > 0 ? (report2Count * 100 / totalApproved) : 0)%">
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="soft-card overflow-hidden">
+
+        <div class="toolbar">
+
+            <form method="get" class="flex-1">
+
+                <div class="relative flex-1 min-w-[260px] max-w-xl">
+
+                    <span class="material-symbols-outlined absolute left-4 text-slate-400 text-[18px]">
+                        search
+                    </span>
+
+                    <input type="text"
+                           name="keyword"
+                           value="@ViewBag.Keyword"
+                           placeholder="Tên sinh viên / Timeline..."
+                           class="input-soft w-full pl-10 pr-4" />
+
+                </div>
+
+                <select name="timelineId"
+                        class="input-soft px-4 min-w-[220px]">
+
+                    <option value="">
+                        Tất cả Timeline
+                    </option>
+
+                    @if (timelines != null)
+                    {
+                        @foreach (var tl in timelines)
+                        {
+                            <option value="@tl.Id"
+                                    selected="@(ViewBag.TimelineId != null && ViewBag.TimelineId == tl.Id)">
+                                @tl.Title
+                            </option>
+                        }
+                    }
+
+                </select>
+
+                <button type="submit"
+                        class="btn-soft btn-primary px-5">
+
+                    <span class="material-symbols-outlined text-[16px]">
+                        search
+                    </span>
+
+                    Tìm kiếm
+
+                </button>
+
+            </form>
+
+            <div class="toolbar-actions">
+
+                <a href="/Timeline/ApprovedSubmissions"
+                   class="btn-soft btn-outline w-[40px]">
+
+                    <span class="material-symbols-outlined text-slate-600 text-[18px]">
+                        refresh
+                    </span>
+
+                </a>
+
+                <button class="btn-soft btn-outline px-4">
+
+                    <span class="material-symbols-outlined text-[16px]">
+                        download
+                    </span>
+
+                    Export Excel
+
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th style="width: 80px;">STT</th>
+
+                        <th>Sinh viên</th>
+
+                        <th>Timeline</th>
+
+                        <th>Ngày duyệt</th>
+
+                        <th class="text-center" style="width: 140px;">Hành động</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @if (!Model.Any())
+                    {
+                        <tr>
+
+                            <td colspan="5"
+                                class="text-center py-20 text-slate-400 text-sm italic">
+
+                                Không có dữ liệu
+
+                            </td>
+
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model)
+                        {
+                            var badgeClass =
+                                item.Timeline?.Title?.Contains("1") == true
+                                ? "badge-green"
+                                : item.Timeline?.Title?.Contains("2") == true
+                                ? "badge-blue"
+                                : "badge-orange";
+
+                            <tr>
+
+                                <td class="font-medium text-slate-400 text-[13px]">
+                                    @(stt.ToString("D2"))
+                                </td>
+
+                                <td>
+
+                                    <div class="student-box">
+
+                                        <div class="avatar">
+
+                                            @(item.Student?.FullName?.Substring(0,1).ToUpper())
+
+                                        </div>
+
+                                        <div>
+
+                                            <div class="student-name">
+                                                @item.Student?.FullName
+                                            </div>
+
+                                            <div class="student-code">
+                                                @(item.Student?.UserCode ?? "SV000")
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </td>
+
+                                <td>
+
+                                    <span class="timeline-badge @badgeClass">
+
+                                        <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+
+                                        @item.Timeline?.Title
+
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    <div class="date-text">
+                                        @(item.ReviewedAt?.ToString("dd/MM/yyyy"))
+                                    </div>
+
+                                    <div class="time-text">
+                                        @(item.ReviewedAt?.ToString("hh:mm tt"))
+                                    </div>
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    @if (!string.IsNullOrEmpty(item.FilePath))
+                                    {
+                                        <a href="@item.FilePath"
+                                           target="_blank"
+                                           class="action-btn">
+
+                                            <span class="material-symbols-outlined text-[16px]">
+                                                visibility
+                                            </span>
+
+                                            Xem file
+
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-slate-400 italic text-xs">
+                                            Không có file
+                                        </span>
+                                    }
+
+                                </td>
+
+                            </tr>
+
+                            stt++;
+                        }
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        @if (ViewBag.TotalPages > 1)
+        {
+            <div class="p-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-slate-50/30">
+
+                <div class="text-[13px] text-slate-500">
+                    Hiển thị <b>@Model.Count()</b> trong <b>@totalApproved</b> kết quả
+                </div>
+
+                <div class="flex items-center gap-1.5">
+
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <a href="@Url.Action("ApprovedSubmissions", new {
+                                page = i,
+                                keyword = ViewBag.Keyword,
+                                timelineId = ViewBag.TimelineId
+                           })"
+
+                           class="pagination-btn @(ViewBag.CurrentPage == i
+                               ? "pagination-active"
+                               : "")">
+
+                            @i
+
+                        </a>
+                    }
+
+                </div>
+
+            </div>
+        }
+
+    </div>
+
+</div>

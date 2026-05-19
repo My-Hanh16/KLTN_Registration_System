@@ -1,0 +1,834 @@
+﻿@using X.PagedList.Mvc.Core;
+@using X.PagedList;
+@using KLTN_Registration_System.Models.Entities
+@model IPagedList<Topic>
+
+@{
+    Layout = "_layoutStudent";
+    ViewData["Title"] = "Danh sách đề tài KLTN";
+    var fullTopicIds = ViewBag.FullTopicIds as List<int> ?? new List<int>();
+}
+
+<style>
+    /* =========================
+       GLOBAL
+    ========================== */   
+
+    body {
+        background: #f8fafc;
+    }
+
+    /* =========================
+       TOPIC ITEM
+    ========================== */
+
+    .topic-item {
+        background: #fff;
+        border-radius: 14px;
+        padding: 20px 24px;
+        margin-bottom: 14px;
+        border: 1px solid #edf2f7;
+
+        transition: all 0.22s ease;
+
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+    }
+
+    .topic-item:hover {
+        box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+        transform: translateY(-1px);
+        border-color: #dbeafe;
+    }
+
+    /* =========================
+       FULL TOPIC
+    ========================== */
+
+    .topic-item.topic-full {
+        opacity: 0.58;
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0;
+        filter: grayscale(0.35);
+    }
+
+    .topic-full h5 {
+        text-decoration: line-through;
+        color: #64748b !important;
+    }
+
+    .topic-full .badge-category,
+    .topic-full .badge-type,
+    .topic-full .text-primary,
+    .topic-full i,
+    .topic-full .text-success,
+    .topic-full .text-full,
+    .topic-full .meta-data {
+        background-color: #e2e8f0 !important;
+        color: #94a3b8 !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    .topic-full .btn-register,
+    .topic-full .btn-primary {
+        pointer-events: none;
+    }
+
+    .topic-full .btn-full {
+        background: #cbd5e1 !important;
+        color: #94a3b8 !important;
+        border: none !important;
+    }
+
+    /* =========================
+       TOPIC INFO
+    ========================== */
+
+    .topic-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .topic-meta-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+    }
+
+    .label-department {
+        font-size: 11px;
+        font-weight: 700;
+        color: #2b4eff;
+        letter-spacing: 0.35px;
+
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* =========================
+       TITLE
+    ========================== */
+
+    .topic-info h5 {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+
+        margin: 6px 0 8px;
+        line-height: 1.45;
+
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+
+        overflow: hidden;
+    }
+
+    /* =========================
+       BADGES
+    ========================== */
+
+    .badge-category,
+    .badge-type {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+
+        padding: 3px 8px 2px;
+
+        border-radius: 5px;
+        letter-spacing: 0.4px;
+        line-height: 1.2;
+
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* LEVEL */
+
+    .tag-basic {
+        background: #f0fff4;
+        color: #38a169;
+        border: 1px solid #c6f6d5;
+    }
+
+    .tag-medium {
+        background: #fffaf0;
+        color: #dd6b20;
+        border: 1px solid #fbd38d;
+    }
+
+    .tag-advanced {
+        background: #fff5f5;
+        color: #e53e3e;
+        border: 1px solid #fed7d7;
+    }
+
+    /* TYPE */
+
+    .tag-group {
+        background: #f5f3ff;
+        color: #7c3aed;
+        border: 1px solid #ddd6fe;
+    }
+
+    .tag-individual {
+        background: #eff6ff;
+        color: #2563eb;
+        border: 1px solid #dbeafe;
+    }
+
+    /* =========================
+       META
+    ========================== */
+
+    .meta-data {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+
+        flex-wrap: wrap;
+
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 400;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .meta-item i {
+        font-size: 13px;
+        color: #94a3b8;
+        flex-shrink: 0;
+    }
+
+    .meta-item strong {
+        color: #1e293b;
+        font-weight: 600;
+    }
+
+    .text-full {
+        color: #e53e3e;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    /* =========================
+       ACTIONS
+    ========================== */
+
+    .topic-actions {
+        display: flex;
+        align-items: center;
+        align-self: center;
+
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .link-detail {
+        font-size: 13.5px;
+        font-weight: 600;
+
+        color: #2b4eff;
+        text-decoration: none;
+
+        white-space: nowrap;
+        transition: color 0.2s;
+    }
+
+    .link-detail:hover {
+        color: #1a3bd1;
+        text-decoration: underline;
+    }
+
+    /* =========================
+       BUTTONS
+    ========================== */
+
+    .btn-register {
+        background: #2b4eff;
+        color: white;
+
+        border-radius: 8px;
+        padding: 8px 20px;
+
+        font-size: 13.5px;
+        font-weight: 600;
+
+        border: none;
+        white-space: nowrap;
+
+        transition: all 0.2s ease;
+
+        box-shadow: 0 2px 8px rgba(43,78,255,0.18);
+    }
+
+    .btn-register:hover {
+        background: #1a3bd1;
+        color: white;
+    }
+
+    .btn-register.btn-group-type {
+        background: #7c3aed;
+        box-shadow: 0 2px 8px rgba(124,58,237,0.22);
+    }
+
+    .btn-register.btn-group-type:hover {
+        background: #6d28d9;
+    }
+
+    .btn-full {
+        background: #edf2f7;
+        color: #a0aec0;
+
+        cursor: not-allowed;
+
+        border-radius: 8px;
+        padding: 8px 20px;
+
+        font-size: 13.5px;
+        font-weight: 600;
+
+        border: none;
+        white-space: nowrap;
+    }
+
+    /* =========================
+       BTN PROPOSE
+    ========================== */
+
+    .btn-propose {
+        border-radius: 12px;
+
+        font-size: 13.5px;
+        font-weight: 700;
+
+        background-color: #2b4eff;
+        color: #fff;
+
+        border: none;
+
+        padding: 10px 20px;
+
+        box-shadow: 0 4px 14px rgba(43,78,255,0.28);
+
+        transition: background 0.2s;
+
+        white-space: nowrap;
+
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+
+        text-decoration: none;
+    }
+
+    .btn-propose:hover {
+        background-color: #1a3bd1;
+        color: #fff;
+    }
+
+    /* =========================
+       FILTER BAR
+    ========================== */
+
+    /* =========================
+   FILTER BAR
+========================= */
+
+.filter-bar {
+    border-radius: 14px;
+    border: 1px solid #edf2f7;
+
+    padding: 12px 16px;
+    background: #fff;
+
+    box-shadow: 0 1px 2px rgba(15,23,42,0.03);
+}
+
+/* ROW */
+.filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+/* LEFT SIDE */
+.filter-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    flex-wrap: nowrap;
+    overflow-x: auto;
+
+    flex: 1;
+}
+
+.filter-left::-webkit-scrollbar {
+    display: none;
+}
+
+/* SELECT */
+.filter-bar .form-select {
+    width: fit-content !important;
+    min-width: 170px !important;
+    max-width: 210px;
+
+    height: 38px;
+
+    flex: 0 0 auto !important;
+
+    border-radius: 10px;
+    border: none;
+
+    background: #f8fafc;
+
+    padding: 0 38px 0 14px;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #475569;
+
+    box-shadow: none;
+
+    white-space: nowrap;
+}
+
+/* =========================
+   FILTER BUTTON GROUP
+========================= */
+
+.level-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+
+    background: #f8fafc;
+    border-radius: 10px;
+
+    padding: 4px 6px;
+}
+
+.level-filter::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-label {
+    font-size: 11px;
+    font-weight: 700;
+
+    color: #94a3b8;
+
+    padding: 0 10px;
+
+    letter-spacing: 0.4px;
+
+    white-space: nowrap;
+}
+
+.filter-level-btn {
+    height: 34px;
+
+    padding: 0 14px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: transparent;
+
+    font-size: 12.5px;
+    font-weight: 600;
+
+    color: #64748b;
+
+    transition: all 0.18s ease;
+
+    white-space: nowrap;
+
+    flex-shrink: 0;
+}
+
+.filter-level-btn.active {
+    background: #2b4eff;
+    color: #fff;
+
+    box-shadow: 0 2px 8px rgba(43,78,255,0.18);
+}
+
+.filter-level-btn:hover:not(.active) {
+    background: #eef2ff;
+    color: #2b4eff;
+}
+
+/* =========================
+   CLEAR FILTER
+========================= */
+
+.btn-clear-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #64748b;
+    text-decoration: none;
+
+    white-space: nowrap;
+
+    flex-shrink: 0;
+}
+
+.btn-clear-filter:hover {
+    color: #1e293b;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@@media (max-width: 768px) {
+
+    .filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-left {
+        overflow-x: auto;
+    }
+
+    .btn-clear-filter {
+        margin-top: 8px;
+    }
+}
+</style>
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
+            Danh sách đề tài KLTN
+        </h2>
+        <div class="d-flex align-items-center gap-2">
+            <span style="font-size: 17px; font-weight: 800; color: #2b4eff;">@ViewBag.TotalAvailable</span>
+            <span style="font-size: 13.5px; color: #64748b; font-weight: 500;">đề tài đang khả dụng cho học kỳ này</span>
+        </div>
+    </div>
+
+    @if (User.IsInRole("Student"))
+    {
+        <a href="@Url.Action("Propose", "Topic")" class="btn-propose">
+            <i class="fa-solid fa-plus"></i>
+            <span>Đề xuất đề tài mới</span>
+        </a>
+    }
+    else if (User.IsInRole("Admin") || User.IsInRole("Lecturer"))
+    {
+        <button class="btn-propose">
+            <i class="fa-solid fa-plus"></i>
+            <span>Đề xuất đề tài mới</span>
+        </button>
+    }
+</div>
+
+<!-- ALERTS -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 shadow-sm mb-3" style="font-size: 13.5px; border-radius: 12px;">
+        <i class="fa-solid fa-circle-check me-2"></i>@TempData["Success"]
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger border-0 shadow-sm mb-3" style="font-size: 13.5px; border-radius: 12px;">
+        <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["Error"]
+    </div>
+}
+
+<!-- FILTER BAR -->
+<form asp-action="Index" method="get" id="filterForm">
+
+    <div class="filter-bar mb-4">
+
+        <div class="filter-row">
+
+            <!-- LEFT -->
+            <div class="filter-left">
+
+                <!-- Bộ môn -->
+                <select name="majorId"
+                        class="form-select"
+                        onchange="this.form.submit()">
+
+                    <option value="">BỘ MÔN: Tất cả</option>
+
+                    @if (ViewBag.Majors != null)
+                    {
+                        @foreach (var m in (IEnumerable<KLTN_Registration_System.Models.Entities.Major>)ViewBag.Majors)
+                        {
+                            <option value="@m.Id"
+                                    selected="@(Context.Request.Query["majorId"] == m.Id.ToString())">
+                                @m.Name
+                            </option>
+                        }
+                    }
+                </select>
+
+                <!-- Trạng thái -->
+                <select name="status"
+                        class="form-select"
+                        onchange="this.form.submit()">
+
+                    <option value="">TRẠNG THÁI: Tất cả</option>
+
+                    <option value="available"
+                            selected="@(Context.Request.Query["status"] == "available")">
+                        Còn chỗ
+                    </option>
+
+                    <option value="full"
+                            selected="@(Context.Request.Query["status"] == "full")">
+                        Đã đầy
+                    </option>
+
+                </select>
+
+                <!-- Level -->
+                <!-- FILTER TAG -->
+<div class="level-filter">
+
+    <span class="filter-label">LOẠI:</span>
+
+    <!-- LEVEL -->
+    <input type="hidden"
+           name="level"
+           id="levelInput"
+           value="@Context.Request.Query["level"]" />
+
+    <button type="button"
+            onclick="submitLevel('Easy')"
+            class="filter-level-btn @(Context.Request.Query["level"] == "Easy" ? "active" : "")">
+        Cơ bản
+    </button>
+
+    <button type="button"
+            onclick="submitLevel('Medium')"
+            class="filter-level-btn @(Context.Request.Query["level"] == "Medium" ? "active" : "")">
+        Trung bình
+    </button>
+
+    <button type="button"
+            onclick="submitLevel('Hard')"
+            class="filter-level-btn @(Context.Request.Query["level"] == "Hard" ? "active" : "")">
+        Nâng cao
+    </button>
+
+    <!-- TYPE -->
+    <input type="hidden"
+           name="type"
+           id="typeInput"
+           value="@Context.Request.Query["type"]" />
+
+    <button type="button"
+            onclick="submitType('individual')"
+            class="filter-level-btn @(Context.Request.Query["type"] == "individual" ? "active" : "")">
+        Cá nhân
+    </button>
+
+    <button type="button"
+            onclick="submitType('group')"
+            class="filter-level-btn @(Context.Request.Query["type"] == "group" ? "active" : "")">
+        Đồ án nhóm
+    </button>
+
+</div>
+
+            </div>
+
+            <!-- RIGHT -->
+            <a asp-action="Index" class="btn-clear-filter">
+                <i class="fa-solid fa-filter-circle-xmark"></i>
+                Xoá bộ lọc
+            </a>
+
+        </div>
+
+    </div>
+
+</form>
+
+<!-- TOPIC LIST -->
+<div class="topic-container">
+    @foreach (var item in Model)
+    {
+        var current = item.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+        var pending = item.Registrations?.Count(r => r.Status == "Pending") ?? 0;
+        var reserved = current + pending;
+        var isFull = fullTopicIds.Contains(item.Id) || reserved >= item.MaxStudents;
+        var isClosed = !item.IsRegistrationOpen || DateTime.Now > item.Deadline;
+
+        string levelText = "Cơ bản";
+        string levelColorClass = "tag-basic";
+
+        if (item.Level.ToString() == "Hard") {
+            levelText = "Nâng cao";
+            levelColorClass = "tag-advanced";
+        }
+        else if (item.Level.ToString() == "Medium") {
+            levelText = "Trung bình";
+            levelColorClass = "tag-medium";
+        }
+
+        <div class="topic-item @(isFull || isClosed ? "topic-full" : "")">
+            <div class="topic-info">
+
+                <!-- Hàng badge / bộ môn -->
+                <div class="topic-meta-top">
+                    <span class="label-department">
+                        ● @(string.IsNullOrEmpty(item.DepartmentName) ? item.Major?.Name?.ToUpper() : item.DepartmentName.ToUpper())
+                    </span>
+                    <span class="badge-category @levelColorClass">@levelText.ToUpper()</span>
+                    @if (item.MaxStudents > 1)
+                    {
+                        <span class="badge-type tag-group">Đồ án Nhóm</span>
+                    }
+                    else
+                    {
+                        <span class="badge-type tag-individual">Cá nhân</span>
+                    }
+                </div>
+
+                <!-- Tiêu đề -->
+                <h5>@item.Title</h5>
+
+                <!-- Meta -->
+                <div class="meta-data">
+                    <div class="meta-item">
+                        <i class="fa-solid fa-user-tie"></i>
+                        <span>GVHD: <strong>@(!string.IsNullOrEmpty(item.Lecturer?.FullName) ? item.Lecturer.FullName : item.Lecturer?.Email)</strong></span>
+                    </div>
+
+                    <div class="meta-item">
+                        <i class="fa-solid fa-users"></i>
+                        @if (isFull)
+                        {
+                            <span class="text-full">Đã hết chỗ (<strong>@reserved/@item.MaxStudents</strong>)</span>
+                        }
+                        else
+                        {
+                            <span>Sĩ số: <strong>@current/@item.MaxStudents</strong></span>
+                            @if (item.MaxStudents > 1)
+                            {
+                                <small class="text-muted ms-1">(Tối đa @item.MaxStudents)</small>
+                            }
+                            @if (pending > 0)
+                            {
+                                <span class="text-warning small ms-1">(@pending chờ duyệt)</span>
+                            }
+                        }
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Actions -->
+            <div class="topic-actions">
+                <a asp-action="Details" asp-route-id="@item.Id" class="link-detail">Xem chi tiết</a>
+
+                @if (User.IsInRole("Student"))
+                {
+                    if (isFull)
+                    {
+                        <button class="btn-full" disabled title="Đề tài này đã đủ số lượng đăng ký/chờ duyệt">
+                            <i class="fa-solid fa-lock me-1"></i> Đã đủ
+                        </button>
+                    }
+                    else if (isClosed)
+                    {
+                        <button class="btn-full" disabled>Đã đóng</button>
+                    }
+                    else if (ViewBag.HasRegistered == true)
+                    {
+                        <button class="btn-full" disabled title="Bạn đã đăng ký một đề tài khác">Đã đăng ký</button>
+                    }
+                    else
+                    {
+                        if (item.MaxStudents > 1)
+                        {
+                            <a asp-action="RegisterGroup" asp-route-id="@item.Id"
+                               class="btn-register btn-group-type">
+                                <i class="fa-solid fa-users-plus"></i> Đăng ký nhóm
+                            </a>
+                        }
+                        else
+                        {
+                            <form asp-action="Register" method="post" class="d-inline">
+                                <input type="hidden" name="topicId" value="@item.Id" />
+                                <button type="submit" class="btn-register"
+                                        onclick="return confirm('Đăng ký đề tài này?')">
+                                    Đăng ký
+                                </button>
+                            </form>
+                        }
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- PAGINATION -->
+<div class="d-flex justify-content-center mt-4">
+    @Html.PagedListPager(Model, page => Url.Action("Index", new {
+            page,
+            majorId = Context.Request.Query["majorId"].ToString(),
+            status = Context.Request.Query["status"].ToString(),
+            level = Context.Request.Query["level"].ToString(),
+            type = Context.Request.Query["type"].ToString(),
+            search = Context.Request.Query["search"].ToString()
+        }),
+        new PagedListRenderOptions {
+            LiElementClasses = new[] { "page-item" },
+            PageClasses = new[] { "page-link" },
+            UlElementClasses = new[] { "pagination shadow-sm" },
+            MaximumPageNumbersToDisplay = 5,
+            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+            DisplayLinkToNextPage = PagedListDisplayMode.Always
+        })
+</div>
+
+@section Scripts {
+    <script>
+        function submitLevel(val) {
+            const input = document.getElementById('levelInput');
+            input.value = (input.value === val) ? "" : val;
+            document.getElementById('filterForm').submit();
+        }
+
+        function submitType(val) {
+            const input = document.getElementById('typeInput');
+
+            input.value = (input.value === val) ? "" : val;
+
+            document.getElementById('filterForm').submit();
+        }
+    </script>
+}

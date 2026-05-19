@@ -1,0 +1,39 @@
+﻿@using KLTN_Registration_System.Models.Entities
+@model List<Registration>
+
+<h2>Danh sách sinh viên đăng ký</h2>
+
+@if (TempData["Success"] != null)
+{
+    <div style="color:green">@TempData["Success"]</div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div style="color:red">@TempData["Error"]</div>
+}
+
+<table border="1" cellpadding="10">
+    <tr>
+        <th>Đề tài</th>
+        <th>Sinh viên</th>
+        <th>Trạng thái</th>
+        <th>Hành động</th>
+    </tr>
+
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.Topic.Title</td>
+            <td>@item.Student.UserName</td>
+            <td>@item.Status</td>
+            <td>
+                @if (item.Status == "Pending")
+                {
+                    <a href="/Topic/Approve/@item.Id">✔ Duyệt</a>
+                    <a href="/Topic/Reject/@item.Id">❌ Từ chối</a>
+                }
+            </td>
+        </tr>
+    }
+</table>

@@ -1,0 +1,65 @@
+﻿@{
+    ViewData["Title"] = "Nhập đề tài từ Excel";
+}
+
+<div class="p-6">
+    <h2 class="text-2xl font-bold mb-4">Tải lên danh sách đề tài</h2>
+
+    <form asp-controller="Admin"
+          asp-action="ImportTopics"
+          method="post"
+          enctype="multipart/form-data"
+          id="importExcelForm">
+
+        @Html.AntiForgeryToken()
+
+        <!-- Input file -->
+        <input type="file"
+               name="file"
+               id="excelInput"
+               accept=".xlsx, .xls"
+               hidden
+               onchange="handleFileSelect()" />
+
+        <!-- Hiển thị tên file -->
+        <p id="fileName" class="text-gray-600 mb-3 italic"></p>
+
+        <!-- Button chọn file -->
+        <button type="button"
+                onclick="document.getElementById('excelInput').click()"
+                class="bg-blue-600 text-white px-4 py-2 rounded">
+            Chọn file Excel
+        </button>
+
+        <!-- Button submit -->
+        <button type="submit"
+                id="submitBtn"
+                class="bg-green-600 text-white px-4 py-2 rounded ml-2 hidden">
+            Upload
+        </button>
+
+        <!-- Loading -->
+        <p id="loadingText" class="text-blue-500 mt-3 hidden">
+            ⏳ Đang xử lý file...
+        </p>
+    </form>
+</div>
+
+<script>
+    function handleFileSelect() {
+        const input = document.getElementById("excelInput");
+        const fileName = document.getElementById("fileName");
+        const submitBtn = document.getElementById("submitBtn");
+
+        if (input.files.length > 0) {
+            fileName.innerText = "File đã chọn: " + input.files[0].name;
+            submitBtn.classList.remove("hidden");
+        }
+    }
+
+    // Hiển thị loading khi submit
+    document.getElementById("importExcelForm").addEventListener("submit", function () {
+        document.getElementById("loadingText").classList.remove("hidden");
+        document.getElementById("submitBtn").disabled = true;
+    });
+</script>

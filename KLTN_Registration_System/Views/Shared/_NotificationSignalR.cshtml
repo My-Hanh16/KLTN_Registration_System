@@ -1,0 +1,208 @@
+﻿@* ============================================================
+   FILE: Views/Shared/_NotificationSignalR.cshtml  —  MỚI
+   Partial view — nhúng vào cuối _LayoutDashboard.cshtml
+   và _LayoutStudent.cshtml (trước thẻ </body>)
+   ============================================================ *@
+
+@* ── Khung toast thông báo realtime (ẩn mặc định) ── *@
+<div id="notif-toast-container"
+     style="position:fixed;top:1.2rem;right:1.2rem;z-index:9999;
+            display:flex;flex-direction:column;gap:8px;max-width:360px;">
+</div>
+
+@* ── Script SignalR client ── *@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"
+        integrity="sha512-2P2xHrBRPMBPFBiANGCxBpGkZqWJLUhIAULGxs5Jy7vHXAVkwlXG89SPnNB1lWaNUF2cVq1JdVcVIX6XnHoQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script>
+    (function () {
+        // ── Kết nối hub ──────────────────────────────────────────
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/notification")
+            .withAutomaticReconnect([0, 2000, 5000, 10000])
+            .configureLogging(signalR.LogLevel.Warning)
+            .build();
+
+        // ── Nhận thông báo mới ───────────────────────────────────
+            connection.on("ReceiveNotification", function (data) {
+
+        // Badge
+        updateBadge(data.unreadCount);
+
+        // Toast
+        showToast(data);
+
+        // Append realtime vào list notification
+        appendNotification(data);
+    });
+
+        // ── Chỉ cập nhật badge (khi mark-as-read) ───────────────
+        connection.on("UpdateBadge", function (count) {
+            updateBadge(count);
+        });
+
+        // ── Khởi động kết nối ────────────────────────────────────
+        async function startConnection() {
+            try {
+                await connection.start();
+            } catch (err) {
+                setTimeout(startConnection, 5000);
+            }
+        }
+        startConnection();
+
+        // ── Cập nhật badge số thông báo chưa đọc ────────────────
+        function updateBadge(count) {
+            // Tìm tất cả badge (có thể có nhiều selector tùy layout)
+            document.querySelectorAll(
+                '.notif-badge, #notif-badge, [data-notif-badge]'
+            ).forEach(function (el) {
+                if (count > 0) {
+                    el.textContent = count > 99 ? '99+' : count;
+                    el.style.display = 'inline-flex';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        }
+
+        // ── Hiện toast góc phải ──────────────────────────────────
+        function showToast(data) {
+            const colors = {
+                'RegistrationApproved': '#16a34a',
+                'RegistrationRejected': '#dc2626',
+                'TopicApproved':        '#2563eb',
+                'System':               '#6b7280'
+            };
+            const icons = {
+                'RegistrationApproved': '✅',
+                'RegistrationRejected': '❌',
+                'TopicApproved':        '📋',
+                'System':               '🔔'
+            };
+
+            const color = colors[data.type] || colors['System'];
+            const icon  = icons[data.type]  || icons['System'];
+
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background: #fff;
+                border: 1px solid #e5e7eb;
+                border-left: 4px solid ${color};
+                border-radius: 10px;
+                padding: 12px 14px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+                cursor: pointer;
+                animation: slideInToast .3s ease;
+                max-width: 360px;
+            `;
+            toast.innerHTML = `
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                    <span style="font-size:18px;line-height:1;">${icon}</span>
+                    <div style="flex:1;min-width:0;">
+                        <p style="margin:0 0 3px;font-weight:600;font-size:14px;
+                                   color:#111;white-space:nowrap;overflow:hidden;
+                                   text-overflow:ellipsis;">${escHtml(data.title)}</p>
+                        <p style="margin:0 0 4px;font-size:12px;color:#374151;
+                                   display:-webkit-box;-webkit-line-clamp:2;
+                                   -webkit-box-orient:vertical;overflow:hidden;">
+                            ${escHtml(data.content)}
+                        </p>
+                        <p style="margin:0;font-size:11px;color:#9ca3af;">${escHtml(data.createdAt)}</p>
+                    </div>
+                    <button onclick="this.closest('[data-toast]').remove()"
+                            style="border:none;background:none;cursor:pointer;
+                                   color:#9ca3af;font-size:16px;padding:0;line-height:1;">×</button>
+                </div>`;
+
+            toast.setAttribute('data-toast', '');
+            toast.addEventListener('click', function (e) {
+                if (e.target.tagName === 'BUTTON') return;
+                window.location.href = data.redirectUrl || '/Student/Notifications';
+            });
+
+            const container = document.getElementById('notif-toast-container');
+            container.prepend(toast);
+
+            // Tự đóng sau 6 giây
+            setTimeout(function () {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity .4s';
+                setTimeout(function () { toast.remove(); }, 400);
+            }, 6000);
+        }
+            function appendNotification(data) {
+
+        // Tìm container list notification
+        const list =
+            document.querySelector('#notification-list') ||
+            document.querySelector('.notification-list');
+
+        if (!list) return;
+
+        const html = `
+            <div class="notification-item"
+                 style="
+                    background:#fff;
+                    border-radius:16px;
+                    padding:20px;
+                    margin-bottom:14px;
+                    border-left:4px solid #2563eb;
+                    box-shadow:0 2px 8px rgba(0,0,0,0.04);
+                 ">
+
+                <div style="display:flex;justify-content:space-between;gap:20px;">
+
+                    <div>
+                        <h4 style="
+                            margin:0 0 6px;
+                            font-size:18px;
+                            font-weight:700;
+                            color:#111827;">
+                            ${escHtml(data.title)}
+                        </h4>
+
+                        <p style="
+                            margin:0;
+                            color:#6b7280;
+                            font-size:15px;">
+                            ${escHtml(data.content)}
+                        </p>
+                    </div>
+
+                    <div style="
+                        white-space:nowrap;
+                        color:#9ca3af;
+                        font-size:13px;">
+                        ${escHtml(data.createdAt)}
+                    </div>
+
+                </div>
+            </div>
+        `;
+
+        list.insertAdjacentHTML('afterbegin', html);
+    }
+
+        function escHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+    })();
+</script>
+
+@* ── CSS animation toast ── *@
+<style>
+    @@keyframes slideInToast {
+        from {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+</style>

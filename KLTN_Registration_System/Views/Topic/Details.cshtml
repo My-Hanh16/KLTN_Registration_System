@@ -1,0 +1,331 @@
+﻿@* ============================================================
+   FILE: Views/Topic/Details.cshtml
+   ROUTE: /Topic/Details/{id}
+   MODEL: KLTN_Registration_System.Models.Entities.Topic
+   ============================================================ *@
+@model KLTN_Registration_System.Models.Entities.Topic
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Chi tiết đề tài";
+
+    int approvedCount = ViewBag.ApprovedCount ?? 0;
+    int pendingCount = ViewBag.PendingCount ?? 0;
+    int remaining = ViewBag.RemainingSlots ?? 0;
+    bool hasRegisteredThisTopic = ViewBag.HasRegisteredThisTopic ?? false;
+    bool hasActiveRegistration = ViewBag.HasActiveRegistration ?? false;
+
+    string levelLabel = Model.Level.ToString() switch
+    {
+        "Hard" => "Nâng cao",
+        "Medium" => "Trung bình",
+        _ => "Cơ bản"
+    };
+    string levelColor = Model.Level.ToString() switch
+    {
+        "Hard" => "bg-red-100 text-red-700",
+        "Medium" => "bg-yellow-100 text-yellow-700",
+        _ => "bg-green-100 text-green-700"
+    };
+    string statusLabel = (remaining <= 0 || !Model.IsRegistrationOpen)
+        ? "Đã đủ / Đóng" : "Còn chỗ";
+    string statusColor = (remaining <= 0 || !Model.IsRegistrationOpen)
+        ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700";
+}
+
+<div class="max-w-5xl mx-auto px-4 py-6">
+
+    @* ── Breadcrumb ── *@
+    <nav class="flex items-center gap-2 text-sm text-slate-400 mb-6">
+        <a href="/Topic/Index" class="hover:text-blue-600 transition-colors no-underline">Danh sách đề tài</a>
+        <span class="material-symbols-outlined text-base">chevron_right</span>
+        <span class="text-slate-700 font-medium truncate max-w-xs">@Model.Title</span>
+    </nav>
+
+    @* ── Alert messages ── *@
+    @if (TempData["Success"] != null)
+    {
+        <div class="mb-4 flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 rounded-xl px-5 py-3 text-sm font-medium">
+            <span class="material-symbols-outlined text-green-600">check_circle</span>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 rounded-xl px-5 py-3 text-sm font-medium">
+            <span class="material-symbols-outlined text-red-600">error</span>
+            @TempData["Error"]
+        </div>
+    }
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        @* ══════════════════════════════════════════════════════
+           CỘT TRÁI: Nội dung chính
+           ══════════════════════════════════════════════════════ *@
+        <div class="lg:col-span-2 space-y-5">
+
+            @* Card thông tin tổng quan *@
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-500 px-7 py-6">
+                    <div class="flex flex-wrap items-center gap-2 mb-3">
+                        @if (Model.TopicCode != null)
+                        {
+                            <span class="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full tracking-wide">
+                                #@Model.TopicCode
+                            </span>
+                        }
+                        <span class="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
+                            @(Model.Semester ?? "Chưa xác định")
+                        </span>
+                        <span class="@levelColor text-xs font-bold px-3 py-1 rounded-full">@levelLabel</span>
+                        <span class="@statusColor text-xs font-bold px-3 py-1 rounded-full">@statusLabel</span>
+                    </div>
+                    <h1 class="text-2xl font-extrabold text-white leading-snug">@Model.Title</h1>
+                    @if (Model.Category != null)
+                    {
+                        <p class="text-blue-100 text-sm mt-1">@Model.Category</p>
+                    }
+                </div>
+
+                <div class="px-7 py-5">
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Mô tả đề tài</h3>
+                    <div class="prose prose-sm max-w-none text-slate-700 leading-relaxed whitespace-pre-line">
+                        @(Model.Description ?? "Chưa có mô tả.")
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Note))
+                {
+                    <div class="px-7 pb-5">
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                            <p class="text-xs font-bold text-amber-700 uppercase tracking-widest mb-1">
+                                <span class="material-symbols-outlined text-sm align-middle mr-1">info</span>Ghi chú
+                            </p>
+                            <p class="text-sm text-amber-800">@Model.Note</p>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Card Giảng viên hướng dẫn *@
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">
+                    <span class="material-symbols-outlined text-base align-middle mr-1">person</span>Giảng viên hướng dẫn
+                </h3>
+                @if (Model.Lecturer != null)
+                {
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xl shrink-0">
+                            @(Model.Lecturer.FullName?.Substring(0, 1).ToUpper() ?? "?")
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800 text-base">@(Model.Lecturer.FullName ?? "Chưa cập nhật")</p>
+                            @if (!string.IsNullOrEmpty(Model.Lecturer.Degree))
+                            {
+                                <p class="text-sm text-slate-500">@Model.Lecturer.Degree @(!string.IsNullOrEmpty(Model.Lecturer.Position) ? "· " + Model.Lecturer.Position : "")</p>
+                            }
+                            <p class="text-sm text-blue-600 mt-0.5">@Model.Lecturer.Email</p>
+                            @if (!string.IsNullOrEmpty(Model.Lecturer.Faculty))
+                            {
+                                <p class="text-xs text-slate-400 mt-0.5">@Model.Lecturer.Faculty</p>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-slate-400 text-sm italic">Chưa có giảng viên hướng dẫn.</p>
+                }
+            </div>
+
+            @* Danh sách sinh viên đã được duyệt (chỉ hiện với Admin/Lecturer) *@
+            @if (User.IsInRole("Admin") || User.IsInRole("Lecturer"))
+            {
+                var approved = Model.Registrations?.Where(r => r.Status == "Approved").ToList();
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                    <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">
+                        <span class="material-symbols-outlined text-base align-middle mr-1">group</span>
+                        Sinh viên thực hiện (@(approved?.Count ?? 0)/@Model.MaxStudents)
+                    </h3>
+                    @if (approved != null && approved.Any())
+                    {
+                        <div class="space-y-2">
+                            @foreach (var reg in approved)
+                            {
+                                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                                    <div class="w-9 h-9 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm shrink-0">
+                                        @(reg.Student?.FullName?.Substring(0, 1).ToUpper() ?? "?")
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-slate-800 text-sm">@(reg.Student?.FullName ?? "Chưa rõ")</p>
+                                        <p class="text-xs text-slate-400">@reg.Student?.UserCode · @reg.Student?.Email</p>
+                                    </div>
+                                    <span class="ml-auto text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">Đã duyệt</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-slate-400 text-sm italic">Chưa có sinh viên nào được duyệt.</p>
+                    }
+                </div>
+            }
+        </div>
+
+        @* ══════════════════════════════════════════════════════
+           CỘT PHẢI: Sidebar thông tin & hành động
+           ══════════════════════════════════════════════════════ *@
+        <div class="space-y-5">
+
+            @* Thống kê nhanh *@
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Thông tin đăng ký</h3>
+
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-500">Số chỗ tối đa</span>
+                    <span class="font-bold text-slate-800">@Model.MaxStudents SV</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-500">Đã đăng ký</span>
+                    <span class="font-bold text-blue-600">@approvedCount SV</span>
+                </div>
+                @if (pendingCount > 0)
+                {
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-500">Chờ duyệt</span>
+                        <span class="font-bold text-amber-600">@pendingCount SV</span>
+                    </div>
+                }
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-500">Còn lại</span>
+                    <span class="font-bold @(remaining > 0 ? "text-green-600" : "text-red-500")">@remaining chỗ</span>
+                </div>
+
+                @* Thanh tiến trình *@
+                <div class="mt-1">
+                    <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        @{
+                            int pct = Model.MaxStudents > 0 ? (int)Math.Round((double)(approvedCount + pendingCount) / Model.MaxStudents * 100) : 0;
+                        }
+                        <div class="h-2 rounded-full transition-all @(pct >= 100 ? "bg-red-500" : "bg-blue-500")"
+                             style="width: @pct%"></div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1 text-right">@pct% đã điền</p>
+                </div>
+
+                <hr class="border-slate-100" />
+
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-500">Chuyên ngành</span>
+                    <span class="font-semibold text-slate-700 text-right max-w-[140px] truncate">
+                        @(Model.Major?.Name ?? Model.DepartmentName ?? "Chung")
+                    </span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-500">Khoa</span>
+                    <span class="font-semibold text-slate-700">@(Model.Faculty ?? "—")</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-500">Deadline</span>
+                    <span class="font-semibold text-slate-700">@Model.Deadline.ToString("dd/MM/yyyy")</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-500">Ngày tạo</span>
+                    <span class="font-semibold text-slate-700">@Model.CreatedAt.ToString("dd/MM/yyyy")</span>
+                </div>
+            </div>
+
+            @* Nút hành động dành cho Sinh viên *@
+            @if (User.IsInRole("Student"))
+            {
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Hành động</h3>
+
+                    @if (hasRegisteredThisTopic)
+                    {
+                        <div class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800 font-medium">
+                            <span class="material-symbols-outlined text-blue-600 text-base">check_circle</span>
+                            Bạn đã đăng ký đề tài này
+                        </div>
+                        <a href="/Student/MyRegistration"
+                           class="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors no-underline">
+                            <span class="material-symbols-outlined text-base">assignment</span>
+                            Xem đăng ký của tôi
+                        </a>
+                    }
+                    else if (hasActiveRegistration)
+                    {
+                        <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 font-medium">
+                            <span class="material-symbols-outlined text-amber-600 text-base">assignment</span>
+                            Bạn đang có một đề tài chờ duyệt hoặc đã được duyệt
+                        </div>
+                        <a href="/Student/MyRegistration"
+                           class="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors no-underline">
+                            <span class="material-symbols-outlined text-base">assignment</span>
+                            Xem đăng ký của tôi
+                        </a>
+                    }
+                    else if (remaining > 0 && Model.IsRegistrationOpen && Model.IsApproved && DateTime.Now <= Model.Deadline)
+                    {
+                        if (Model.MaxStudents > 1)
+                        {
+                            <a href="/Topic/RegisterGroup/@Model.Id"
+                               class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 active:scale-95 transition-all no-underline">
+                                <span class="material-symbols-outlined text-base">groups</span>
+                                Đăng ký nhóm
+                            </a>
+                        }
+                        else
+                        {
+                            <form method="post" action="/Student/Register">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="topicId" value="@Model.Id" />
+                                <button type="submit"
+                                        class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 active:scale-95 transition-all">
+                                    <span class="material-symbols-outlined text-base">how_to_reg</span>
+                                    Đăng ký đề tài này
+                                </button>
+                            </form>
+                        }
+                        <p class="text-xs text-slate-400 text-center mt-2">Đăng ký cần chờ giảng viên phê duyệt.</p>
+                    }
+                    else
+                    {
+                        <div class="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800 font-medium">
+                            <span class="material-symbols-outlined text-red-500 text-base">block</span>
+                            Đề tài không còn nhận đăng ký
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Nút quay lại & hành động Admin/Lecturer *@
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-2">
+                <a href="/Topic/Index"
+                   class="flex items-center gap-2 w-full py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors no-underline">
+                    <span class="material-symbols-outlined text-base">arrow_back</span>
+                    Quay lại danh sách
+                </a>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <a href="/Admin/Approval"
+                       class="flex items-center gap-2 w-full py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors no-underline">
+                        <span class="material-symbols-outlined text-base">admin_panel_settings</span>
+                        Trang duyệt Admin
+                    </a>
+                }
+                @if (User.IsInRole("Lecturer"))
+                {
+                    <a href="/Lecturer/Approval"
+                       class="flex items-center gap-2 w-full py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors no-underline">
+                        <span class="material-symbols-outlined text-base">approval</span>
+                        Trang duyệt của tôi
+                    </a>
+                }
+            </div>
+
+        </div>
+    </div>
+</div>

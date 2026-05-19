@@ -1,0 +1,15 @@
+﻿@{
+    Layout = "_LayoutDashboard";
+}
+<div class="max-w-xl mx-auto mt-10 p-8 bg-white rounded-3xl shadow-lg">
+    <h2 class="text-2xl font-bold mb-4">Nhập @ViewBag.Role từ Excel</h2>
+    <p class="text-slate-500 mb-6 text-sm">Vui lòng chọn file .xlsx đúng định dạng (Cột A: Họ tên, B: Email, C: Mã, D: Khoa).</p>
+
+    <form asp-action="ImportUsers" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="role" value="@ViewBag.Role" />
+        <div class="mb-6">
+            <input type="file" name="file" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required />
+        </div>
+        <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-bold">Bắt đầu nhập liệu</button>
+    </form>
+</div>

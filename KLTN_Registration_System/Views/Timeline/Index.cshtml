@@ -1,0 +1,1179 @@
+﻿@model IEnumerable<KLTN_Registration_System.Models.Entities.Timeline>
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Mốc thời gian";
+    var now = DateTime.Now;
+}
+
+@section Styles {
+    <style>
+        /* ══════════════════════════════════════
+               HEADER
+            ══════════════════════════════════════ */
+        .page-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .page-sub {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        .btn-add {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13.5px;
+            font-weight: 700;
+            padding: 9px 20px;
+            border-radius: 10px;
+            border: none;
+            background: #4f46e5;
+            color: #fff;
+            cursor: pointer;
+            transition: background .15s;
+            box-shadow: 0 4px 12px rgba(79,70,229,.22);
+        }
+
+            .btn-add:hover {
+                background: #4338ca;
+            }
+
+        /* ══════════════════════════════════════
+               LEGEND
+            ══════════════════════════════════════ */
+        .legend-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 10px 16px;
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 10px;
+            margin-bottom: 16px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ══════════════════════════════════════
+               TIMELINE LIST CARD
+            ══════════════════════════════════════ */
+        .tl-list-card {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+
+        /* ══════════════════════════════════════
+               TIMELINE ROW
+            ══════════════════════════════════════ */
+        .tl-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background .15s;
+        }
+
+            .tl-row:last-child {
+                border-bottom: none;
+            }
+
+            .tl-row:hover {
+                background: #fafbff;
+            }
+
+            .tl-row.is-past {
+                opacity: 0.55;
+            }
+
+            .tl-row.is-urgent {
+                background: #fff8f8;
+            }
+
+                .tl-row.is-urgent:hover {
+                    background: #fff3f3;
+                }
+
+        /* DATE BOX */
+        .date-box {
+            width: 50px;
+            min-width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+            .date-box.past {
+                background: #f1f5f9;
+            }
+
+            .date-box.urgent {
+                background: #fff1f2;
+            }
+
+            .date-box.normal {
+                background: #eef2ff;
+            }
+
+        .date-month {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .date-box.past .date-month {
+            color: #94a3b8;
+        }
+
+        .date-box.urgent .date-month {
+            color: #e11d48;
+        }
+
+        .date-box.normal .date-month {
+            color: #4f46e5;
+        }
+
+        .date-day {
+            font-size: 19px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .date-box.past .date-day {
+            color: #64748b;
+        }
+
+        .date-box.urgent .date-day {
+            color: #be123c;
+        }
+
+        .date-box.normal .date-day {
+            color: #3730a3;
+        }
+
+        /* CONTENT */
+        .tl-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tl-title-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+
+        .tl-name {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.4;
+        }
+
+        .tl-desc {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        /* Deadline info grid */
+        .deadline-grid {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .deadline-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 11.5px;
+            font-weight: 500;
+            color: #475569;
+        }
+
+            .deadline-item i {
+                font-size: 11px;
+            }
+
+            /* Deadline state colors */
+            .deadline-item.dl-ok {
+                border-color: #bbf7d0;
+                background: #f0fdf4;
+                color: #15803d;
+            }
+
+            .deadline-item.dl-urgent {
+                border-color: #fde68a;
+                background: #fffbeb;
+                color: #b45309;
+            }
+
+            .deadline-item.dl-expired {
+                border-color: #fecaca;
+                background: #fff5f5;
+                color: #dc2626;
+                text-decoration: line-through;
+            }
+
+            .deadline-item.dl-none {
+                border-color: #e8edf4;
+                background: #f8fafc;
+                color: #94a3b8;
+            }
+
+        .deadline-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-right: 2px;
+        }
+
+        /* Chips */
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 99px;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            gap: 4px;
+        }
+
+            .chip.past {
+                background: #f1f5f9;
+                color: #64748b;
+            }
+
+            .chip.urgent {
+                background: #fff1f2;
+                color: #e11d48;
+            }
+
+            .chip.hidden-tl {
+                background: #f1f5f9;
+                color: #94a3b8;
+            }
+
+            .chip.allow {
+                background: #eff6ff;
+                color: #2563eb;
+            }
+
+            .chip.locked {
+                background: #f8fafc;
+                color: #94a3b8;
+            }
+
+            .chip.type {
+                background: #f5f3ff;
+                color: #7c3aed;
+            }
+
+        /* ACTIONS */
+        .tl-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+            padding-top: 2px;
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+            .btn-icon.toggle-on {
+                background: #f0fdf4;
+                color: #16a34a;
+            }
+
+            .btn-icon.toggle-off {
+                background: #f1f5f9;
+                color: #94a3b8;
+            }
+
+            .btn-icon.edit {
+                background: #eef2ff;
+                color: #4f46e5;
+            }
+
+            .btn-icon.delete {
+                background: #fff5f5;
+                color: #dc2626;
+            }
+
+            .btn-icon.toggle-on:hover {
+                background: #16a34a;
+                color: #fff;
+            }
+
+            .btn-icon.toggle-off:hover {
+                background: #e2e8f0;
+                color: #475569;
+            }
+
+            .btn-icon.edit:hover {
+                background: #4f46e5;
+                color: #fff;
+            }
+
+            .btn-icon.delete:hover {
+                background: #dc2626;
+                color: #fff;
+            }
+
+        /* Empty state */
+        .empty-state {
+            padding: 56px 24px;
+            text-align: center;
+        }
+
+            .empty-state i {
+                font-size: 34px;
+                color: #cbd5e1;
+                display: block;
+                margin-bottom: 10px;
+            }
+
+            .empty-state p {
+                font-size: 13.5px;
+                color: #94a3b8;
+                margin: 0;
+            }
+
+        /* ══════════════════════════════════════
+               MODAL
+            ══════════════════════════════════════ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(3px);
+            z-index: 1050;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+            .modal-overlay.open {
+                display: flex;
+            }
+
+        .modal-box {
+            background: #fff;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 520px;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.16);
+        }
+
+        .modal-head {
+            padding: 16px 20px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 1;
+        }
+
+        .modal-head-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1.5px solid #e8edf4;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all .15s;
+        }
+
+            .modal-close:hover {
+                background: #fee2e2;
+                color: #dc2626;
+                border-color: #fecaca;
+            }
+
+        .modal-body {
+            padding: 16px 20px;
+        }
+
+        .modal-section {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+            .modal-section:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+                padding-bottom: 0;
+            }
+
+        .modal-section-title {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+            .modal-section-title i {
+                font-size: 11px;
+                color: #4f46e5;
+            }
+
+        .modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            gap: 10px;
+            position: sticky;
+            bottom: 0;
+            background: #fff;
+        }
+
+        /* Form fields */
+        .form-group {
+            margin-bottom: 13px;
+        }
+
+            .form-group:last-child {
+                margin-bottom: 0;
+            }
+
+        .form-label {
+            display: block;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+            .form-label .req {
+                color: #ef4444;
+                margin-left: 2px;
+            }
+
+        .form-hint {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .form-control-custom {
+            width: 100%;
+            border: 1.5px solid #e8edf4;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            color: #1e293b;
+            background: #f8fafc;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+            .form-control-custom:focus {
+                border-color: #4f46e5;
+                background: #fff;
+                box-shadow: 0 0 0 3px rgba(79,70,229,.08);
+            }
+
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+        }
+
+            .toggle-row input[type="checkbox"] {
+                width: 15px;
+                height: 15px;
+                accent-color: #4f46e5;
+                cursor: pointer;
+            }
+
+        /* Deadline warning box in modal */
+        .deadline-note {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 9px;
+            padding: 9px 12px;
+            font-size: 12px;
+            color: #b45309;
+            display: flex;
+            align-items: flex-start;
+            gap: 7px;
+            margin-top: 12px;
+        }
+
+            .deadline-note i {
+                font-size: 12px;
+                margin-top: 1px;
+                flex-shrink: 0;
+            }
+
+        .btn-modal-cancel {
+            flex: 1;
+            padding: 9px;
+            border-radius: 10px;
+            border: 1.5px solid #e8edf4;
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+            .btn-modal-cancel:hover {
+                background: #f1f5f9;
+                color: #1e293b;
+            }
+
+        .btn-modal-submit {
+            flex: 1;
+            padding: 9px;
+            border-radius: 10px;
+            border: none;
+            background: #4f46e5;
+            color: #fff;
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+            .btn-modal-submit:hover {
+                background: #4338ca;
+            }
+    </style>
+}
+
+<!-- PAGE HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="page-title">Mốc thời gian</h2>
+        <p class="page-sub">Quản lý deadline nộp bài và deadline duyệt cho từng mốc khóa luận.</p>
+    </div>
+    <button type="button" class="btn-add" onclick="openModal('modalAdd')">
+        <i class="fa-solid fa-plus"></i> Thêm mốc mới
+    </button>
+</div>
+
+<!-- LEGEND -->
+<div class="legend-bar">
+    <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Trạng thái deadline:</span>
+    <div class="legend-item"><span class="legend-dot" style="background:#16a34a;"></span> Còn hạn</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> Sắp hết hạn (≤3 ngày)</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#dc2626;"></span> Đã quá hạn</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#94a3b8;"></span> Chưa cấu hình</div>
+</div>
+
+<!-- TIMELINE LIST -->
+<div class="tl-list-card">
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-calendar-xmark"></i>
+            <p>Chưa có mốc thời gian nào.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var tl in Model)
+        {
+            bool isPast = tl.Date < now;
+            bool isUrgent = !isPast && (tl.Date - now).TotalDays <= 7;
+
+            string rowClass = isPast ? "is-past" : isUrgent ? "is-urgent" : "";
+            string boxClass = isPast ? "past" : isUrgent ? "urgent" : "normal";
+            int daysLeft = (int)Math.Ceiling((tl.Date - now).TotalDays);
+
+            // ── Submission Deadline state
+            string subDlClass = "dl-none";
+            string subDlText = "Chưa cấu hình";
+            if (tl.SubmissionDeadline.HasValue)
+            {
+                var sub = tl.SubmissionDeadline.Value;
+                if (sub < now)
+                {
+                    subDlClass = "dl-expired";
+                    subDlText = sub.ToString("dd/MM HH:mm") + " — Đã đóng";
+                }
+                else if ((sub - now).TotalDays <= 3)
+                {
+                    subDlClass = "dl-urgent";
+                    subDlText = sub.ToString("dd/MM HH:mm") + " — Sắp hết";
+                }
+                else
+                {
+                    subDlClass = "dl-ok";
+                    subDlText = sub.ToString("dd/MM/yyyy HH:mm");
+                }
+            }
+
+            // ── Review Deadline state
+            string revDlClass = "dl-none";
+            string revDlText = "Chưa cấu hình";
+            if (tl.ReviewDeadline.HasValue)
+            {
+                var rev = tl.ReviewDeadline.Value;
+                if (rev < now)
+                {
+                    revDlClass = "dl-expired";
+                    revDlText = rev.ToString("dd/MM HH:mm") + " — Đã khoá";
+                }
+                else if ((rev - now).TotalDays <= 3)
+                {
+                    revDlClass = "dl-urgent";
+                    revDlText = rev.ToString("dd/MM HH:mm") + " — Sắp khoá";
+                }
+                else
+                {
+                    revDlClass = "dl-ok";
+                    revDlText = rev.ToString("dd/MM/yyyy HH:mm");
+                }
+            }
+
+            <div class="tl-row @rowClass">
+
+                <!-- Date box -->
+                <div class="date-box @boxClass">
+                    <span class="date-month">Th @tl.Date.Month</span>
+                    <span class="date-day">@tl.Date.Day</span>
+                </div>
+
+                <!-- Content -->
+                <div class="tl-content">
+                    <div class="tl-title-row">
+                        <span class="tl-name">@tl.Title</span>
+
+                        @if (!string.IsNullOrEmpty(tl.Type))
+                        {
+                            <span class="chip type"><i class="fa-solid fa-tag"></i>@tl.Type</span>
+                        }
+
+                        @if (isPast)
+                        {
+                            <span class="chip past">Đã qua</span>
+                        }
+                        else if (isUrgent)
+                        {
+                            <span class="chip urgent"><i class="fa-solid fa-fire"></i>Còn @daysLeft ngày</span>
+                        }
+
+                        @if (!tl.IsActive)
+                        {
+                            <span class="chip hidden-tl"><i class="fa-regular fa-eye-slash"></i>Đã ẩn</span>
+                        }
+
+                        @if (tl.AllowSubmission)
+                        {
+                            <span class="chip allow"><i class="fa-solid fa-upload"></i>Cho nộp bài</span>
+                        }
+                        else
+                        {
+                            <span class="chip locked"><i class="fa-solid fa-lock"></i>Không nộp</span>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(tl.Description))
+                    {
+                        <div class="tl-desc">@tl.Description</div>
+                    }
+
+                    <!-- Deadline display -->
+                    <div class="deadline-grid">
+                        <div class="deadline-item @subDlClass">
+                            <i class="fa-regular fa-clock"></i>
+                            <span class="deadline-label">SV nộp trước:</span>
+                            @subDlText
+                        </div>
+                        <div class="deadline-item @revDlClass">
+                            <i class="fa-solid fa-user-check"></i>
+                            <span class="deadline-label">GV duyệt trước:</span>
+                            @revDlText
+                        </div>
+                        @if (!string.IsNullOrEmpty(tl.SubmissionType))
+                        {
+                            <div class="deadline-item">
+                                <i class="fa-solid fa-file"></i>
+                                <span class="deadline-label">Định dạng:</span>
+                                @tl.SubmissionType
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="tl-actions">
+                    <form method="post" asp-action="Toggle" asp-controller="Timeline"
+                          asp-route-id="@tl.Id" class="m-0">
+                        @Html.AntiForgeryToken()
+                        <button type="submit"
+                                class="btn-icon @(tl.IsActive ? "toggle-on" : "toggle-off")"
+                                title="@(tl.IsActive ? "Ẩn mốc" : "Hiện mốc")">
+                            <i class="fa-regular @(tl.IsActive ? "fa-eye" : "fa-eye-slash")"></i>
+                        </button>
+                    </form>
+
+                    <button type="button" class="btn-icon edit" title="Chỉnh sửa"
+                            onclick="openEdit(
+                                        @tl.Id,
+                                        '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.Title)',
+                                        '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.Description ?? "")',
+                                        '@tl.Date.ToString("yyyy-MM-ddTHH:mm")',
+                                        '@(tl.SubmissionDeadline.HasValue? tl.SubmissionDeadline.Value.ToString("yyyy-MM-ddTHH:mm") : "")',
+                                        '@(tl.ReviewDeadline.HasValue? tl.ReviewDeadline.Value.ToString("yyyy-MM-ddTHH:mm") : "")',
+                                        @tl.IsActive.ToString().ToLower(),
+                                        @tl.AllowSubmission.ToString().ToLower(),
+                                        '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.Type ?? "")',
+                                        '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.SubmissionType ?? "")'
+                                    )">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+
+                    <form method="post" asp-action="Delete" asp-controller="Timeline"
+                          asp-route-id="@tl.Id" class="m-0"
+                          onsubmit="return confirmDelete(event, '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.Title)')">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn-icon delete" title="Xóa">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        }
+    }
+
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: THÊM MỐC
+══════════════════════════════════════ -->
+<div id="modalAdd" class="modal-overlay" onclick="if(event.target===this)closeModal('modalAdd')">
+    <div class="modal-box" onclick="event.stopPropagation()">
+
+        <div class="modal-head">
+            <p class="modal-head-title">Thêm mốc thời gian mới</p>
+            <button type="button" class="modal-close" onclick="closeModal('modalAdd')">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form method="post" asp-action="Create" asp-controller="Timeline">
+            @Html.AntiForgeryToken()
+
+            <div class="modal-body">
+
+                <!-- SECTION 1: Thông tin cơ bản -->
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        <i class="fa-solid fa-circle-info"></i> Thông tin cơ bản
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tiêu đề <span class="req">*</span></label>
+                        <input type="text" name="title" required
+                               class="form-control-custom"
+                               placeholder="Ví dụ: Nộp đề cương chi tiết" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Mô tả</label>
+                        <input type="text" name="description"
+                               class="form-control-custom"
+                               placeholder="Mô tả ngắn về yêu cầu của mốc này" />
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Ngày hiển thị <span class="req">*</span></label>
+                            <input type="datetime-local" name="date" required
+                                   class="form-control-custom" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Loại mốc</label>
+                            <select name="type" class="form-control-custom">
+                                <option value="">-- Chọn loại --</option>
+                                <option value="Proposal">Đề cương</option>
+                                <option value="Report">Báo cáo tiến độ</option>
+                                <option value="Final">Nộp cuối kỳ</option>
+                                <option value="Defense">Bảo vệ</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: Deadline SV nộp -->
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        <i class="fa-regular fa-clock"></i> Deadline sinh viên nộp bài
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Hạn cuối SV nộp</label>
+                            <input type="datetime-local" name="submissionDeadline"
+                                   class="form-control-custom" />
+                            <div class="form-hint">
+                                <i class="fa-solid fa-circle-info"></i>
+                                Quá hạn này SV không nộp được
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Định dạng file</label>
+                            <input type="text" name="submissionType"
+                                   class="form-control-custom"
+                                   placeholder="pdf, docx, zip..." />
+                        </div>
+                    </div>
+
+                    <label class="toggle-row" style="margin-top:4px;">
+                        <input type="checkbox" name="allowSubmission" value="true" id="addAllowSub" />
+                        Cho phép sinh viên nộp bài tại mốc này
+                    </label>
+                </div>
+
+                <!-- SECTION 3: Deadline GV duyệt -->
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        <i class="fa-solid fa-user-check"></i> Deadline giảng viên duyệt
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Hạn cuối GV duyệt / từ chối</label>
+                        <input type="datetime-local" name="reviewDeadline"
+                               class="form-control-custom" />
+                        <div class="form-hint">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Quá hạn này GV không thể duyệt hay từ chối — kết quả được tổng hợp lên Admin
+                        </div>
+                    </div>
+
+                    <div class="deadline-note">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>
+                            <strong>Lưu ý nghiệp vụ:</strong> Nếu GV từ chối, SV được nộp lại miễn là còn trong <em>Hạn cuối SV nộp</em>.
+                            Sau <em>Hạn cuối GV duyệt</em>, hệ thống tự động khoá — Admin sẽ tổng hợp kết quả.
+                        </span>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: Hiển thị -->
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        <i class="fa-regular fa-eye"></i> Hiển thị
+                    </div>
+                    <label class="toggle-row">
+                        <input type="checkbox" name="isActive" value="true" checked />
+                        Hiển thị ngay sau khi tạo
+                    </label>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-modal-cancel" onclick="closeModal('modalAdd')">Hủy</button>
+                <button type="submit" class="btn-modal-submit">
+                    <i class="fa-solid fa-plus"></i> Thêm mốc
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: CHỈNH SỬA
+══════════════════════════════════════ -->
+<div id="modalEdit" class="modal-overlay" onclick="if(event.target===this)closeModal('modalEdit')">
+    <div class="modal-box" onclick="event.stopPropagation()">
+
+        <div class="modal-head">
+            <p class="modal-head-title">Chỉnh sửa mốc thời gian</p>
+            <button type="button" class="modal-close" onclick="closeModal('modalEdit')">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form method="post" asp-action="Edit" asp-controller="Timeline">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="editId" />
+
+            <div class="modal-body">
+
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        <i class="fa-solid fa-circle-info"></i> Thông tin cơ bản
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tiêu đề <span class="req">*</span></label>
+                        <input type="text" name="title" id="editTitle" required class="form-control-custom" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Mô tả</label>
+                        <input type="text" name="description" id="editDesc" class="form-control-custom" />
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Ngày hiển thị <span class="req">*</span></label>
+                            <input type="datetime-local" name="date" id="editDate" required class="form-control-custom" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Loại mốc</label>
+                            <select name="type" id="editType" class="form-control-custom">
+                                <option value="">-- Chọn loại --</option>
+                                <option value="Proposal">Đề cương</option>
+                                <option value="Report">Báo cáo tiến độ</option>
+                                <option value="Final">Nộp cuối kỳ</option>
+                                <option value="Defense">Bảo vệ</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        <i class="fa-regular fa-clock"></i> Deadline sinh viên nộp bài
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Hạn cuối SV nộp</label>
+                            <input type="datetime-local" name="submissionDeadline" id="editSubDl"
+                                   class="form-control-custom" />
+                            <div class="form-hint">
+                                <i class="fa-solid fa-circle-info"></i>
+                                Quá hạn này SV không nộp được
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Định dạng file</label>
+                            <input type="text" name="submissionType" id="editSubType"
+                                   class="form-control-custom" placeholder="pdf, docx, zip..." />
+                        </div>
+                    </div>
+
+                    <label class="toggle-row" style="margin-top:4px;">
+                        <input type="checkbox" name="allowSubmission" id="editAllowSub" value="true" />
+                        Cho phép sinh viên nộp bài
+                    </label>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        <i class="fa-solid fa-user-check"></i> Deadline giảng viên duyệt
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Hạn cuối GV duyệt / từ chối</label>
+                        <input type="datetime-local" name="reviewDeadline" id="editRevDl"
+                               class="form-control-custom" />
+                        <div class="form-hint">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Quá hạn → khoá GV, Admin tổng hợp kết quả
+                        </div>
+                    </div>
+
+                    <div class="deadline-note">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>
+                            Đảm bảo <strong>Hạn GV duyệt</strong> phải sau <strong>Hạn SV nộp</strong>
+                            để giảng viên có thời gian xem xét.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        <i class="fa-regular fa-eye"></i> Hiển thị
+                    </div>
+                    <label class="toggle-row">
+                        <input type="checkbox" name="isActive" id="editActive" value="true" />
+                        Hiển thị mốc này
+                    </label>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-modal-cancel" onclick="closeModal('modalEdit')">Hủy</button>
+                <button type="submit" class="btn-modal-submit">
+                    <i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function openModal(id) {
+            document.getElementById(id).classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function openEdit(id, title, desc, date, subDl, revDl, isActive, allowSub, type, subType) {
+            document.getElementById('editId').value        = id;
+            document.getElementById('editTitle').value     = title;
+            document.getElementById('editDesc').value      = desc;
+            document.getElementById('editDate').value      = date;
+            document.getElementById('editSubDl').value     = subDl;
+            document.getElementById('editRevDl').value     = revDl;
+            document.getElementById('editActive').checked  = isActive;
+            document.getElementById('editAllowSub').checked = allowSub;
+            document.getElementById('editSubType').value   = subType;
+
+            // Set select type
+            const sel = document.getElementById('editType');
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === type) { sel.selectedIndex = i; break; }
+            }
+
+            openModal('modalEdit');
+        }
+
+        function confirmDelete(event, title) {
+            event.preventDefault();
+            const form = event.target;
+            Swal.fire({
+                title: 'Xóa mốc thời gian?',
+                text: title,
+                icon: 'warning',
+                showCancelButton:   true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor:  '#64748b',
+                confirmButtonText:  'Xóa',
+                cancelButtonText:   'Hủy',
+                reverseButtons:     true
+            }).then(r => { if (r.isConfirmed) form.submit(); });
+            return false;
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeModal('modalAdd');
+                closeModal('modalEdit');
+            }
+        });
+
+        // Validate: ReviewDeadline phải sau SubmissionDeadline
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const subDl = this.querySelector('[name="submissionDeadline"]');
+                const revDl = this.querySelector('[name="reviewDeadline"]');
+                if (!subDl || !revDl) return;
+                if (subDl.value && revDl.value && revDl.value <= subDl.value) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Deadline không hợp lệ',
+                        text: 'Hạn GV duyệt phải sau Hạn SV nộp.',
+                        confirmButtonColor: '#4f46e5'
+                    });
+                }
+            });
+        });
+    </script>
+}

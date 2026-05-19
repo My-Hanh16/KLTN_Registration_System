@@ -1,0 +1,725 @@
+﻿// ============================================================
+// FILE: Controllers/Student/StudentController.cs
+// Cập nhật: map đầy đủ các field mới trong HomeStudent ViewModel
+// ============================================================
+using KLTN_Registration_System.Models;
+using KLTN_Registration_System.Models.Entities;
+using KLTN_Registration_System.Models.Enums;
+using KLTN_Registration_System.Models.ViewModels.Student;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using X.PagedList;
+using X.PagedList.Extensions;
+
+namespace KLTN_Registration_System.Controllers.Student
+{
+    [Authorize]
+    public class StudentController : BaseController
+    {
+        private readonly AppDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
+
+        public StudentController(AppDbContext context,UserManager<ApplicationUser> userManager)
+        :base(context, userManager)
+        {
+            _context = context;
+            _userManager = userManager;
+        }
+
+        // ============================================================
+        // TRANG CHỦ  →  /Student/Home
+        // ============================================================
+        public async Task<IActionResult> Home()
+        {
+            await SetStudentLayoutData();
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            // ── 1. Thời gian đăng ký từ Settings ───────────────────
+            var settings = await _context.Settings.ToListAsync();
+            var startStr = settings.FirstOrDefault(s => s.Name == "Registration_Start")?.Value;
+            var endStr = settings.FirstOrDefault(s => s.Name == "Registration_End")?.Value;
+
+            DateTime startDate = DateTime.TryParse(startStr, out var sd) ? sd : DateTime.MinValue;
+            DateTime endDate = DateTime.TryParse(endStr, out var ed) ? ed : DateTime.MaxValue;
+            DateTime now = DateTime.Now;
+
+            bool isOpening = now >= startDate && now <= endDate;
+            int daysLeft = Math.Max(0, (endDate - now).Days);
+
+            // ── 2. Đăng ký hiện tại ────────────────────────────────
+            var registration = await _context.Registrations
+                .Include(r => r.Topic)
+                .FirstOrDefaultAsync(r => r.StudentId == user.Id &&
+                    (r.Status == "Pending" || r.Status == "Approved"));
+
+            string currentTopic = registration?.Topic?.Title ?? "Chưa đăng ký";
+            string status = registration?.Status ?? "Chưa có";
+            int? currentTopicId = registration?.TopicId;
+
+            ViewBag.ActiveTopicId = registration?.TopicId;
+
+            // ── 3. Đề tài gợi ý (2 mới nhất đang mở) ──────────────
+            var topics = await _context.Topics
+                .Include(t => t.Lecturer)
+                .Include(t => t.Major)
+                .Include(t => t.Registrations)
+                .Where(t => t.IsApproved && !t.IsStudentProposed && t.IsRegistrationOpen)
+                .OrderByDescending(t => t.CreatedAt)
+                .Take(2)
+                .ToListAsync();
+
+            var suggestedTopics = topics.Select(t => new TopicVM
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Category = t.Category,
+                Level = t.Level.ToString() switch
+                {
+                    "Hard" => "Nâng cao",
+                    "Medium" => "Trung bình",
+                    _ => "Cơ bản"
+                },
+                // BadgeClass để View dùng trực tiếp mà không cần switch lại
+                BadgeClass = t.Level.ToString() switch
+                {
+                    "Hard" => "bg-level-hard",
+                    "Medium" => "bg-level-medium",
+                    _ => "bg-level-easy"
+                },
+                Lecturer = !string.IsNullOrEmpty(t.Lecturer?.FullName)
+                    ? t.Lecturer.FullName
+                    : (t.Lecturer?.Email ?? "Chưa có GV"),
+                Department = t.DepartmentName ?? t.Major?.Name ?? "Bộ môn chung",
+                CurrentStudents = t.Registrations?.Count(r => r.Status == "Approved") ?? 0,
+                MaxStudents = t.MaxStudents
+            }).ToList();
+
+            // ── 4. Thông báo (3 mới nhất) ──────────────────────────
+            var notifications = await _context.Notifications
+                .Where(n => n.UserId == user.Id)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(3)
+                .ToListAsync();
+
+            var notifVM = notifications.Select(n => new NotificationVM
+            {
+                Title = n.Title,
+                Time = n.CreatedAt.ToString("dd/MM/yyyy HH:mm"),
+                IsRead = n.IsRead,
+                RedirectUrl = n.RedirectUrl
+            }).ToList();
+
+            // ── 5. Mốc thời gian quan trọng từ Timelines ───────────
+            var timelines = await _context.Timelines
+                .Where(t => t.Date >= now && t.IsActive)
+                .OrderBy(t => t.Date)
+                .Take(3)
+                .ToListAsync();
+
+            var deadlines = timelines.Select(t => new DeadlineVM
+            {
+                Date = t.Date.Day.ToString("00"),
+                Month = t.Date.Month.ToString("00"),
+                Content = t.Title,
+                SubContent = t.Description ?? "",
+                // Đánh dấu khẩn nếu còn dưới 3 ngày
+                IsUrgent = (t.Date - now).TotalDays <= 3
+            }).ToList();
+
+            // ── 6. Build ViewModel ──────────────────────────────────
+            var model = new HomeStudent
+            {
+                StudentName = !string.IsNullOrEmpty(user.FullName) ? user.FullName : (user.Email ?? "Sinh viên"),
+                DaysLeft = daysLeft,
+                CurrentTopic = currentTopic,
+                CurrentTopicId = currentTopicId,
+                Status = status,
+                SuggestedTopics = suggestedTopics,
+                Deadlines = deadlines,
+                Notifications = notifVM
+            };
+
+            ViewBag.IsOpening = isOpening;
+            ViewBag.RegistrationEndDate = endDate.ToString("dd/MM/yyyy");
+            ViewBag.HasRegistered = registration != null;
+            ViewBag.RegisteredTopicId = registration?.TopicId ?? 0;
+            ViewBag.FullName = model.StudentName;
+
+            return View(model);
+        }
+
+        // ============================================================
+        // ĐĂNG KÝ ĐỀ TÀI  →  POST /Student/Register
+        // ============================================================
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> Register(int topicId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var settings = await _context.Settings.ToListAsync();
+            var startStr = settings.FirstOrDefault(s => s.Name == "Registration_Start")?.Value;
+            var endStr = settings.FirstOrDefault(s => s.Name == "Registration_End")?.Value;
+            var now = DateTime.Now;
+
+            if (DateTime.TryParse(startStr, out var startDate) && now < startDate)
+            {
+                TempData["Error"] = $"Cổng đăng ký chưa mở. Thời gian bắt đầu: {startDate:dd/MM/yyyy HH:mm}.";
+                return RedirectToAction(nameof(Home));
+            }
+
+            if (DateTime.TryParse(endStr, out var endDate) && now > endDate)
+            {
+                TempData["Error"] = "Đã hết thời hạn đăng ký đề tài!";
+                return RedirectToAction(nameof(Home));
+            }
+
+            bool alreadyRegistered = await _context.Registrations.AnyAsync(r =>
+                r.StudentId == user.Id && (r.Status == "Pending" || r.Status == "Approved"));
+
+            if (alreadyRegistered)
+            {
+                TempData["Error"] = "Bạn đang có một đề tài trong trạng thái chờ hoặc đã được duyệt!";
+                return RedirectToAction(nameof(Home));
+            }
+
+            var topic = await _context.Topics
+                .Include(t => t.Registrations)
+                .FirstOrDefaultAsync(t => t.Id == topicId);
+
+            if (topic == null)
+            {
+                TempData["Error"] = "Đề tài không tồn tại!";
+                return RedirectToAction(nameof(Home));
+            }
+
+            if (!topic.IsApproved || !topic.IsRegistrationOpen || topic.IsStudentProposed)
+            {
+                TempData["Error"] = "Đề tài này hiện không mở cho sinh viên đăng ký.";
+                return RedirectToAction(nameof(Home));
+            }
+
+            int approvedCount = topic.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+            if (approvedCount >= topic.MaxStudents)
+            {
+                TempData["Error"] = "Đề tài đã đủ số lượng sinh viên!";
+                return RedirectToAction(nameof(Home));
+            }
+
+            _context.Registrations.Add(new Registration
+            {
+                StudentId = user.Id,
+                TopicId = topicId,
+                Status = "Pending",
+                CreatedAt = DateTime.Now,
+                Priority = 1
+            });
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(topic.LecturerId))
+                await AddNotification(topic.LecturerId,
+                    "Sinh viên đăng ký đề tài",
+                    $"Sinh viên {user.FullName ?? user.Email} vừa đăng ký đề tài \"{topic.Title}\".",
+                    "NewRegistration", "/Lecturer/Approval");
+
+            TempData["Success"] = "Đăng ký thành công! Vui lòng chờ giảng viên phê duyệt.";
+            return RedirectToAction(nameof(Home));
+        }
+
+        // ============================================================
+        // ĐĂNG KÝ CỦA TÔI  →  /Student/MyRegistration
+        // ============================================================
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> MyRegistration()
+        {
+            await SetStudentLayoutData();
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var myRegistrations = await _context.Registrations
+                .Include(r => r.Topic).ThenInclude(t => t!.Lecturer)
+                .Include(r => r.Topic).ThenInclude(t => t!.Major)
+                .Where(r => r.StudentId == user.Id)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+
+            var proposedTopics = await _context.Topics
+                .Include(t => t.Lecturer)
+                .Include(t => t.Major)
+                .Where(t => t.CreatedByStudentId == user.Id && t.IsStudentProposed)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            ViewBag.ProposedTopics = proposedTopics;
+
+            // CHAT MENU
+            var approvedRegistration = myRegistrations
+                .FirstOrDefault(r => r.Status == "Approved");
+
+            ViewBag.ActiveTopicId = approvedRegistration?.TopicId;
+
+            return View(myRegistrations);
+        }
+
+        // ============================================================
+        // HỦY ĐĂNG KÝ  →  POST /Student/CancelRegistration/{id}
+        // ============================================================
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> CancelRegistration(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var registration = await _context.Registrations
+                .Include(r => r.Topic)
+                .FirstOrDefaultAsync(r => r.Id == id && r.StudentId == user.Id);
+
+            if (registration == null)
+            {
+                TempData["Error"] = "Không tìm thấy đăng ký.";
+                return RedirectToAction(nameof(MyRegistration));
+            }
+
+            if (registration.Status != "Pending")
+            {
+                TempData["Error"] = "Không thể hủy đăng ký đã được duyệt hoặc bị từ chối.";
+                return RedirectToAction(nameof(MyRegistration));
+            }
+
+            string topicTitle = registration.Topic?.Title ?? "";
+            _context.Registrations.Remove(registration);
+            await _context.SaveChangesAsync();
+
+            await AddNotification(user.Id,
+                "Hủy đăng ký",
+                $"Bạn đã hủy đăng ký đề tài \"{topicTitle}\" thành công.",
+                "System", "/Topic/Index");
+
+            TempData["Success"] = "Đã hủy đăng ký thành công.";
+            return RedirectToAction(nameof(MyRegistration));
+        }
+
+        // ============================================================
+        // THÔNG BÁO  →  /Student/Notifications
+        // ============================================================
+        public async Task<IActionResult> Notifications(int? page)
+        {
+            await SetStudentLayoutData();
+
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return RedirectToAction("Login", "Account");
+
+            int pageSize = 6;
+            int pageNumber = page ?? 1;
+
+            var query = _context.Notifications
+                .Where(n => n.UserId == user.Id)
+                .OrderByDescending(n => n.CreatedAt);
+
+            // đánh dấu đã đọc
+            var unread = await query
+                .Where(n => !n.IsRead)
+                .ToListAsync();
+
+            if (unread.Any())
+            {
+                unread.ForEach(n => n.IsRead = true);
+
+                await _context.SaveChangesAsync();
+            }
+
+            // phân trang
+            var pagedNotifications =
+                query.ToPagedList(pageNumber, pageSize);
+
+            return View(pagedNotifications);
+        }
+
+        // ============================================================
+        // ĐÁNH DẤU ĐÃ ĐỌC (AJAX)  →  POST /Student/MarkAllRead
+        // ============================================================
+        [HttpPost]
+        public async Task<IActionResult> MarkAllRead()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Json(new { success = false });
+
+            var unread = await _context.Notifications
+                .Where(n => n.UserId == user.Id && !n.IsRead)
+                .ToListAsync();
+
+            unread.ForEach(n => n.IsRead = true);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, count = unread.Count });
+        }
+
+        // ============================================================
+        // HELPER
+        // ============================================================
+        private async Task AddNotification(
+            string userId, string title, string content,
+            string type, string redirectUrl = "")
+        {
+            _context.Notifications.Add(new Notification
+            {
+                UserId = userId,
+                Title = title,
+                Content = content,
+                Type = type,
+                RedirectUrl = redirectUrl,
+                IsRead = false,
+                CreatedAt = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
+        }
+        // GET /Student/UnreadCount  — trả JSON cho AJAX
+        [HttpGet]
+        public async Task<IActionResult> UnreadCount()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Json(new { count = 0 });
+
+            var count = await _context.Notifications
+                .CountAsync(n => n.UserId == user.Id && !n.IsRead);
+
+            return Json(new { count });
+        }
+        // ── 1. HỒ SƠ SINH VIÊN ──────────────────────────────────────
+
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> Profile()
+        {
+            await SetStudentLayoutData();
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var myReg = await _context.Registrations
+                .Include(r => r.Topic).ThenInclude(t => t!.Lecturer)
+                .Where(r => r.StudentId == user.Id)
+                .OrderByDescending(r => r.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            ViewBag.CurrentRegistration = myReg;
+            ViewBag.Majors = await _context.Majors.Where(m => m.IsActive).ToListAsync();
+            ViewBag.TotalNotifications = await _context.Notifications.CountAsync(n => n.UserId == user.Id);
+            ViewBag.UnreadNotifications = await _context.Notifications.CountAsync(n => n.UserId == user.Id && !n.IsRead);
+            ViewBag.TotalRegistrations = await _context.Registrations.CountAsync(r => r.StudentId == user.Id);
+
+            return View(user);
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> UpdateProfile(
+            string fullName, string? userCode, int? majorId, string? phoneNumber)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            if (string.IsNullOrWhiteSpace(fullName))
+            {
+                TempData["Error"] = "Họ tên không được để trống.";
+                return RedirectToAction(nameof(Profile));
+            }
+
+            user.FullName = fullName.Trim();
+            user.UserCode = userCode?.Trim();
+            user.MajorId = majorId;
+            user.PhoneNumber = phoneNumber?.Trim();
+
+            var result = await _userManager.UpdateAsync(user);
+            TempData[result.Succeeded ? "Success" : "Error"] = result.Succeeded
+                ? "Cập nhật hồ sơ thành công!"
+                : "Lỗi: " + string.Join(", ", result.Errors.Select(e => e.Description));
+
+            return RedirectToAction(nameof(Profile));
+        }
+
+        // ── 2. ĐỀ XUẤT ĐỀ TÀI (SINH VIÊN TỰ TẠO) ──────────────────
+
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> ProposeTopic()
+        {
+            await SetStudentLayoutData();
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            // Kiểm tra đã có đăng ký Approved chưa
+            bool hasApproved = await _context.Registrations
+                .AnyAsync(r => r.StudentId == user!.Id && r.Status == "Approved");
+            if (hasApproved)
+            {
+                TempData["Error"] = "Bạn đã có đề tài được duyệt, không thể đề xuất thêm.";
+                return RedirectToAction(nameof(MyRegistration));
+            }
+
+            // Đề xuất hiện tại của sinh viên này
+            var myProposals = await _context.Topics
+                .Include(t => t.Lecturer)
+                .Where(t => t.CreatedByStudentId == user.Id && t.IsStudentProposed)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            ViewBag.MyProposals = myProposals;
+            ViewBag.Majors = await _context.Majors.Where(m => m.IsActive).ToListAsync();
+
+            // Danh sách giảng viên để chọn GVHD mong muốn
+            var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
+            ViewBag.Lecturers = lecturers.OrderBy(l => l.FullName).ToList();
+
+            return View();
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> ProposeTopic(
+            string title, string description, int? majorId,
+            string? category, string? preferredLecturerId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(description))
+            {
+                TempData["Error"] = "Tiêu đề và mô tả không được để trống.";
+                return RedirectToAction(nameof(ProposeTopic));
+            }
+
+            // Giới hạn tối đa 3 đề xuất đang chờ
+            int pendingProposals = await _context.Topics
+                .CountAsync(t => t.CreatedByStudentId == user.Id
+                              && t.IsStudentProposed
+                              && !t.IsApproved);
+            if (pendingProposals >= 3)
+            {
+                TempData["Error"] = "Bạn đã có 3 đề xuất đang chờ duyệt, không thể thêm.";
+                return RedirectToAction(nameof(ProposeTopic));
+            }
+
+            var topicCount = await _context.Topics.CountAsync(t => t.CreatedByStudentId == user.Id);
+            var topic = new Topic
+            {
+                Title = title.Trim(),
+                Description = description.Trim(),
+                Category = category?.Trim(),
+                MajorId = majorId,
+                LecturerId = preferredLecturerId,   // GV mong muốn
+                CreatedByStudentId = user.Id,
+                IsStudentProposed = true,
+                IsApproved = false,
+                IsRegistrationOpen = false,
+                Status = TopicStatus.Pending,
+                Level = TopicLevel.Medium,
+                MaxStudents = 1,
+                TopicCode = $"PROP-{user.UserCode ?? user.Id[..4].ToUpper()}-{(topicCount + 1):D3}",
+                Deadline = DateTime.Now.AddMonths(4),
+                CreatedAt = DateTime.Now,
+                Semester = "HK2-2025-2026"
+            };
+
+            _context.Topics.Add(topic);
+            await _context.SaveChangesAsync();
+
+            // Thông báo cho Admin
+            var admins = await _userManager.GetUsersInRoleAsync("Admin");
+            foreach (var admin in admins)
+            {
+                await AddNotification(admin.Id,
+                    "Sinh viên đề xuất đề tài mới",
+                    $"Sinh viên {user.FullName ?? user.Email} đề xuất đề tài: \"{title}\".",
+                    "NewTopic", "/Admin/ThesisManagement?status=pending");
+            }
+
+            // Thông báo cho GV mong muốn (nếu có)
+            if (!string.IsNullOrEmpty(preferredLecturerId))
+            {
+                await AddNotification(preferredLecturerId,
+                    "Sinh viên đề xuất được hướng dẫn",
+                    $"Sinh viên {user.FullName ?? user.Email} muốn bạn hướng dẫn đề tài: \"{title}\".",
+                    "NewTopic", "/Lecturer/ThesisManagement");
+            }
+
+            TempData["Success"] = "Đề xuất đề tài thành công! Admin sẽ xem xét và phê duyệt.";
+            return RedirectToAction(nameof(ProposeTopic));
+        }
+
+        // ── 3. HỦY ĐỀ XUẤT ĐỀ TÀI ──────────────────────────────────
+
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> CancelProposal(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var topic = await _context.Topics
+                .FirstOrDefaultAsync(t => t.Id == id
+                    && t.CreatedByStudentId == user.Id
+                    && t.IsStudentProposed
+                    && !t.IsApproved);
+
+            if (topic == null)
+            {
+                TempData["Error"] = "Không tìm thấy đề xuất hoặc đề xuất đã được duyệt.";
+                return RedirectToAction(nameof(ProposeTopic));
+            }
+
+            _context.Topics.Remove(topic);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Đã huỷ đề xuất \"{topic.Title}\".";
+            return RedirectToAction(nameof(ProposeTopic));
+        }
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> Timeline()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var timelines = await _context.Timelines
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Date)
+                .ToListAsync();
+
+            var submissions = await _context.TimelineSubmissions
+                .Include(s => s.Versions)
+                .Where(s => s.StudentId == user.Id)
+                .ToListAsync();
+
+            ViewBag.Submissions = submissions;
+            await SetStudentLayoutData();
+
+            return View(timelines);
+        }
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> SubmitTimeline(
+            int timelineId,
+            IFormFile file)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var now = DateTime.Now;
+            var timeline = await _context.Timelines.FindAsync(timelineId);
+            if (timeline == null)
+            {
+                TempData["Error"] = "Không tìm thấy mốc thời gian.";
+                return RedirectToAction(nameof(Timeline));
+            }
+
+            if (!timeline.AllowSubmission)
+            {
+                TempData["Error"] = "Mốc này không cho phép nộp bài.";
+                return RedirectToAction(nameof(Timeline));
+            }
+
+            if (timeline.SubmissionDeadline.HasValue && now > timeline.SubmissionDeadline.Value)
+            {
+                TempData["Error"] =
+                    $"Đã quá hạn nộp bài ({timeline.SubmissionDeadline.Value:dd/MM/yyyy HH:mm}). Không thể nộp.";
+                return RedirectToAction(nameof(Timeline));
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                TempData["Error"] = "Vui lòng chọn file";
+                return RedirectToAction(nameof(Timeline));
+            }
+
+            const long maxFileSize = 20 * 1024 * 1024;
+            if (file.Length > maxFileSize)
+            {
+                TempData["Error"] = "File không được vượt quá 20MB.";
+                return RedirectToAction(nameof(Timeline));
+            }
+
+            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".pdf", ".doc", ".docx", ".zip", ".rar", ".txt"
+            };
+            var extension = Path.GetExtension(file.FileName);
+            if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
+            {
+                TempData["Error"] = "Định dạng file không hợp lệ. Chỉ hỗ trợ PDF, DOC, DOCX, ZIP, RAR hoặc TXT.";
+                return RedirectToAction(nameof(Timeline));
+            }
+
+            var submission = await _context.TimelineSubmissions
+                .Include(s => s.Versions)
+                .FirstOrDefaultAsync(s => s.TimelineId == timelineId && s.StudentId == user.Id);
+
+            if (submission != null && submission.Status != SubmissionStatus.Rejected)
+            {
+                TempData["Error"] = submission.Status == SubmissionStatus.Pending
+                    ? "Bài của bạn đang chờ giảng viên xem xét. Không thể nộp thêm."
+                    : "Bài của bạn đã được duyệt. Không thể nộp lại.";
+                return RedirectToAction(nameof(Timeline));
+            }
+
+            var uploads = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot/uploads/timeline");
+
+            Directory.CreateDirectory(uploads);
+
+            int nextVersion = (submission?.Versions.Count ?? 0) + 1;
+            var fileName = $"{user.Id}_{timelineId}_{now:yyyyMMddHHmmss}_v{nextVersion}{extension}";
+
+            var path = Path.Combine(uploads, fileName);
+
+            using (var stream = new FileStream(path, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var filePath = "/uploads/timeline/" + fileName;
+
+            if (submission == null)
+            {
+                submission = new TimelineSubmission
+                {
+                    TimelineId = timelineId,
+                    StudentId = user.Id,
+                    SubmittedAt = now
+                };
+
+                _context.TimelineSubmissions.Add(submission);
+                await _context.SaveChangesAsync();
+            }
+
+            submission.FilePath = filePath;
+            submission.FileName = file.FileName;
+            submission.SubmittedAt = now;
+            submission.Status = SubmissionStatus.Pending;
+            submission.Comment = null;
+            submission.Score = null;
+            submission.ReviewedAt = null;
+            submission.ReviewedById = null;
+            submission.LecturerComment = null;
+
+            _context.TimelineSubmissionVersions.Add(new TimelineSubmissionVersion
+            {
+                TimelineSubmissionId = submission.Id,
+                FileName = file.FileName,
+                FilePath = filePath,
+                VersionNumber = nextVersion,
+                UploadedAt = now
+            });
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Nộp file thành công. Vui lòng chờ giảng viên xem xét.";
+
+            return RedirectToAction(nameof(Timeline));
+        }
+    }
+}

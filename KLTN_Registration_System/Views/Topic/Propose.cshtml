@@ -1,0 +1,57 @@
+﻿@model KLTN_Registration_System.Models.Entities.Topic
+@{
+    Layout = "_layoutStudent";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0 p-4" style="border-radius: 20px; background: #fff;">
+        <h3 class="fw-bold text-primary mb-4">
+            <i class="fa-solid fa-lightbulb me-2"></i>Tự đề xuất đề tài
+        </h3>
+
+        <form asp-action="Propose" method="post">
+            <div class="mb-4">
+                <label class="form-label fw-bold">Tên đề tài <span class="text-danger">*</span></label>
+                <input asp-for="Title" class="form-control" style="border-radius: 10px; padding: 12px;" placeholder="Nhập tên đề tài mong muốn..." required />
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">Mô tả ngắn gọn</label>
+                <textarea asp-for="Description" class="form-control" style="border-radius: 10px;" rows="4" placeholder="Mục tiêu, công nghệ sử dụng..."></textarea>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Giảng viên hướng dẫn mong muốn</label>
+                    <select asp-for="LecturerId" class="form-select" style="border-radius: 10px; padding: 10px;">
+                        <option value="">-- Chọn giảng viên --</option>
+                        @if (ViewBag.Lecturers != null)
+                        {
+                            foreach (var gv in ViewBag.Lecturers)
+                            {
+                                <option value="@gv.Id">@gv.FullName</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Bộ môn / Chuyên ngành</label>
+                    <select asp-for="MajorId" class="form-select" style="border-radius: 10px; padding: 10px;">
+                        @foreach (var m in ViewBag.Majors)
+                        {
+                            <option value="@m.Id">@m.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4 py-2 fw-bold"
+                        style="border-radius: 12px; background-color: #2b4eff; border: none; box-shadow: 0 4px 15px rgba(43, 78, 255, 0.2);">
+                    Gửi đề xuất
+                </button>
+                <a asp-action="Index" class="btn btn-light px-4 py-2 fw-bold" style="border-radius: 12px; border: 1px solid #eee;">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>

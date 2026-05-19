@@ -1,0 +1,91 @@
+HỆ THỐNG HỖ TRỢ ĐĂNG KÝ ĐỀ TÀI KHÓA LUẬN TỐT NGHIỆP (KLTN)
+________________________________________
+1. Tác nhân – Chức năng
+1.1. Khách (chưa đăng nhập)
+•	Xem thông tin chung về hệ thống
+•	Xem danh sách đề tài KLTN đang mở
+•	Xem thông báo từ hệ thống
+•	Liên hệ với quản trị viên
+________________________________________
+1.2. Sinh viên
+•	Đăng nhập hệ thống (tài khoản do nhà trường cấp)
+•	Xem danh sách đề tài KLTN
+•	Xem chi tiết đề tài (mô tả, giảng viên hướng dẫn, số lượng sinh viên tối đa)
+•	Đăng ký đề tài
+•	Hủy đăng ký (nếu còn trong thời hạn)
+•	Xem trạng thái đăng ký (chờ duyệt / đã duyệt / bị từ chối)
+•	Nhận thông báo từ hệ thống
+•	Nhận gợi ý đề tài phù hợp
+________________________________________
+1.3. Giảng viên / Quản trị viên
+•	Đăng nhập hệ thống
+•	Tạo / chỉnh sửa / xóa đề tài KLTN
+•	Quy định số lượng sinh viên tối đa cho mỗi đề tài
+•	Thiết lập thời hạn đăng ký
+•	Xem danh sách sinh viên đăng ký theo đề tài
+•	Duyệt hoặc từ chối đăng ký
+•	Xem danh sách sinh viên chưa đăng ký đề tài
+•	Gửi thông báo nhắc nhở
+•	Xem thống kê và biểu đồ
+•	Quản lý toàn bộ hệ thống
+________________________________________
+2. Mô tả quy trình (Workflow)
+•	Sinh viên truy cập hệ thống
+→ Đăng nhập bằng tài khoản do nhà trường cấp
+→ Xem danh sách đề tài
+→ Lựa chọn đề tài phù hợp
+→ Gửi yêu cầu đăng ký
+•	Hệ thống ghi nhận trạng thái: “Chờ duyệt”
+•	Giảng viên kiểm tra:
+o	Duyệt → chuyển trạng thái “Đã duyệt”
+o	Từ chối → chuyển trạng thái “Bị từ chối”
+•	Hệ thống cập nhật trạng thái và gửi thông báo cho sinh viên
+________________________________________
+3. Xử lý sinh viên chưa đăng ký
+Hệ thống tự động:
+•	Kiểm tra danh sách sinh viên chưa đăng ký
+•	Gửi thông báo nhắc nhở trước thời hạn
+•	Gợi ý các đề tài còn chỗ phù hợp
+Sau khi hết hạn:
+•	Tự động phân bổ sinh viên vào các đề tài còn chỗ
+________________________________________
+4. Chức năng thống kê – biểu đồ
+•	Thống kê số lượng sinh viên đã đăng ký / chưa đăng ký
+•	Biểu đồ số lượng sinh viên theo từng đề tài
+•	Tỷ lệ đăng ký của mỗi đề tài
+•	Thống kê theo thời gian đăng ký
+________________________________________
+5. Công nghệ sử dụng
+•	Backend: ASP.NET Core (C#)
+•	Frontend: HTML, CSS, JavaScript
+•	Giao diện: Bootstrap (responsive)
+•	Thư viện biểu đồ: Chart.js
+•	Database: SQL Server
+•	Xác thực: JWT (JSON Web Token)
+________________________________________
+6. Định hướng kiến trúc hệ thống
+Hệ thống được xây dựng dưới dạng ứng dụng Web theo mô hình Client – Server:
+•	Người dùng truy cập thông qua trình duyệt web
+•	Backend xử lý nghiệp vụ và cung cấp API
+•	Frontend hiển thị giao diện và biểu đồ
+•	Dữ liệu được lưu trữ tại SQL Server
+________________________________________
+7. Phạm vi hệ thống
+•	Áp dụng cho việc quản lý đăng ký đề tài KLTN trong phạm vi trường học
+•	Không bao gồm các chức năng quản lý đào tạo toàn diện
+________________________________________
+8. Đặc điểm tài khoản hệ thống
+•	Hệ thống không hỗ trợ đăng ký tài khoản
+•	Tài khoản được cấp phát bởi nhà trường và quản lý bởi quản trị viên
+•	Người dùng chỉ có thể sử dụng chức năng đăng nhập để truy cập hệ thống
+________________________________________
+9. Kết luận
+Hệ thống hỗ trợ đăng ký đề tài KLTN giúp sinh viên lựa chọn đề tài phù hợp và hỗ trợ giảng viên quản lý hiệu quả.
+Việc tích hợp các chức năng như:
+•	Gợi ý đề tài
+•	Phân bổ tự động
+•	Thống kê bằng biểu đồ
+giúp nâng cao tính thực tiễn và giá trị ứng dụng của hệ thống.
+Đồng thời, việc triển khai dưới dạng ứng dụng Web giúp hệ thống dễ sử dụng, không cần cài đặt và phù hợp với môi trường giáo dục.
+________________________________________
+

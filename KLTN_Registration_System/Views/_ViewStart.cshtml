@@ -1,0 +1,19 @@
+﻿@{
+    var controller = ViewContext.RouteData.Values["Controller"]?.ToString();
+
+    // 1. Nếu là Admin hoặc Giảng viên (LecturerController) -> Dùng Layout Dashboard chung
+    if (controller == "Admin" || controller == "Lecturer")
+    {
+        Layout = "_LayoutDashboard";
+    }
+    // 2. Nếu là Sinh viên (TopicController hoặc StudentController)
+    else if (controller == "Student" || (controller == "Topic" && User.IsInRole("Student")))
+    {
+        Layout = "_LayoutStudent";
+    }
+    // 3. Các trang còn lại (Login, Home, Error...)
+    else
+    {
+        Layout = "_Layout";
+    }
+}

@@ -1,0 +1,158 @@
+﻿@* ============================================================
+   FILE: Views/Lecturer/Edit.cshtml
+   MODEL: Topic
+   Đây là view bị THIẾU HOÀN TOÀN trong dự án hiện tại.
+   LecturerController.Edit(GET) đang trả View(topic) nhưng
+   file này không tồn tại → lỗi 500 khi GV nhấn nút Sửa đề tài.
+   ============================================================ *@
+@model KLTN_Registration_System.Models.Entities.Topic
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Sửa đề tài";
+}
+
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+    <div class="flex items-center gap-3 mb-6">
+        <a asp-action="ThesisManagement" asp-controller="Lecturer"
+           class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+        </a>
+        <div>
+            <h1 class="text-xl font-bold text-slate-800">Sửa đề tài</h1>
+            <p class="text-sm text-slate-500">Chỉnh sửa thông tin — đề tài sẽ cần Admin duyệt lại</p>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+            ⚠️ @TempData["Error"]
+        </div>
+    }
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+        <form asp-action="Edit" asp-controller="Lecturer" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="TopicCode" />
+
+            <div class="grid grid-cols-1 gap-6">
+
+                <div>
+                    <label asp-for="Title" class="block text-sm font-medium text-slate-700 mb-1">
+                        Tên đề tài <span class="text-red-500">*</span>
+                    </label>
+                    <input asp-for="Title" required
+                           class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    <span asp-validation-for="Title" class="text-red-500 text-xs mt-1"></span>
+                </div>
+                <div>
+                    <label asp-for="Description" class="block text-sm font-medium text-slate-700 mb-1">
+                        Mô tả đề tài <span class="text-red-500">*</span>
+                    </label>
+                    <textarea asp-for="Description" rows="5" required
+                              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                     focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <span asp-validation-for="Description" class="text-red-500 text-xs mt-1"></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="Semester" class="block text-sm font-medium text-slate-700 mb-1">Học kỳ</label>
+                        <input asp-for="Semester"
+                               class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="VD: HK2-2025-2026" />
+                    </div>
+                    <div>
+                        <label asp-for="MajorId" class="block text-sm font-medium text-slate-700 mb-1">Chuyên ngành</label>
+                        <select asp-for="MajorId" asp-items="ViewBag.MajorId"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                       focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Không chọn --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="Level" class="block text-sm font-medium text-slate-700 mb-1">Mức độ</label>
+                        <select asp-for="Level"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                       focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="Easy">Cơ bản</option>
+                            <option value="Medium">Trung bình</option>
+                            <option value="Hard">Nâng cao</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label asp-for="MaxStudents" class="block text-sm font-medium text-slate-700 mb-1">
+                            Số sinh viên tối đa
+                        </label>
+                        <input asp-for="MaxStudents" type="number" min="1" max="5"
+                               class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label asp-for="Category" class="block text-sm font-medium text-slate-700 mb-1">Phân loại</label>
+                        <select asp-for="Category"
+                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                       focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="Ứng dụng">Ứng dụng</option>
+                            <option value="Nghiên cứu">Nghiên cứu</option>
+                            <option value="Phân tích">Phân tích</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label asp-for="Deadline" class="block text-sm font-medium text-slate-700 mb-1">
+                            Hạn đăng ký
+                        </label>
+                        <input asp-for="Deadline" type="datetime-local"
+                               value="@Model.Deadline.ToString("yyyy-MM-ddTHH:mm")"
+                               class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                </div>
+                <div>
+                    <label asp-for="Note" class="block text-sm font-medium text-slate-700 mb-1">Ghi chú</label>
+                    <textarea asp-for="Note" rows="2"
+                              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
+                                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Yêu cầu đặc biệt, công nghệ cần có..."></textarea>
+                </div>
+
+            </div>
+
+            <div class="mt-8 flex gap-3">
+                <button type="submit"
+                        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl
+                               text-sm font-semibold transition-colors">
+                    💾 Lưu thay đổi
+                </button>
+                <a asp-action="ThesisManagement" asp-controller="Lecturer"
+                   class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl
+                          text-sm font-medium transition-colors">
+                    Hủy
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+        ⚠️ Sau khi sửa, đề tài sẽ chuyển về trạng thái <strong>Chờ duyệt</strong> và cần Admin phê duyệt lại trước khi sinh viên có thể đăng ký.
+    </div>
+</div>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

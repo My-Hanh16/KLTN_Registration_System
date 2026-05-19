@@ -1,0 +1,1356 @@
+﻿@model IEnumerable<KLTN_Registration_System.Models.Entities.Timeline>
+@using KLTN_Registration_System.Models.Enums
+@{
+    Layout = "_LayoutDashboard";
+}
+
+@section Styles {
+    <style>
+        /* ══════════════════════════════════════
+               PAGE HEADER
+            ══════════════════════════════════════ */
+        .page-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .page-sub {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        /* ══════════════════════════════════════
+               STATS GRID
+            ══════════════════════════════════════ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            padding: 18px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+
+        .stat-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+            .stat-icon.blue {
+                background: #eff6ff;
+                color: #2563eb;
+            }
+
+            .stat-icon.green {
+                background: #f0fdf4;
+                color: #16a34a;
+            }
+
+            .stat-icon.amber {
+                background: #fffbeb;
+                color: #d97706;
+            }
+
+            .stat-icon.red {
+                background: #fff5f5;
+                color: #dc2626;
+            }
+
+        .stat-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 99px;
+        }
+
+            .stat-badge.blue {
+                background: #eff6ff;
+                color: #2563eb;
+            }
+
+            .stat-badge.green {
+                background: #f0fdf4;
+                color: #16a34a;
+            }
+
+            .stat-badge.amber {
+                background: #fffbeb;
+                color: #d97706;
+            }
+
+            .stat-badge.red {
+                background: #fff5f5;
+                color: #dc2626;
+            }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .stat-number {
+            font-size: 26px;
+            font-weight: 800;
+            color: #1e293b;
+            line-height: 1.1;
+        }
+
+        /* ══════════════════════════════════════
+               TIMELINE SECTION CARD
+            ══════════════════════════════════════ */
+        .tl-section {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            transition: border-color .2s;
+        }
+
+            .tl-section:hover {
+                border-color: #c7d2fe;
+            }
+
+            .tl-section.deadline-near {
+                border-color: #fcd34d;
+            }
+
+            .tl-section.deadline-passed {
+                border-color: #fca5a5;
+                background: #fffafa;
+            }
+
+        .tl-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px;
+            gap: 16px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+            .tl-header:hover {
+                background: #fafbff;
+            }
+
+        /* Date box */
+        .tl-datebox {
+            min-width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #2563eb;
+            font-weight: 800;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+            .tl-datebox.near {
+                background: #fffbeb;
+                border-color: #fcd34d;
+                color: #b45309;
+            }
+
+            .tl-datebox.passed {
+                background: #fff5f5;
+                border-color: #fca5a5;
+                color: #dc2626;
+            }
+
+            .tl-datebox .month {
+                font-size: 9px;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                opacity: .7;
+                margin-bottom: 2px;
+            }
+
+            .tl-datebox .day {
+                font-size: 22px;
+            }
+
+        .tl-meta-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f1f5f9;
+            color: #64748b;
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            padding: 3px 10px;
+            border-radius: 99px;
+            margin-bottom: 5px;
+        }
+
+            .tl-meta-label .dot {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: #4f46e5;
+            }
+
+        .tl-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .tl-desc {
+            font-size: 12.5px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        /* Deadline pill */
+        .deadline-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 11px;
+            border-radius: 99px;
+            margin-top: 6px;
+        }
+
+            .deadline-pill.ok {
+                background: #f0fdf4;
+                color: #16a34a;
+                border: 1px solid #bbf7d0;
+            }
+
+            .deadline-pill.near {
+                background: #fffbeb;
+                color: #b45309;
+                border: 1px solid #fcd34d;
+            }
+
+            .deadline-pill.passed {
+                background: #fff5f5;
+                color: #dc2626;
+                border: 1px solid #fca5a5;
+            }
+
+        /* Toggle button */
+        .btn-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            background: #1e293b;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background .15s;
+            flex-shrink: 0;
+        }
+
+            .btn-toggle:hover {
+                background: #4f46e5;
+            }
+
+            .btn-toggle.open .chevron {
+                transform: rotate(180deg);
+            }
+
+            .btn-toggle .chevron {
+                transition: transform .3s;
+                font-size: 16px;
+            }
+
+        .count-pill {
+            background: rgba(255,255,255,0.18);
+            border-radius: 99px;
+            padding: 1px 7px;
+            font-size: 11px;
+        }
+
+        .pending-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            display: inline-block;
+            animation: blink 1.5s infinite;
+        }
+
+        @@keyframes blink {
+            0%,100%
+
+        {
+            opacity: 1
+        }
+
+        50% {
+            opacity: .3
+        }
+
+        }
+
+        /* ══════════════════════════════════════
+               BODY — STUDENT LIST
+            ══════════════════════════════════════ */
+        .tl-body {
+            display: none;
+            border-top: 1px solid #f1f5f9;
+            padding: 16px 24px 20px;
+        }
+
+            .tl-body.open {
+                display: block;
+            }
+
+        /* Deadline banner */
+        .deadline-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+            .deadline-banner.near {
+                background: #fffbeb;
+                border: 1px solid #fcd34d;
+                color: #92400e;
+            }
+
+            .deadline-banner.passed {
+                background: #fff5f5;
+                border: 1px solid #fca5a5;
+                color: #991b1b;
+            }
+
+            .deadline-banner i {
+                font-size: 15px;
+                margin-top: 2px;
+                flex-shrink: 0;
+            }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 36px 24px;
+            color: #94a3b8;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
+            .empty-state i {
+                font-size: 28px;
+                display: block;
+                margin-bottom: 10px;
+                opacity: .35;
+            }
+
+            .empty-state p {
+                font-size: 13px;
+                margin: 0;
+            }
+
+        /* Student row */
+        .student-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1px solid #f1f5f9;
+            margin-bottom: 10px;
+            background: #f8fafc;
+            transition: background .15s, border-color .15s;
+        }
+
+            .student-row:last-child {
+                margin-bottom: 0;
+            }
+
+            .student-row:hover {
+                background: #fff;
+                border-color: #e0e7ff;
+            }
+
+        .stu-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .stu-name {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .stu-meta {
+            font-size: 11.5px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            padding: 3px 10px;
+            border-radius: 99px;
+        }
+
+            .status-badge.pending {
+                background: #fffbeb;
+                color: #d97706;
+            }
+
+            .status-badge.approved {
+                background: #dcfce7;
+                color: #15803d;
+            }
+
+            .status-badge.rejected {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+
+        .history-tag {
+            font-size: 10px;
+            font-weight: 700;
+            color: #4f46e5;
+            background: #eef2ff;
+            border-radius: 99px;
+            padding: 2px 8px;
+        }
+
+        /* Reject reason shown under student name */
+        .reject-reason-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #dc2626;
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            border-radius: 7px;
+            padding: 5px 10px;
+            max-width: 400px;
+            line-height: 1.4;
+        }
+
+            .reject-reason-row i {
+                font-size: 11px;
+                margin-top: 1px;
+                flex-shrink: 0;
+            }
+
+        /* Action buttons */
+        .stu-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .btn-view-file {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #64748b;
+            padding: 7px 12px;
+            border-radius: 8px;
+            border: 1.5px solid #e8edf4;
+            background: #fff;
+            text-decoration: none;
+            transition: all .15s;
+        }
+
+            .btn-view-file:hover {
+                color: #4f46e5;
+                border-color: #c7d2fe;
+                background: #eef2ff;
+            }
+
+        .btn-approve-sm {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            border: none;
+            background: #f0fdf4;
+            color: #16a34a;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+            .btn-approve-sm:hover {
+                background: #16a34a;
+                color: #fff;
+                box-shadow: 0 4px 10px rgba(22,163,74,.25);
+            }
+
+        .btn-reject-sm {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            border: none;
+            background: #fff5f5;
+            color: #dc2626;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+            .btn-reject-sm:hover {
+                background: #dc2626;
+                color: #fff;
+                box-shadow: 0 4px 10px rgba(220,38,38,.25);
+            }
+
+        .locked-tip {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 6px 12px;
+            white-space: nowrap;
+        }
+
+        /* ══════════════════════════════════════
+               MODAL
+            ══════════════════════════════════════ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.42);
+            backdrop-filter: blur(2px);
+            z-index: 1050;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+            .modal-overlay.open {
+                display: flex;
+            }
+
+        .modal-box {
+            background: #fff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 460px;
+            padding: 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        }
+
+        .modal-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+            .modal-icon.approve {
+                background: #dcfce7;
+                color: #16a34a;
+            }
+
+            .modal-icon.reject {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+
+        .modal-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 2px;
+        }
+
+        .modal-sub {
+            font-size: 12.5px;
+            color: #94a3b8;
+            margin: 0;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .modal-info-box {
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 13px;
+            color: #475569;
+            margin: 16px 0;
+            line-height: 1.6;
+        }
+
+        /* Warning banner inside approve modal */
+        .modal-warn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 10px;
+            padding: 11px 14px;
+            font-size: 12.5px;
+            color: #92400e;
+            font-weight: 600;
+            margin-bottom: 14px;
+        }
+
+        /* Reason chips */
+        .reason-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .reason-chip {
+            font-size: 11.5px;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 7px;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+            .reason-chip:hover {
+                background: #fee2e2;
+                border-color: #fca5a5;
+                color: #dc2626;
+            }
+
+        .modal-label {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+            .modal-label .required {
+                color: #dc2626;
+                margin-left: 2px;
+            }
+
+            .modal-label .opt {
+                font-weight: 400;
+                color: #94a3b8;
+                margin-left: 4px;
+            }
+
+        .modal-textarea {
+            width: 100%;
+            border: 1.5px solid #e8edf4;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            color: #1e293b;
+            background: #f8fafc;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+            .modal-textarea:focus {
+                border-color: #dc2626;
+                background: #fff;
+                box-shadow: 0 0 0 3px rgba(220,38,38,.08);
+            }
+
+            .modal-textarea.invalid {
+                border-color: #dc2626 !important;
+                background: #fff5f5 !important;
+            }
+
+        .char-count {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+            .char-count.warn {
+                color: #d97706;
+            }
+
+        .field-error {
+            font-size: 11.5px;
+            color: #dc2626;
+            font-weight: 600;
+            margin-top: 5px;
+            display: none;
+        }
+
+            .field-error.show {
+                display: block;
+            }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-modal-cancel {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1.5px solid #e8edf4;
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+            .btn-modal-cancel:hover {
+                background: #f1f5f9;
+                color: #1e293b;
+            }
+
+        .btn-modal-confirm {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s;
+            color: #fff;
+        }
+
+            .btn-modal-confirm.approve {
+                background: #16a34a;
+                box-shadow: 0 4px 12px rgba(22,163,74,.25);
+            }
+
+                .btn-modal-confirm.approve:hover {
+                    background: #15803d;
+                }
+
+            .btn-modal-confirm.reject {
+                background: #dc2626;
+                box-shadow: 0 4px 12px rgba(220,38,38,.25);
+            }
+
+                .btn-modal-confirm.reject:hover {
+                    background: #b91c1c;
+                }
+    </style>
+}
+
+@{
+    var allSubs = Model
+        .SelectMany(t => t.TimelineSubmissions ?? new List<KLTN_Registration_System.Models.Entities.TimelineSubmission>())
+        .ToList();
+
+    int totalPending = allSubs.Count(s => s.Status == SubmissionStatus.Pending);
+    int totalApproved = allSubs.Count(s => s.Status == SubmissionStatus.Approved);
+    int totalTimelines = Model.Count();
+    int nearDeadline = Model.Count(t =>
+    {
+        if (t.ReviewDeadline == null) return false;
+        var diff = (t.ReviewDeadline.Value - DateTime.Now).TotalHours;
+        return diff > 0 && diff <= 48;
+    });
+}
+
+<div class="container-fluid px-0">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="page-title">Duyệt tiến độ sinh viên</h2>
+            <p class="page-sub">Theo dõi, đánh giá và phê duyệt bài nộp trước thời hạn tổng hợp lên Admin.</p>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="stat-icon blue"><i class="fa-solid fa-layer-group"></i></div>
+                <span class="stat-badge blue">Tổng</span>
+            </div>
+            <div class="stat-label">Mốc thời gian</div>
+            <div class="stat-number">@totalTimelines</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="stat-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
+                <span class="stat-badge amber">Cần xử lý</span>
+            </div>
+            <div class="stat-label">Bài nộp chờ duyệt</div>
+            <div class="stat-number">@totalPending</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+                <span class="stat-badge green">Tổng</span>
+            </div>
+            <div class="stat-label">Đã phê duyệt</div>
+            <div class="stat-number">@totalApproved</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <span class="stat-badge red">Cảnh báo</span>
+            </div>
+            <div class="stat-label">Mốc sắp hết hạn duyệt</div>
+            <div class="stat-number">@nearDeadline</div>
+        </div>
+    </div>
+
+    <!-- ══ TIMELINE SECTIONS ══ -->
+    @foreach (var timeline in Model)
+    {
+        var submissions = timeline.TimelineSubmissions
+        ?? new List<KLTN_Registration_System.Models.Entities.TimelineSubmission>();
+
+        var groupedSubmissions = submissions
+        .GroupBy(s => s.StudentId)
+        .Select(g => new
+        {
+            Student = g.FirstOrDefault()?.Student,
+            LatestSub = g.OrderByDescending(s => s.SubmittedAt).FirstOrDefault(),
+            HistoryCount = g.Count()
+        })
+        .Where(x => x.Student != null && x.LatestSub != null)
+        .ToList();
+
+        int pendingCount = groupedSubmissions.Count(g => g.LatestSub!.Status == SubmissionStatus.Pending);
+
+        /*
+        * ReviewDeadline  — hạn giảng viên phải duyệt xong (cần thêm field này vào model Timeline)
+        * SubmissionDeadline — hạn sinh viên nộp bài (đã có)
+        * Nếu chưa có ReviewDeadline, fallback = SubmissionDeadline - 2 ngày
+        */
+        DateTime? reviewDeadline = timeline.ReviewDeadline
+        ?? (timeline.SubmissionDeadline.HasValue
+        ? timeline.SubmissionDeadline.Value.AddDays(-2)
+        : (DateTime?)null);
+
+        string deadlineStatus = "ok";
+        string deadlineText = "";
+        double hoursLeft = double.MaxValue;
+
+        if (reviewDeadline.HasValue)
+        {
+            hoursLeft = (reviewDeadline.Value - DateTime.Now).TotalHours;
+            if (hoursLeft < 0)
+            {
+                deadlineStatus = "passed";
+                int daysOver = (int)Math.Abs(hoursLeft / 24);
+                deadlineText = daysOver > 0
+                ? $"Đã quá hạn {daysOver} ngày"
+                : $"Quá hạn {(int)Math.Abs(hoursLeft)} giờ";
+            }
+            else if (hoursLeft <= 48)
+            {
+                deadlineStatus = "near";
+                deadlineText = hoursLeft < 1
+                ? "Còn dưới 1 giờ!"
+                : hoursLeft < 24
+                ? $"Còn {(int)hoursLeft} giờ {(int)((hoursLeft % 1) * 60)} phút"
+                : $"Còn {(int)(hoursLeft / 24)} ngày {(int)(hoursLeft % 24)} giờ";
+            }
+            else
+            {
+                deadlineText = $"Còn {(int)(hoursLeft / 24)} ngày";
+            }
+        }
+
+        bool isLocked = deadlineStatus == "passed";
+
+        var refDate = reviewDeadline ?? (submissions.Any()
+        ? submissions.Max(s => s.SubmittedAt)
+        : DateTime.Now);
+
+        string sectionId = $"tl-body-{timeline.Id}";
+        string btnId = $"tl-btn-{timeline.Id}";
+
+        // Chuỗi JS-safe cho deadline
+        string jsDeadlineTime = reviewDeadline.HasValue
+        ? $"\"{reviewDeadline.Value:HH:mm, dd/MM/yyyy}\""
+        : "null";
+        string jsDeadlineStatus = $"\"{deadlineStatus}\"";
+
+        <div class="tl-section @(deadlineStatus == "near" ? "deadline-near" : deadlineStatus == "passed" ? "deadline-passed" : "")">
+
+            <!-- HEADER -->
+            <div class="tl-header" onclick="toggleSection('@sectionId','@btnId')">
+                <div class="d-flex align-items-center gap-3" style="min-width:0;">
+
+                    <div class="tl-datebox @deadlineStatus">
+                        <span class="month">Tháng @refDate.ToString("MM")</span>
+                        <span class="day">@refDate.ToString("dd")</span>
+                    </div>
+
+                    <div style="min-width:0;">
+                        <div class="tl-meta-label">
+                            <span class="dot"></span> MỐC THỜI GIAN
+                        </div>
+                        <div class="tl-title">@timeline.Title</div>
+                        @if (!string.IsNullOrWhiteSpace(timeline.Description))
+                        {
+                            <div class="tl-desc">@timeline.Description</div>
+                        }
+                        @if (reviewDeadline.HasValue)
+                        {
+                            <div class="deadline-pill @deadlineStatus">
+                                @if (deadlineStatus == "passed")
+                                {
+                                    <i class="fa-solid fa-lock" style="font-size:10px;"></i>
+                                }
+                                else if (deadlineStatus == "near")
+                                {
+                                    <i class="fa-solid fa-fire-flame-curved" style="font-size:10px;"></i>
+                                }
+                                else
+                                {
+                                    <i class="fa-regular fa-clock" style="font-size:10px;"></i>
+                                }
+                                Hạn duyệt: @reviewDeadline.Value.ToString("dd/MM/yyyy HH:mm") &mdash; @deadlineText
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Toggle button -->
+                <button id="@btnId" type="button" class="btn-toggle"
+                        onclick="event.stopPropagation(); toggleSection('@sectionId','@btnId')">
+                    @if (pendingCount > 0 && !isLocked)
+                    {
+                        <span class="pending-dot"></span>
+                    }
+                    <span>Danh sách nộp bài</span>
+                    @if (groupedSubmissions.Any())
+                    {
+                        <span class="count-pill">@groupedSubmissions.Count</span>
+                    }
+                    <i class="fa-solid fa-chevron-down chevron"></i>
+                </button>
+            </div>
+
+            <!-- BODY -->
+            <div id="@sectionId" class="tl-body">
+
+                @if (deadlineStatus == "near" && reviewDeadline.HasValue)
+                {
+                    <div class="deadline-banner near">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div>
+                            <strong>Sắp hết hạn duyệt!</strong> Bạn phải hoàn tất duyệt toàn bộ bài nộp trước
+                            <strong>@reviewDeadline.Value.ToString("HH:mm ngày dd/MM/yyyy")</strong>
+                            (@deadlineText). Sau thời điểm này hệ thống sẽ khóa và tự động tổng hợp kết quả lên Admin.
+                        </div>
+                    </div>
+                }
+
+                @if (deadlineStatus == "passed" && reviewDeadline.HasValue)
+                {
+                    <div class="deadline-banner passed">
+                        <i class="fa-solid fa-lock"></i>
+                        <div>
+                            <strong>Đã hết hạn duyệt.</strong> Thời hạn kết thúc lúc
+                            <strong>@reviewDeadline.Value.ToString("HH:mm ngày dd/MM/yyyy")</strong>.
+                            Kết quả đã được tổng hợp và gửi lên Admin. Nếu cần điều chỉnh, hãy liên hệ Ban quản lý.
+                        </div>
+                    </div>
+                }
+
+                @if (!groupedSubmissions.Any())
+                {
+                    <div class="empty-state">
+                        <i class="fa-regular fa-folder-open"></i>
+                        <p>Chưa có sinh viên nào nộp bài cho mốc này.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var group in groupedSubmissions)
+                    {
+                        var sub = group.LatestSub!;
+                        string statusClass = sub.Status switch
+                        {
+                            SubmissionStatus.Approved => "approved",
+                            SubmissionStatus.Rejected => "rejected",
+                            _ => "pending"
+                        };
+                        string statusText = sub.Status switch
+                        {
+                            SubmissionStatus.Approved => "Đã duyệt",
+                            SubmissionStatus.Rejected => "Từ chối",
+                            _ => "Đang chờ"
+                        };
+
+                        var fullName = (group.Student?.FullName ?? "").Trim();
+
+                        string initial = "?";
+
+                        if (!string.IsNullOrWhiteSpace(fullName))
+                        {
+                            var lastWord = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+
+                            if (!string.IsNullOrWhiteSpace(lastWord))
+                            {
+                                initial = lastWord.Substring(0, 1).ToUpper();
+                            }
+                        }
+
+                        // JS-safe strings per row
+                        string jsName = System.Text.Json.JsonSerializer.Serialize(group.Student.FullName ?? "");
+                        string jsSubId = sub.Id.ToString();
+
+                        <div class="student-row">
+                            <!-- Left -->
+                            <div class="d-flex align-items-center gap-3" style="min-width:0;">
+                                <div class="stu-avatar">@initial</div>
+                                <div style="min-width:0;">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <span class="stu-name">@group.Student.FullName</span>
+                                        <span class="status-badge @statusClass">@statusText</span>
+                                        @if (group.HistoryCount > 1)
+                                        {
+                                            <span class="history-tag" title="@group.Student.FullName đã nộp @group.HistoryCount lần">
+                                                +@(group.HistoryCount - 1) lần trước
+                                            </span>
+                                        }
+                                    </div>
+                                    <div class="stu-meta">Nộp lúc: @sub.SubmittedAt.ToString("dd/MM/yyyy HH:mm")</div>
+
+                                    @* Hiển thị lý do từ chối ngay trên giao diện *@
+                                    @if (sub.Status == SubmissionStatus.Rejected
+                                                            && !string.IsNullOrWhiteSpace(sub.LecturerComment))
+                                    {
+                                        <div class="reject-reason-row">
+                                            <i class="fa-solid fa-comment-slash"></i>
+                                            <span>@sub.LecturerComment</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Right -->
+                            <div class="stu-actions">
+                                @if (!string.IsNullOrWhiteSpace(sub.FilePath))
+                                {
+                                    <a href="@sub.FilePath" target="_blank" class="btn-view-file">
+                                        <i class="fa-solid fa-eye"></i> Xem file
+                                    </a>
+                                }
+
+                                @if (sub.Status == SubmissionStatus.Pending)
+                                {
+                                    if (isLocked)
+                                    {
+                                        <span class="locked-tip">
+                                            <i class="fa-solid fa-lock" style="font-size:10px;"></i> Đã khoá
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn-approve-sm" title="Duyệt bài nộp"
+                                                onclick="openApproveModal('@jsSubId', @jsName, @jsDeadlineStatus, @jsDeadlineTime)">
+                                            <i class="fa-solid fa-check"></i>
+                                        </button>
+
+                                        <button type="button" class="btn-reject-sm" title="Từ chối bài nộp"
+                                                onclick="openRejectModal('@jsSubId', @jsName)">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+
+</div>
+
+<!-- ════════════════════════════════
+     MODAL: DUYỆT
+════════════════════════════════ -->
+<div id="approveModal" class="modal-overlay" onclick="if(event.target===this)closeApproveModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="modal-icon approve"><i class="fa-solid fa-circle-check"></i></div>
+            <div>
+                <p class="modal-title">Xác nhận duyệt bài nộp</p>
+                <p class="modal-sub" id="approveStudentName"></p>
+            </div>
+        </div>
+
+        <!-- Cảnh báo sắp hết hạn (chỉ hiện khi near) -->
+        <div id="approveWarnBox" class="modal-warn" style="display:none;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span id="approveWarnText"></span>
+        </div>
+
+        <div class="modal-info-box">
+            Sau khi duyệt, bài nộp sẽ được <strong>ghi nhận hoàn thành</strong> mốc này và tổng hợp lên hệ thống chung.
+            Hành động <strong>không thể hoàn tác</strong>.
+        </div>
+
+        <form id="approveForm" asp-action="ApproveSubmission" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="approveSubId" name="id" value="" />
+            <div class="modal-actions">
+                <button type="button" class="btn-modal-cancel" onclick="closeApproveModal()">Hủy</button>
+                <button type="submit" class="btn-modal-confirm approve">
+                    <i class="fa-solid fa-check me-1"></i> Xác nhận duyệt
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<!-- ════════════════════════════════
+     MODAL: TỪ CHỐI — lý do bắt buộc
+════════════════════════════════ -->
+<div id="rejectModal" class="modal-overlay" onclick="if(event.target===this)closeRejectModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="modal-icon reject"><i class="fa-solid fa-circle-xmark"></i></div>
+            <div>
+                <p class="modal-title">Từ chối bài nộp</p>
+                <p class="modal-sub" id="rejectStudentName"></p>
+            </div>
+        </div>
+
+        <form id="rejectForm" asp-action="RejectSubmission" method="post" onsubmit="return validateReject()">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="rejectSubId" name="id" value="" />
+
+            <!-- Gợi ý nhanh -->
+            <div class="modal-label" style="margin-bottom:8px;">
+                Lý do gợi ý <span class="opt">(click để điền nhanh)</span>
+            </div>
+            <div class="reason-chips">
+                <span class="reason-chip" onclick="fillReason('Nội dung còn sơ sài, thiếu chi tiết — vui lòng bổ sung thêm.')">Nội dung sơ sài</span>
+                <span class="reason-chip" onclick="fillReason('Định dạng file không đúng yêu cầu, vui lòng nộp lại theo mẫu quy định.')">Sai định dạng</span>
+                <span class="reason-chip" onclick="fillReason('Thiếu chữ ký của giảng viên hướng dẫn.')">Thiếu chữ ký GVHD</span>
+                <span class="reason-chip" onclick="fillReason('Nội dung chưa khớp với đề cương đã đăng ký, cần chỉnh sửa lại.')">Sai nội dung</span>
+                <span class="reason-chip" onclick="fillReason('File bị lỗi hoặc không mở được, vui lòng tải lại.')">File lỗi / không mở được</span>
+                <span class="reason-chip" onclick="fillReason('Trình bày chưa đúng chuẩn, cần chỉnh sửa theo hướng dẫn của khoa.')">Trình bày chưa chuẩn</span>
+            </div>
+
+            <!-- Textarea — bắt buộc tối thiểu 15 ký tự -->
+            <label class="modal-label">
+                Lý do từ chối <span class="required">*</span>
+                <span class="opt">(sinh viên sẽ nhận được phản hồi này)</span>
+            </label>
+            <textarea id="rejectComment" name="comment" rows="4" class="modal-textarea"
+                      placeholder="Mô tả rõ lý do từ chối để sinh viên biết cần chỉnh sửa điều gì...&#10;Ví dụ: Phần tổng quan tài liệu còn thiếu, cần bổ sung ít nhất 5 tài liệu tham khảo gần đây..."
+                      oninput="updateCharCount()"></textarea>
+            <div class="d-flex justify-content-between align-items-center">
+                <div id="rejectError" class="field-error">
+                    <i class="fa-solid fa-circle-exclamation me-1"></i>
+                    Vui lòng nhập lý do từ chối (ít nhất 15 ký tự) để sinh viên có thể chỉnh sửa.
+                </div>
+                <div id="charCount" class="char-count ms-auto">0 / 500</div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-modal-cancel" onclick="closeRejectModal()">Hủy</button>
+                <button type="submit" class="btn-modal-confirm reject">
+                    <i class="fa-solid fa-xmark me-1"></i> Gửi phản hồi từ chối
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        /* ── TOGGLE SECTION ── */
+        function toggleSection(bodyId, btnId) {
+            document.getElementById(bodyId)?.classList.toggle('open');
+            document.getElementById(btnId)?.classList.toggle('open');
+        }
+
+        /* ── APPROVE MODAL ── */
+        function openApproveModal(subId, studentName, deadlineStatus, deadlineTime) {
+            document.getElementById('approveSubId').value = subId;
+            document.getElementById('approveStudentName').textContent =
+                studentName ? 'Sinh viên: ' + studentName : '';
+
+            const warnBox  = document.getElementById('approveWarnBox');
+            const warnText = document.getElementById('approveWarnText');
+
+            if (deadlineStatus === 'near' && deadlineTime) {
+                warnText.textContent =
+                    'Hạn duyệt sắp kết thúc lúc ' + deadlineTime +
+                    '. Hãy hoàn tất duyệt sớm để kịp tổng hợp lên Admin.';
+                warnBox.style.display = 'flex';
+            } else {
+                warnBox.style.display = 'none';
+            }
+
+            document.getElementById('approveModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeApproveModal() {
+            document.getElementById('approveModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        /* ── REJECT MODAL ── */
+        function openRejectModal(subId, studentName) {
+            document.getElementById('rejectSubId').value = subId;
+            document.getElementById('rejectStudentName').textContent =
+                studentName ? studentName : '';
+
+            // Reset
+            const ta = document.getElementById('rejectComment');
+            ta.value = '';
+            ta.classList.remove('invalid');
+            document.getElementById('rejectError').classList.remove('show');
+            document.getElementById('charCount').textContent = '0 / 500';
+            document.getElementById('charCount').classList.remove('warn');
+
+            document.getElementById('rejectModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => ta.focus(), 200);
+        }
+
+        function closeRejectModal() {
+            document.getElementById('rejectModal').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        /* ── VALIDATE: lý do bắt buộc ≥ 15 ký tự ── */
+        function validateReject() {
+            const ta  = document.getElementById('rejectComment');
+            const err = document.getElementById('rejectError');
+            const val = ta.value.trim();
+
+            if (val.length < 15) {
+                ta.classList.add('invalid');
+                err.classList.add('show');
+                ta.focus();
+                return false;
+            }
+
+            ta.classList.remove('invalid');
+            err.classList.remove('show');
+            return true;
+        }
+
+        /* ── FILL REASON từ chip ── */
+        function fillReason(text) {
+            const ta = document.getElementById('rejectComment');
+            ta.value = text;
+            updateCharCount();
+            ta.classList.remove('invalid');
+            document.getElementById('rejectError').classList.remove('show');
+            ta.focus();
+        }
+
+        /* ── CHAR COUNT ── */
+        function updateCharCount() {
+            const ta  = document.getElementById('rejectComment');
+            const cc  = document.getElementById('charCount');
+            const len = ta.value.length;
+            cc.textContent = len + ' / 500';
+            cc.classList.toggle('warn', len > 400);
+
+            if (len >= 15) {
+                ta.classList.remove('invalid');
+                document.getElementById('rejectError').classList.remove('show');
+            }
+
+            // Giới hạn 500 ký tự
+            if (len > 500) ta.value = ta.value.substring(0, 500);
+        }
+
+        /* ── ESC KEY ── */
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { closeApproveModal(); closeRejectModal(); }
+        });
+    </script>
+}
