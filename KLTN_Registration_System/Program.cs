@@ -22,12 +22,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // ================= IDENTITY =================
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    // Cấu hình password nhẹ hơn để test dễ
+    // Cấu hình password tối thiểu cho tài khoản hệ thống.
     options.Password.RequireDigit = true;
-    options.Password.RequiredLength = 6;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireLowercase = false;
+    options.Password.RequiredLength = 8;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
     // Lockout
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
     options.Lockout.MaxFailedAccessAttempts = 5;
@@ -163,11 +163,14 @@ using (var scope = app.Services.CreateScope())
     }
 
     // ── 2. Seed Admin mặc định ─────────────────────────────────
-    // ✅ QUAN TRỌNG: Không có seed này thì không thể đăng nhập lần đầu
-    const string adminEmail = "admin@kltn.edu.vn";
-    const string adminPassword = "Admin@123456";
+    // Cấu hình qua biến môi trường hoặc user-secrets:
+    // SeedAdmin__Email và SeedAdmin__Password
+    var adminEmail = builder.Configuration["SeedAdmin:Email"];
+    var adminPassword = builder.Configuration["SeedAdmin:Password"];
 
-    if (await userManager.FindByEmailAsync(adminEmail) == null)
+    if (!string.IsNullOrWhiteSpace(adminEmail)
+        && !string.IsNullOrWhiteSpace(adminPassword)
+        && await userManager.FindByEmailAsync(adminEmail) == null)
     {
         var admin = new ApplicationUser
         {
@@ -195,6 +198,39 @@ using (var scope = app.Services.CreateScope())
         );
         context.SaveChanges();
     }
+
+    // Tự vá DB cũ chưa chạy migration AddUserMajorAssignments.
+    context.Database.ExecuteSqlRaw(@"
+IF OBJECT_ID(N'[dbo].[UserMajors]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[UserMajors](
+        [UserId] nvarchar(450) NOT NULL,
+        [MajorId] int NOT NULL,
+        CONSTRAINT [PK_UserMajors] PRIMARY KEY ([UserId], [MajorId]),
+        CONSTRAINT [FK_UserMajors_AspNetUsers_UserId] FOREIGN KEY ([UserId])
+            REFERENCES [dbo].[AspNetUsers]([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_UserMajors_Majors_MajorId] FOREIGN KEY ([MajorId])
+            REFERENCES [dbo].[Majors]([Id]) ON DELETE CASCADE
+    );
+
+    CREATE INDEX [IX_UserMajors_MajorId] ON [dbo].[UserMajors]([MajorId]);
+
+    INSERT INTO [dbo].[UserMajors] ([UserId], [MajorId])
+    SELECT [Id], [MajorId]
+    FROM [dbo].[AspNetUsers]
+    WHERE [MajorId] IS NOT NULL;
+END
+
+IF OBJECT_ID(N'[dbo].[__EFMigrationsHistory]', N'U') IS NOT NULL
+   AND NOT EXISTS (
+       SELECT 1 FROM [dbo].[__EFMigrationsHistory]
+       WHERE [MigrationId] = N'20260520090000_AddUserMajorAssignments'
+   )
+BEGIN
+    INSERT INTO [dbo].[__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260520090000_AddUserMajorAssignments', N'8.0.0');
+END
+");
 
     // ── 4. Seed Settings (thời gian đăng ký) ──────────────────
     var defaultSettings = new Dictionary<string, string>

@@ -20,6 +20,7 @@ namespace KLTN_Registration_System.Models
         public DbSet<TimelineSubmission> TimelineSubmissions { get; set; }
         public DbSet<TopicComment> TopicComments { get; set; }
         public DbSet<TimelineSubmissionVersion> TimelineSubmissionVersions { get; set; }
+        public DbSet<UserMajor> UserMajors { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -119,6 +120,21 @@ namespace KLTN_Registration_System.Models
             builder.Entity<Major>(e =>
             {
                 e.Property(m => m.IsActive).HasDefaultValue(true);
+            });
+
+            builder.Entity<UserMajor>(e =>
+            {
+                e.HasKey(um => new { um.UserId, um.MajorId });
+
+                e.HasOne(um => um.User)
+                 .WithMany(u => u.UserMajors)
+                 .HasForeignKey(um => um.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(um => um.Major)
+                 .WithMany(m => m.UserMajors)
+                 .HasForeignKey(um => um.MajorId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
             builder.Entity<TimelineSubmission>(e =>
             {

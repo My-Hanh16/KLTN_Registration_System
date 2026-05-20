@@ -6,6 +6,7 @@
     // Tự động đổi tiêu đề trang dựa trên Role
     ViewData["Title"] = roleFilter == "Student" ? "Quản lý Sinh viên" : (roleFilter == "Lecturer" ? "Quản lý Giảng viên" : "Quản lý người dùng");
     var userRoles = ViewBag.UserRoles as Dictionary<string, string>;
+    var majors = ViewBag.Majors as List<Major> ?? new List<Major>();
 }
 @if (!string.IsNullOrEmpty(roleFilter))
 {
@@ -25,9 +26,9 @@
                 <span class="material-symbols-outlined text-lg">file_upload</span> Nhập từ Excel
             </a>
 
-            <button class="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:opacity-90 transition-all">
+            <a href="@Url.Action("ExportUsers", "Admin", new { role = roleFilter })" class="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:opacity-90 transition-all">
                 <span class="material-symbols-outlined text-lg">file_download</span> Xuất file
-            </button>
+            </a>
         </div>
     </div>
 }
@@ -48,9 +49,9 @@ else
                 <span class="material-symbols-outlined text-lg">file_upload</span> Nhập từ Excel
             </a>
 
-            <button class="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:opacity-90 transition-all">
+            <a href="@Url.Action("ExportUsers", "Admin")" class="flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-lg shadow-blue-200 hover:opacity-90 transition-all">
                 <span class="material-symbols-outlined text-lg">file_download</span> Xuất file
-            </button>
+            </a>
         </div>
     </div>
 }
@@ -464,6 +465,7 @@ else
         <form asp-action="ChangeUserRole" asp-controller="Admin" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" id="modalUserId" name="userId" />
+            <input type="hidden" name="role" value="@roleFilter" />
 
             <div class="space-y-3 mb-8">
                 @foreach (var r in new[] {
@@ -516,13 +518,14 @@ else
                     <input type="text" name="userCode" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20" placeholder="SV001 hoặc GV001" required>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Khoa</label>
-                    <select name="Faculty" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20">
-                        <option value="Công nghệ thông tin">Công nghệ thông tin</option>
-                        <option value="Báo chí">Báo chí</option>
-                        <option value="Ngoại ngữ">Ngoại ngữ</option>
-                        <option value="Điện tử viễn thông">Điện tử viễn thông</option>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Chuyên ngành / Khoa</label>
+                    <select name="majorIds" multiple size="4" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20">
+                        @foreach (var major in majors)
+                        {
+                            <option value="@major.Id">@major.Name @(!string.IsNullOrWhiteSpace(major.FacultyName) ? $"({major.FacultyName})" : "")</option>
+                        }
                     </select>
+                    <p class="text-[11px] text-slate-400 mt-1">Giữ Ctrl để chọn nhiều chuyên ngành cho giảng viên. Sinh viên nên chọn 1 chuyên ngành.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Vai trò</label>
@@ -544,19 +547,9 @@ else
                         </div>
                     }
 
-                    @* --- PHẦN THÊM MỚI: HIỂN THỊ KHOA/HỌC VỊ KHI THÊM GIẢNG VIÊN --- *@
+                    @* --- PHẦN THÊM MỚI: HIỂN THỊ HỌC VỊ KHI THÊM GIẢNG VIÊN --- *@
                     @if (roleFilter == "Lecturer")
                     {
-                        <div class="mt-4">
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Khoa</label>
-                            <select name="Faculty" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20">
-                                <option value="Công nghệ thông tin">Công nghệ thông tin</option>
-                                <option value="Kinh tế">Kinh tế</option>
-                                <option value="Ngoại ngữ">Ngoại ngữ</option>
-                                <option value="Điện tử viễn thông">Điện tử viễn thông</option>
-                                <option value="Cơ khí">Cơ khí</option>
-                            </select>
-                        </div>
                         <div class="grid grid-cols-2 gap-4 mt-4">
                             <div>
                                 <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Trình độ</label>

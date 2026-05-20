@@ -17,6 +17,7 @@ namespace KLTN_Registration_System.Models.Entities
         public int? MajorId { get; set; }
         public Major? Major { get; set; }
 
+        public ICollection<UserMajor> UserMajors { get; set; } = new List<UserMajor>();
         public ICollection<Registration> Registrations { get; set; } = new List<Registration>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     }

@@ -1,16 +1,70 @@
-﻿@{
+@{
     Layout = "_LayoutDashboard";
+    string? role = ViewBag.Role as string;
+    var title = role switch
+    {
+        "Student" => "Nhập sinh viên từ Excel",
+        "Lecturer" => "Nhập giảng viên từ Excel",
+        "Admin" => "Nhập quản trị viên từ Excel",
+        _ => "Nhập người dùng từ Excel"
+    };
 }
-<div class="max-w-xl mx-auto mt-10 p-8 bg-white rounded-3xl shadow-lg">
-    <h2 class="text-2xl font-bold mb-4">Nhập @ViewBag.Role từ Excel</h2>
-    <p class="text-slate-500 mb-6 text-sm">Vui lòng chọn file .xlsx đúng định dạng (Cột A: Họ tên, B: Email, C: Mã, D: Khoa).</p>
 
-    <form asp-action="ImportUsers" method="post" enctype="multipart/form-data">
-        @Html.AntiForgeryToken()
-        <input type="hidden" name="role" value="@ViewBag.Role" />
-        <div class="mb-6">
-            <input type="file" name="file" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required />
+@section Styles {
+    <link rel="stylesheet" href="~/css/admin/import-users.css" asp-append-version="true" />
+}
+
+<div class="import-users-page">
+    <section class="import-card">
+        <header class="import-header">
+            <h2>@title</h2>
+            <p>
+                File cần có các cột: FullName, Email, UserCode, Faculty, MajorCode, MajorName.
+                Với giảng viên có thể nhập nhiều mã ngành trong cột MajorCode, ví dụ: CNPM,HTTT.
+            </p>
+        </header>
+
+        <div class="template-actions">
+            <a href="~/templates/import-sinh-vien-v2.xlsx" class="template-link">
+                Tải mẫu sinh viên
+            </a>
+            <a href="~/templates/import-giang-vien-v2.xlsx" class="template-link">
+                Tải mẫu giảng viên
+            </a>
         </div>
-        <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-bold">Bắt đầu nhập liệu</button>
-    </form>
+
+        <form asp-action="ImportUsers" method="post" enctype="multipart/form-data" class="import-form">
+            @Html.AntiForgeryToken()
+            @if (!string.IsNullOrWhiteSpace(role))
+            {
+                <input type="hidden" name="role" value="@role" />
+            }
+            else
+            {
+                <div class="form-group">
+                    <label for="roleSelect">Vai trò cần import</label>
+                    <select id="roleSelect" name="role" class="form-select" required>
+                        <option value="">-- Chọn vai trò --</option>
+                        <option value="Student">Sinh viên</option>
+                        <option value="Lecturer">Giảng viên</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+            }
+
+            <div class="form-group">
+                <label for="userImportFile">File Excel</label>
+                <input id="userImportFile"
+                       type="file"
+                       name="file"
+                       accept=".xlsx,.xls"
+                       class="file-input"
+                       required />
+            </div>
+
+            <button type="submit" class="submit-button">
+                Bắt đầu nhập liệu
+            </button>
+        </form>
+    </section>
 </div>

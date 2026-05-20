@@ -774,7 +774,7 @@
 
             const attachHtml = msg.attachmentUrl
                 ? `<div>
-                    <a class="attachment-link" href="${msg.attachmentUrl}" target="_blank">
+                    <a class="attachment-link" href="${escAttr(msg.attachmentUrl)}" target="_blank" rel="noopener noreferrer">
                         <i class="fa-solid fa-paperclip"></i> ${escHtml(msg.attachmentName || "File đính kèm")}
                     </a>
                    </div>`
@@ -836,6 +836,11 @@
                         <div class="sender-name">${escHtml(msg.senderName || "")}</div>
                         <div class="bubble ${isMine ? "mine" : "them"}">
                             ${msg.content ? `<span>${escHtml(msg.content)}</span>` : ""}
+                            ${msg.attachmentUrl ? `<div>
+                                <a class="attachment-link" href="${escAttr(msg.attachmentUrl)}" target="_blank" rel="noopener noreferrer">
+                                    <i class="fa-solid fa-paperclip"></i> ${escHtml(msg.attachmentName || "File đính kèm")}
+                                </a>
+                            </div>` : ""}
                         </div>
                         <div class="bubble-time">${msg.createdAtFmt || ""}</div>
                     </div>`;
@@ -867,10 +872,15 @@
                 },
                 body: formData
             });
-            const data = await res.json();
+            let data = {};
+            try {
+                data = await res.json();
+            } catch {
+                data = { error: "Không thể tải file lên. Vui lòng thử lại." };
+            }
 
-            if (data.error) {
-                alert(data.error);
+            if (!res.ok || data.error) {
+                alert(data.error || "Không thể tải file lên. Vui lòng thử lại.");
                 clearAttach();
                 return;
             }
@@ -908,6 +918,10 @@
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;");
+        }
+
+        function escAttr(str) {
+            return escHtml(str).replace(/"/g, "&quot;");
         }
 
         scrollToBottom();

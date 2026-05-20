@@ -2,6 +2,8 @@
 @{
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Bảng điều khiển Quản trị";
+    var registrationLineLabels = ViewBag.RegistrationLineLabels as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var registrationLineCounts = ViewBag.RegistrationLineCounts as IEnumerable<int> ?? Enumerable.Empty<int>();
 }
 
 <div class="space-y-8">
@@ -272,10 +274,10 @@
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(registrationLineLabels)),
                 datasets: [{
                     label: 'Đăng ký',
-                    data: [15, 45, 30, 55, 85, 70, 60],
+                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(registrationLineCounts)),
                     borderColor: '#2563eb',
                     borderWidth: 4,
                     fill: true,

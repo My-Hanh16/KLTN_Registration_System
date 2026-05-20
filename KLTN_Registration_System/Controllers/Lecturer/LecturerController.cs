@@ -459,9 +459,13 @@ namespace KLTN_Registration_System.Controllers
         [HttpGet]
         public async Task<IActionResult> Create()
         {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var allowedMajors = await GetLecturerMajorsAsync(uid);
+
             ViewBag.MajorId = new SelectList(
-                await _context.Majors.Where(m => m.IsActive).ToListAsync(),
+                allowedMajors,
                 "Id", "Name");
+            ViewBag.NoMajorAssigned = !allowedMajors.Any();
 
             return View(new Topic
             {
@@ -522,6 +526,18 @@ namespace KLTN_Registration_System.Controllers
                     topic.MaxStudents = 10;
 
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var allowedMajorIds = (await GetLecturerMajorsAsync(userId))
+                    .Select(m => m.Id)
+                    .ToHashSet();
+
+                if (!topic.MajorId.HasValue || !allowedMajorIds.Contains(topic.MajorId.Value))
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Bạn chỉ được tạo đề tài thuộc khoa/chuyên ngành đã được Admin phân công."
+                    });
+                }
 
                 topic.LecturerId = userId;
 
@@ -581,14 +597,28 @@ namespace KLTN_Registration_System.Controllers
 
             if (!ModelState.IsValid)
             {
+                var allowedMajors = await GetLecturerMajorsAsync(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 ViewBag.MajorId = new SelectList(
-                    await _context.Majors.Where(m => m.IsActive).ToListAsync(),
+                    allowedMajors,
                     "Id", "Name", topic.MajorId);
+                ViewBag.NoMajorAssigned = !allowedMajors.Any();
 
                 return View("Create", topic);
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var allowedMajorIds = (await GetLecturerMajorsAsync(userId))
+                .Select(m => m.Id)
+                .ToHashSet();
+
+            if (!topic.MajorId.HasValue || !allowedMajorIds.Contains(topic.MajorId.Value))
+            {
+                TempData["Error"] = "Bạn chỉ được tạo đề tài thuộc khoa/chuyên ngành đã được Admin phân công.";
+                var allowedMajors = await GetLecturerMajorsAsync(userId);
+                ViewBag.MajorId = new SelectList(allowedMajors, "Id", "Name", topic.MajorId);
+                ViewBag.NoMajorAssigned = !allowedMajors.Any();
+                return View("Create", topic);
+            }
 
             topic.LecturerId = userId;
             topic.CreatedAt = DateTime.Now;
@@ -632,8 +662,12 @@ namespace KLTN_Registration_System.Controllers
             if (topic == null) return NotFound();
             if (topic.LecturerId != lid && !User.IsInRole("Admin")) return Forbid();
 
+            var allowedMajors = User.IsInRole("Admin")
+                ? await _context.Majors.Where(m => m.IsActive).OrderBy(m => m.FacultyName).ThenBy(m => m.Name).ToListAsync()
+                : await GetLecturerMajorsAsync(lid);
+
             ViewBag.MajorId = new SelectList(
-                await _context.Majors.Where(m => m.IsActive).ToListAsync(),
+                allowedMajors,
                 "Id", "Name", topic.MajorId);
             return View(topic);          // ← trả đúng View "Edit", không dùng _TopicList
         }
@@ -656,14 +690,34 @@ namespace KLTN_Registration_System.Controllers
                 if (existing == null) return NotFound();
                 if (existing.LecturerId != lid && !User.IsInRole("Admin")) return Forbid();
 
+                if (!User.IsInRole("Admin"))
+                {
+                    var allowedMajorIds = (await GetLecturerMajorsAsync(lid))
+                        .Select(m => m.Id)
+                        .ToHashSet();
+
+                    if (!topic.MajorId.HasValue || !allowedMajorIds.Contains(topic.MajorId.Value))
+                    {
+                        TempData["Error"] = "Bạn chỉ được sửa đề tài thuộc khoa/chuyên ngành đã được Admin phân công.";
+                        ViewBag.MajorId = new SelectList(
+                            await GetLecturerMajorsAsync(lid),
+                            "Id", "Name", topic.MajorId);
+
+                        return View(topic);
+                    }
+                }
+
                 var activeCount = existing.Registrations?
                     .Count(r => r.Status == "Pending" || r.Status == "Approved") ?? 0;
 
                 if (topic.MaxStudents < activeCount)
                 {
                     TempData["Error"] = $"Số sinh viên tối đa không thể nhỏ hơn số đăng ký hiện tại ({activeCount}).";
+                    var allowedMajors = User.IsInRole("Admin")
+                        ? await _context.Majors.Where(m => m.IsActive).OrderBy(m => m.FacultyName).ThenBy(m => m.Name).ToListAsync()
+                        : await GetLecturerMajorsAsync(lid);
                     ViewBag.MajorId = new SelectList(
-                        await _context.Majors.Where(m => m.IsActive).ToListAsync(),
+                        allowedMajors,
                         "Id", "Name", topic.MajorId);
 
                     return View(topic);
@@ -698,8 +752,11 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(ThesisManagement));
             }
 
+            var editMajors = User.IsInRole("Admin")
+                ? await _context.Majors.Where(m => m.IsActive).OrderBy(m => m.FacultyName).ThenBy(m => m.Name).ToListAsync()
+                : await GetLecturerMajorsAsync(lid);
             ViewBag.MajorId = new SelectList(
-                await _context.Majors.Where(m => m.IsActive).ToListAsync(),
+                editMajors,
                 "Id", "Name", topic.MajorId);
             return View(topic);
         }
@@ -1242,6 +1299,51 @@ namespace KLTN_Registration_System.Controllers
                 r.StudentId == studentId &&
                 r.Status == "Approved" &&
                 r.Topic.LecturerId == lecturerId);
+        }
+
+        private async Task<List<Major>> GetLecturerMajorsAsync(string? lecturerId)
+        {
+            if (string.IsNullOrWhiteSpace(lecturerId))
+            {
+                return new List<Major>();
+            }
+
+            var lecturer = await _context.Users
+                .Include(u => u.Major)
+                .Include(u => u.UserMajors)
+                    .ThenInclude(um => um.Major)
+                .FirstOrDefaultAsync(u => u.Id == lecturerId);
+
+            if (lecturer == null)
+            {
+                return new List<Major>();
+            }
+
+            var assignedMajorIds = lecturer.UserMajors
+                .Select(um => um.MajorId)
+                .ToHashSet();
+
+            if (lecturer.MajorId.HasValue)
+            {
+                assignedMajorIds.Add(lecturer.MajorId.Value);
+            }
+
+            var facultyNames = lecturer.UserMajors
+                .Select(um => um.Major?.FacultyName)
+                .Append(lecturer.Major?.FacultyName)
+                .Append(lecturer.Faculty)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return await _context.Majors
+                .Where(m => m.IsActive
+                    && (assignedMajorIds.Contains(m.Id)
+                        || (m.FacultyName != null && facultyNames.Contains(m.FacultyName))))
+                .OrderBy(m => m.FacultyName)
+                .ThenBy(m => m.Name)
+                .ToListAsync();
         }
 
         private static bool IsValidExcelUpload(IFormFile? file, out string error)

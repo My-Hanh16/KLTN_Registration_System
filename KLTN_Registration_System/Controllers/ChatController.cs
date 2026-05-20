@@ -239,7 +239,8 @@ namespace KLTN_Registration_System.Controllers
                      r.StudentId == user.Id &&
                      r.Status == "Approved"));
 
-            if (!canAccess) return Forbid();
+            if (!canAccess)
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = "Bạn không có quyền tải file lên đề tài này." });
 
             var messages = await _db.TopicComments
                 .Where(c =>
@@ -333,6 +334,7 @@ namespace KLTN_Registration_System.Controllers
             {
                 success = true,
                 url = Url.Action(nameof(DownloadUploadedFile), "Chat", new { topicId, fileName }),
+                storedName = fileName,
                 name = Path.GetFileName(file.FileName)
             });
         }

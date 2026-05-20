@@ -14,6 +14,8 @@
     string GetDateTimeVal(string name) => DateTime.TryParse(GetVal(name), out var dt)
         ? dt.ToString("yyyy-MM-ddTHH:mm")
         : GetVal(name);
+    var majors = ViewBag.Majors as IEnumerable<KLTN_Registration_System.Models.Entities.Major>
+                 ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.Major>();
 }
 
 <!-- Chèn link CSS Tailwind và Material Symbols nếu _Layout chưa có -->
@@ -173,6 +175,103 @@
                 </div>
             </div>
         </form>
+        <section class="max-w-6xl mx-auto bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+            <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-900 tracking-tight">Quản lý chuyên ngành</h3>
+                    <p class="text-sm text-slate-500">Các chuyên ngành đang được dùng để lọc đề tài, hồ sơ sinh viên và import dữ liệu.</p>
+                </div>
+                <div class="text-sm font-semibold text-slate-500">
+                    @majors.Count() chuyên ngành
+                </div>
+            </div>
+
+            <form asp-action="CreateMajor" method="post" class="grid grid-cols-12 gap-3 mb-6 rounded-2xl bg-slate-50 p-4">
+                @Html.AntiForgeryToken()
+                <div class="col-span-12 md:col-span-3">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tên chuyên ngành</label>
+                    <input name="name" required maxlength="150" class="mt-1 w-full bg-white rounded-xl px-4 py-3 text-sm border border-slate-200 focus:ring-2 focus:ring-blue-500/20" placeholder="Công nghệ phần mềm" />
+                </div>
+                <div class="col-span-12 md:col-span-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mã</label>
+                    <input name="majorCode" maxlength="30" class="mt-1 w-full bg-white rounded-xl px-4 py-3 text-sm border border-slate-200 focus:ring-2 focus:ring-blue-500/20 uppercase" placeholder="CNPM" />
+                </div>
+                <div class="col-span-12 md:col-span-3">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Khoa</label>
+                    <input name="facultyName" maxlength="150" class="mt-1 w-full bg-white rounded-xl px-4 py-3 text-sm border border-slate-200 focus:ring-2 focus:ring-blue-500/20" placeholder="Công nghệ thông tin" />
+                </div>
+                <div class="col-span-12 md:col-span-3">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả</label>
+                    <input name="description" maxlength="300" class="mt-1 w-full bg-white rounded-xl px-4 py-3 text-sm border border-slate-200 focus:ring-2 focus:ring-blue-500/20" placeholder="Ghi chú ngắn" />
+                </div>
+                <div class="col-span-12 md:col-span-1 flex items-end">
+                    <button type="submit" class="w-full px-4 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all">
+                        Thêm
+                    </button>
+                </div>
+            </form>
+
+            <div class="space-y-3">
+                <div class="hidden lg:grid grid-cols-12 gap-3 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <div class="col-span-3">Chuyên ngành</div>
+                    <div class="col-span-1">Mã</div>
+                    <div class="col-span-2">Khoa</div>
+                    <div class="col-span-3">Mô tả</div>
+                    <div class="col-span-1">Trạng thái</div>
+                    <div class="col-span-2 text-right">Thao tác</div>
+                </div>
+
+                @foreach (var major in majors)
+                {
+                    <div class="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+                        <form asp-action="UpdateMajor" method="post" class="grid grid-cols-12 gap-3 items-center">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@major.Id" />
+                            <div class="col-span-12 lg:col-span-3">
+                                <label class="lg:hidden text-xs font-bold text-slate-500 uppercase tracking-wider">Chuyên ngành</label>
+                                <input name="name" value="@major.Name" required maxlength="150" class="mt-1 lg:mt-0 w-full bg-slate-50 rounded-xl px-3 py-2 text-sm border border-slate-200" />
+                            </div>
+                            <div class="col-span-12 sm:col-span-4 lg:col-span-1">
+                                <label class="lg:hidden text-xs font-bold text-slate-500 uppercase tracking-wider">Mã</label>
+                                <input name="majorCode" value="@major.MajorCode" maxlength="30" class="mt-1 lg:mt-0 w-full bg-slate-50 rounded-xl px-3 py-2 text-sm border border-slate-200 uppercase" />
+                            </div>
+                            <div class="col-span-12 sm:col-span-8 lg:col-span-2">
+                                <label class="lg:hidden text-xs font-bold text-slate-500 uppercase tracking-wider">Khoa</label>
+                                <input name="facultyName" value="@major.FacultyName" maxlength="150" class="mt-1 lg:mt-0 w-full bg-slate-50 rounded-xl px-3 py-2 text-sm border border-slate-200" />
+                            </div>
+                            <div class="col-span-12 lg:col-span-3">
+                                <label class="lg:hidden text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả</label>
+                                <input name="description" value="@major.Description" maxlength="300" class="mt-1 lg:mt-0 w-full bg-slate-50 rounded-xl px-3 py-2 text-sm border border-slate-200" />
+                            </div>
+                            <div class="col-span-12 sm:col-span-4 lg:col-span-1">
+                                <label class="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 whitespace-nowrap">
+                                    <input type="checkbox" name="isActive" value="true" @(major.IsActive ? "checked" : "") class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                                    @(major.IsActive ? "Đang dùng" : "Đã ẩn")
+                                </label>
+                            </div>
+                            <div class="col-span-12 sm:col-span-8 lg:col-span-2 flex flex-wrap justify-start lg:justify-end gap-2">
+                                <button type="submit" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700">
+                                    Lưu
+                                </button>
+                                <button type="submit" formaction="@Url.Action("ToggleMajor", "Admin")" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50">
+                                    @(major.IsActive ? "Ẩn" : "Bật")
+                                </button>
+                                <button type="submit" formaction="@Url.Action("DeleteMajor", "Admin")" formmethod="post" onclick="return confirm('Xóa chuyên ngành này? Nếu đã có dữ liệu liên quan, hệ thống sẽ chỉ ẩn chuyên ngành.');" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100">
+                                    Xóa
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                }
+
+                @if (!majors.Any())
+                {
+                    <div class="rounded-2xl border border-dashed border-slate-200 py-8 text-center text-sm text-slate-500">
+                        Chưa có chuyên ngành nào.
+                    </div>
+                }
+            </div>
+        </section>
         <script>
             const range = document.querySelector('input[type="range"]');
             const span = range.previousElementSibling.querySelector('span');

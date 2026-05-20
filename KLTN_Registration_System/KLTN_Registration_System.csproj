@@ -9,8 +9,10 @@
   <ItemGroup>
     <Compile Remove="Views\NewFolder\**" />
     <Content Remove="Views\NewFolder\**" />
+    <Content Remove="wwwroot\templates\~$*.xlsx" />
     <EmbeddedResource Remove="Views\NewFolder\**" />
     <None Remove="Views\NewFolder\**" />
+    <None Remove="wwwroot\templates\~$*.xlsx" />
   </ItemGroup>
 
   <ItemGroup>

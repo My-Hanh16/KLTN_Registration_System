@@ -55,23 +55,21 @@ namespace KLTN_Registration_System.Controllers
             bool isActive,
             bool allowSubmission)
         {
-            title = title?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(title))
+            var validationError = ValidateTimelineInput(
+                title,
+                date,
+                submissionDeadline,
+                reviewDeadline,
+                allowSubmission);
+            if (validationError != null)
             {
-                TempData["Error"] = "Tên mốc thời gian không được để trống.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            if (submissionDeadline.HasValue && reviewDeadline.HasValue
-                && reviewDeadline.Value <= submissionDeadline.Value)
-            {
-                TempData["Error"] = "Hạn GV duyệt phải sau hạn SV nộp bài.";
+                TempData["Error"] = validationError;
                 return RedirectToAction(nameof(Index));
             }
 
             _context.Timelines.Add(new Timeline
             {
-                Title = title,
+                Title = title.Trim(),
                 Description = description?.Trim(),
                 Date = date,
                 Type = type?.Trim(),
@@ -104,21 +102,19 @@ namespace KLTN_Registration_System.Controllers
             var tl = await _context.Timelines.FindAsync(id);
             if (tl == null) return NotFound();
 
-            title = title?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(title))
+            var validationError = ValidateTimelineInput(
+                title,
+                date,
+                submissionDeadline,
+                reviewDeadline,
+                allowSubmission);
+            if (validationError != null)
             {
-                TempData["Error"] = "Tên mốc thời gian không được để trống.";
+                TempData["Error"] = validationError;
                 return RedirectToAction(nameof(Index));
             }
 
-            if (submissionDeadline.HasValue && reviewDeadline.HasValue
-                && reviewDeadline.Value <= submissionDeadline.Value)
-            {
-                TempData["Error"] = "Hạn GV duyệt phải sau hạn SV nộp bài.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            tl.Title = title;
+            tl.Title = title.Trim();
             tl.Description = description?.Trim();
             tl.Date = date;
             tl.Type = type?.Trim();
@@ -179,13 +175,14 @@ namespace KLTN_Registration_System.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ApprovedSubmissions(
             string? keyword,
-            int? timelineId,
+            string? timelineId,
             int page = 1)
         {
             const int pageSize = 15;
 
             keyword = keyword?.Trim();
             page = Math.Max(page, 1);
+            int? selectedTimelineIdFromRequest = ResolveTimelineId(timelineId);
 
             var query = _context.TimelineSubmissions
                 .Include(s => s.Student)
@@ -198,20 +195,25 @@ namespace KLTN_Registration_System.Controllers
                 .OrderBy(t => t.Date)
                 .ToListAsync();
 
-            if (!timelineId.HasValue && timelines.Any())
-            {
-                var firstApprovedTimelineId = await _context.TimelineSubmissions
-                    .Where(s => s.Status == SubmissionStatus.Approved)
-                    .OrderBy(s => s.Timeline != null ? s.Timeline.Date : DateTime.MaxValue)
-                    .Select(s => (int?)s.TimelineId)
-                    .FirstOrDefaultAsync();
+            int requestedTimelineId = selectedTimelineIdFromRequest.GetValueOrDefault();
+            var selectedTimeline = requestedTimelineId > 0
+                ? timelines.FirstOrDefault(t => t.Id == requestedTimelineId)
+                : null;
+            int? selectedTimelineId = selectedTimeline?.Id;
 
-                timelineId = firstApprovedTimelineId ?? timelines.First().Id;
+            if (selectedTimelineIdFromRequest.HasValue && selectedTimeline == null)
+            {
+                TempData["Error"] = "Mốc thời gian được chọn không tồn tại.";
             }
 
-            if (timelineId.HasValue)
+            if (selectedTimelineId.HasValue)
             {
-                query = query.Where(s => s.TimelineId == timelineId.Value);
+                int timelineFilterId = selectedTimelineId.Value;
+                query = query.Where(s => s.TimelineId == timelineFilterId);
+            }
+            else
+            {
+                query = query.Where(_ => false);
             }
 
             if (!string.IsNullOrWhiteSpace(keyword))
@@ -246,14 +248,29 @@ namespace KLTN_Registration_System.Controllers
             ViewBag.PageSize = pageSize;
             ViewBag.TotalPages = totalPages;
             ViewBag.Keyword = keyword;
-            ViewBag.TimelineId = timelineId;
+            ViewBag.TimelineId = selectedTimelineId;
             ViewBag.TotalApproved = total;
             ViewBag.TodayApproved = todayApproved;
-            ViewBag.SelectedTimeline = timelineId.HasValue
-                ? timelines.FirstOrDefault(t => t.Id == timelineId.Value)
-                : null;
+            ViewBag.SelectedTimeline = selectedTimeline;
 
             return View(submissions);
+        }
+
+        private int? ResolveTimelineId(string? timelineId)
+        {
+            if (int.TryParse(timelineId, out int parsedFromParameter) && parsedFromParameter > 0)
+            {
+                return parsedFromParameter;
+            }
+
+            if (Request.Query.TryGetValue("timelineId", out var rawTimelineId)
+                && int.TryParse(rawTimelineId.FirstOrDefault(), out int parsedTimelineId)
+                && parsedTimelineId > 0)
+            {
+                return parsedTimelineId;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -342,7 +359,7 @@ namespace KLTN_Registration_System.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ExportApproved(int? timelineId)
         {
-            return await ExportApprovedSubmissions(null, timelineId);
+            return await ExportApprovedSubmissions(null, timelineId?.ToString());
         }
 
         // ══════════════════════════════════════
@@ -639,32 +656,35 @@ namespace KLTN_Registration_System.Controllers
             return RedirectToLecturerTimeline();
         }
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> ExportApprovedSubmissions(string? keyword, int? timelineId)
+        public async Task<IActionResult> ExportApprovedSubmissions(string? keyword, string? timelineId)
         {
-            if (!timelineId.HasValue)
+            int? selectedTimelineId = ResolveTimelineId(timelineId);
+
+            if (!selectedTimelineId.HasValue)
             {
                 TempData["Error"] = "Vui lòng chọn mốc thời gian trước khi xuất Excel.";
-                return RedirectToAction(nameof(ApprovedSubmissions));
+                return RedirectToAction(nameof(ApprovedSubmissions), new { keyword });
             }
 
             keyword = keyword?.Trim();
 
             var timeline = await _context.Timelines
-                .FirstOrDefaultAsync(t => t.Id == timelineId.Value);
+                .FirstOrDefaultAsync(t => t.Id == selectedTimelineId.Value);
 
             if (timeline == null)
             {
                 TempData["Error"] = "Không tìm thấy mốc thời gian.";
-                return RedirectToAction(nameof(ApprovedSubmissions));
+                return RedirectToAction(nameof(ApprovedSubmissions), new { keyword });
             }
 
+            int timelineFilterId = selectedTimelineId.Value;
             var query = _context.TimelineSubmissions
                 .Include(s => s.Student)
                 .Include(s => s.Timeline)
                 .Include(s => s.ReviewedBy)
                 .Where(s =>
                     s.Status == SubmissionStatus.Approved &&
-                    s.TimelineId == timelineId.Value)
+                    s.TimelineId == timelineFilterId)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(keyword))
@@ -770,6 +790,37 @@ namespace KLTN_Registration_System.Controllers
         private IActionResult RedirectToLecturerTimeline()
         {
             return RedirectToAction("TimelineManagement", "Lecturer");
+        }
+
+        private static string? ValidateTimelineInput(
+            string? title,
+            DateTime date,
+            DateTime? submissionDeadline,
+            DateTime? reviewDeadline,
+            bool allowSubmission)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return "Tên mốc thời gian không được để trống.";
+            }
+
+            if (date == default)
+            {
+                return "Ngày hiển thị của mốc thời gian không hợp lệ.";
+            }
+
+            if (allowSubmission && !submissionDeadline.HasValue)
+            {
+                return "Mốc cho phép sinh viên nộp bài cần có hạn cuối nộp bài.";
+            }
+
+            if (submissionDeadline.HasValue && reviewDeadline.HasValue
+                && reviewDeadline.Value <= submissionDeadline.Value)
+            {
+                return "Hạn GV duyệt phải sau hạn SV nộp bài.";
+            }
+
+            return null;
         }
 
         [Authorize(Roles = "Admin,Lecturer,Student")]

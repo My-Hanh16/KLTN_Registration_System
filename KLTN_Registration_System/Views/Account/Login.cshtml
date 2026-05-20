@@ -751,6 +751,7 @@
 
             <form method="post" id="loginForm" novalidate>
                 @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@(ViewData["ReturnUrl"] ?? "")" />
 
                 <!-- Username -->
                 <div class="field">
@@ -820,15 +821,15 @@
                 </div>
 
                 <div class="role-chips">
-                    <div class="role-chip" onclick="fillRole('admin')">
+                    <div class="role-chip">
                         <div class="role-chip-icon"><i class="fa-solid fa-shield-halved"></i></div>
                         <span class="role-chip-label">Quản trị</span>
                     </div>
-                    <div class="role-chip" onclick="fillRole('lecturer')">
+                    <div class="role-chip">
                         <div class="role-chip-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
                         <span class="role-chip-label">Giảng viên</span>
                     </div>
-                    <div class="role-chip" onclick="fillRole('student')">
+                    <div class="role-chip">
                         <div class="role-chip-icon"><i class="fa-solid fa-graduation-cap"></i></div>
                         <span class="role-chip-label">Sinh viên</span>
                     </div>
@@ -877,16 +878,4 @@
         txt.textContent = 'Đang đăng nhập...';
     });
 
-    const accounts = {
-        admin:    { user: 'admin@gmail.com',           pass: 'Admin@123'    },
-        lecturer: { user: 'GV001@uni.edu.vn',          pass: 'Lecturer@123' },
-        student:  { user: 'SV2024001@student.edu.vn',  pass: 'Student@123'  },
-    };
-
-    function fillRole(r) {
-        const a = accounts[r];
-        if (!a) return;
-        document.getElementById('username').value = a.user;
-        document.getElementById('password').value = a.pass;
-    }
 </script>

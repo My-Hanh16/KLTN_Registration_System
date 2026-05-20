@@ -1,0 +1,148 @@
+.import-users-page {
+    width: min(100%, 42rem);
+    margin: 2.5rem auto 0;
+    padding: 0 1rem;
+}
+
+.import-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 1.5rem;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    padding: 2rem;
+}
+
+.import-header {
+    margin-bottom: 1.5rem;
+}
+
+.import-header h2 {
+    color: #0f172a;
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 0 0 0.75rem;
+}
+
+.import-header p {
+    color: #64748b;
+    font-size: 0.925rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.template-actions {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 1.5rem;
+}
+
+.template-link {
+    align-items: center;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.875rem;
+    color: #334155;
+    display: inline-flex;
+    font-size: 0.925rem;
+    font-weight: 700;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.65rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.template-link:hover {
+    background: #e0f2fe;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+    text-decoration: none;
+}
+
+.import-form {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.form-group label {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.form-select,
+.file-input {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.875rem;
+    color: #0f172a;
+    font-size: 0.925rem;
+    min-height: 3rem;
+    outline: none;
+    padding: 0.75rem 1rem;
+    width: 100%;
+}
+
+.form-select:focus,
+.file-input:focus {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.file-input::file-selector-button {
+    background: #eff6ff;
+    border: 0;
+    border-radius: 999px;
+    color: #1d4ed8;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin-right: 1rem;
+    padding: 0.55rem 1rem;
+}
+
+.file-input::file-selector-button:hover {
+    background: #dbeafe;
+}
+
+.submit-button {
+    background: var(--primary-blue, #2563eb);
+    border: 0;
+    border-radius: 0.875rem;
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: 800;
+    min-height: 3rem;
+    padding: 0.75rem 1rem;
+    width: 100%;
+}
+
+.submit-button:hover {
+    filter: brightness(0.96);
+}
+
+@media (max-width: 640px) {
+    .import-users-page {
+        margin-top: 1.25rem;
+        padding: 0 0.75rem;
+    }
+
+    .import-card {
+        border-radius: 1rem;
+        padding: 1.25rem;
+    }
+
+    .template-actions {
+        grid-template-columns: 1fr;
+    }
+}

@@ -30,7 +30,7 @@ namespace KLTN_Registration_System.Controllers
         // View: Views/Topic/Index.cshtml  (@model IPagedList<Topic>)
         // ============================================================
         [Authorize(Roles = "Admin,Student,Lecturer")]
-        public IActionResult Index(
+        public async Task<IActionResult> Index(
     int? page,
     int? majorId,
     string? status,
@@ -47,6 +47,31 @@ namespace KLTN_Registration_System.Controllers
                 .Include(t => t.Major)
                 .Where(t => t.IsApproved && !t.IsStudentProposed)
                 .AsQueryable();
+
+            List<int> allowedMajorIds = new();
+            List<string> allowedFacultyNames = new();
+
+            if (User.IsInRole("Student"))
+            {
+                var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var access = await GetUserTopicAccessAsync(uid);
+                allowedMajorIds = access.MajorIds;
+                allowedFacultyNames = access.FacultyNames;
+
+                if (allowedMajorIds.Any() || allowedFacultyNames.Any())
+                {
+                    query = query.Where(t =>
+                        (t.MajorId.HasValue && allowedMajorIds.Contains(t.MajorId.Value))
+                        || (t.Major != null
+                            && t.Major.FacultyName != null
+                            && allowedFacultyNames.Contains(t.Major.FacultyName)));
+                }
+                else
+                {
+                    query = query.Where(_ => false);
+                    TempData["Error"] = "Tài khoản của bạn chưa được gán khoa/chuyên ngành nên chưa thể xem danh sách đề tài.";
+                }
+            }
 
             // =========================
             // FILTER MAJOR
@@ -121,8 +146,21 @@ namespace KLTN_Registration_System.Controllers
                 .OrderByDescending(t => t.CreatedAt)
                 .ToPagedList(pageNumber, pageSize);
 
-            var fullTopicIds = _context.Topics
+            var fullTopicsQuery = _context.Topics
+                .Include(t => t.Major)
                 .Where(t => t.IsApproved && !t.IsStudentProposed)
+                .AsQueryable();
+
+            if (User.IsInRole("Student") && (allowedMajorIds.Any() || allowedFacultyNames.Any()))
+            {
+                fullTopicsQuery = fullTopicsQuery.Where(t =>
+                    (t.MajorId.HasValue && allowedMajorIds.Contains(t.MajorId.Value))
+                    || (t.Major != null
+                        && t.Major.FacultyName != null
+                        && allowedFacultyNames.Contains(t.Major.FacultyName)));
+            }
+
+            var fullTopicIds = fullTopicsQuery
                 .Where(t => !t.IsRegistrationOpen ||
                     t.Registrations!.Count(r => r.Status == "Pending" || r.Status == "Approved") >= t.MaxStudents)
                 .Select(t => t.Id)
@@ -130,9 +168,18 @@ namespace KLTN_Registration_System.Controllers
 
             ViewBag.FullTopicIds = fullTopicIds;
             ViewBag.TotalAvailable = query.Count();
-            ViewBag.Majors = _context.Majors
+            var majorsQuery = _context.Majors
                 .Where(m => m.IsActive)
-                .ToList();
+                .AsQueryable();
+
+            if (User.IsInRole("Student") && (allowedMajorIds.Any() || allowedFacultyNames.Any()))
+            {
+                majorsQuery = majorsQuery.Where(m =>
+                    allowedMajorIds.Contains(m.Id)
+                    || (m.FacultyName != null && allowedFacultyNames.Contains(m.FacultyName)));
+            }
+
+            ViewBag.Majors = majorsQuery.ToList();
 
             if (User.IsInRole("Student"))
             {
@@ -144,6 +191,7 @@ namespace KLTN_Registration_System.Controllers
 
                 ViewBag.HasRegistered = myReg != null;
                 ViewBag.RegisteredTopicId = myReg?.TopicId ?? 0;
+                ViewBag.RestrictedByFaculty = true;
             }
 
             return View(topics);
@@ -174,6 +222,11 @@ namespace KLTN_Registration_System.Controllers
             if (User.Identity?.IsAuthenticated == true && User.IsInRole("Student"))
             {
                 var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!await CanStudentAccessTopicAsync(uid, topic.MajorId))
+                {
+                    TempData["Error"] = "Bạn chỉ được xem và đăng ký đề tài thuộc khoa/chuyên ngành của mình.";
+                    return RedirectToAction(nameof(Index));
+                }
 
                 ViewBag.HasRegisteredThisTopic = await _context.Registrations
                     .AnyAsync(r => r.TopicId == id && r.StudentId == uid && r.Status != "Rejected");
@@ -350,6 +403,12 @@ namespace KLTN_Registration_System.Controllers
 
             if (topic == null) return NotFound();
 
+            if (!await CanStudentAccessTopicAsync(uid, topic.MajorId))
+            {
+                TempData["Error"] = "Bạn chỉ được đăng ký đề tài thuộc khoa/chuyên ngành của mình.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (!topic.IsApproved || !topic.IsRegistrationOpen || topic.IsStudentProposed)
             {
                 TempData["Error"] = "Đề tài này hiện không mở cho sinh viên đăng ký.";
@@ -412,6 +471,12 @@ namespace KLTN_Registration_System.Controllers
 
             if (topic == null) return NotFound();
 
+            if (!await CanStudentAccessTopicAsync(uid, topic.MajorId))
+            {
+                TempData["Error"] = "Bạn chỉ được đăng ký đề tài thuộc khoa/chuyên ngành của mình.";
+                return RedirectToAction(nameof(Index));
+            }
+
             // Nếu đề tài 1 người → chuyển về đăng ký cá nhân
             if (topic.MaxStudents <= 1) return RedirectToAction(nameof(Index));
 
@@ -469,6 +534,12 @@ namespace KLTN_Registration_System.Controllers
                 .FirstOrDefaultAsync(t => t.Id == topicId);
 
             if (topic == null) return NotFound();
+
+            if (!await CanStudentAccessTopicAsync(leaderId, topic.MajorId))
+            {
+                TempData["Error"] = "Bạn chỉ được đăng ký đề tài thuộc khoa/chuyên ngành của mình.";
+                return RedirectToAction(nameof(Index));
+            }
 
             if (topic.MaxStudents <= 1)
             {
@@ -542,6 +613,12 @@ namespace KLTN_Registration_System.Controllers
                 }
 
                 if (allIds.Contains(member.Id)) continue;
+
+                if (!await CanStudentAccessTopicAsync(member.Id, topic.MajorId))
+                {
+                    TempData["Error"] = $"Sinh viên {email} không thuộc khoa/chuyên ngành của đề tài.";
+                    return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                }
 
                 bool isBusy = await _context.Registrations.AnyAsync(r =>
                     r.StudentId == member.Id && (r.Status == "Pending" || r.Status == "Approved"));
@@ -640,11 +717,16 @@ namespace KLTN_Registration_System.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> Propose()
         {
-            var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
-            ViewBag.Lecturers = lecturers
-                .Select(u => new { u.Id, FullName = u.FullName ?? u.Email })
-                .ToList();
-            ViewBag.Majors = _context.Majors.Where(m => m.IsActive).ToList();
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var access = await GetUserTopicAccessAsync(uid);
+            ViewBag.Lecturers = await GetLecturerOptionsForAccessAsync(access.FacultyNames);
+            ViewBag.Majors = await _context.Majors
+                .Where(m => m.IsActive
+                    && (access.MajorIds.Contains(m.Id)
+                        || (m.FacultyName != null && access.FacultyNames.Contains(m.FacultyName))))
+                .OrderBy(m => m.FacultyName)
+                .ThenBy(m => m.Name)
+                .ToListAsync();
             return View();
         }
 
@@ -653,6 +735,42 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Propose(Topic topic)
         {
             var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var access = await GetUserTopicAccessAsync(uid);
+
+            if (!topic.MajorId.HasValue || !await CanStudentAccessTopicAsync(uid, topic.MajorId))
+            {
+                TempData["Error"] = "Bạn chỉ được đề xuất đề tài thuộc khoa/chuyên ngành của mình.";
+                ViewBag.Lecturers = await GetLecturerOptionsForAccessAsync(access.FacultyNames);
+                ViewBag.Majors = await _context.Majors
+                    .Where(m => m.IsActive
+                        && (access.MajorIds.Contains(m.Id)
+                            || (m.FacultyName != null && access.FacultyNames.Contains(m.FacultyName))))
+                    .OrderBy(m => m.FacultyName)
+                    .ThenBy(m => m.Name)
+                    .ToListAsync();
+                return View(topic);
+            }
+
+            if (!string.IsNullOrWhiteSpace(topic.LecturerId))
+            {
+                var allowedLecturerIds = (await GetLecturerOptionsForAccessAsync(access.FacultyNames))
+                    .Select(l => l.Id)
+                    .ToHashSet();
+
+                if (!allowedLecturerIds.Contains(topic.LecturerId))
+                {
+                    TempData["Error"] = "Giảng viên hướng dẫn được chọn không thuộc khoa của bạn.";
+                    ViewBag.Lecturers = await GetLecturerOptionsForAccessAsync(access.FacultyNames);
+                    ViewBag.Majors = await _context.Majors
+                        .Where(m => m.IsActive
+                            && (access.MajorIds.Contains(m.Id)
+                                || (m.FacultyName != null && access.FacultyNames.Contains(m.FacultyName))))
+                        .OrderBy(m => m.FacultyName)
+                        .ThenBy(m => m.Name)
+                        .ToListAsync();
+                    return View(topic);
+                }
+            }
 
             topic.CreatedByStudentId = uid;
             topic.IsStudentProposed = true;
@@ -677,11 +795,14 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
-            ViewBag.Lecturers = lecturers
-                .Select(u => new { u.Id, FullName = u.FullName ?? u.Email })
-                .ToList();
-            ViewBag.Majors = _context.Majors.Where(m => m.IsActive).ToList();
+            ViewBag.Lecturers = await GetLecturerOptionsForAccessAsync(access.FacultyNames);
+            ViewBag.Majors = await _context.Majors
+                .Where(m => m.IsActive
+                    && (access.MajorIds.Contains(m.Id)
+                        || (m.FacultyName != null && access.FacultyNames.Contains(m.FacultyName))))
+                .OrderBy(m => m.FacultyName)
+                .ThenBy(m => m.Name)
+                .ToListAsync();
             return View(topic);
         }
 
@@ -727,6 +848,92 @@ namespace KLTN_Registration_System.Controllers
 
             return null;
         }
+
+        private async Task<(List<int> MajorIds, List<string> FacultyNames)> GetUserTopicAccessAsync(string? userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return (new List<int>(), new List<string>());
+            }
+
+            var user = await _context.Users
+                .Include(u => u.Major)
+                .Include(u => u.UserMajors)
+                    .ThenInclude(um => um.Major)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                return (new List<int>(), new List<string>());
+            }
+
+            var majorIds = user.UserMajors
+                .Select(um => um.MajorId)
+                .ToList();
+
+            if (user.MajorId.HasValue)
+            {
+                majorIds.Add(user.MajorId.Value);
+            }
+
+            var facultyNames = user.UserMajors
+                .Select(um => um.Major?.FacultyName)
+                .Append(user.Major?.FacultyName)
+                .Append(user.Faculty)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return (majorIds.Distinct().ToList(), facultyNames);
+        }
+
+        private async Task<bool> CanStudentAccessTopicAsync(string? userId, int? topicMajorId)
+        {
+            if (!topicMajorId.HasValue)
+            {
+                return false;
+            }
+
+            var topicMajor = await _context.Majors.FindAsync(topicMajorId.Value);
+            if (topicMajor == null)
+            {
+                return false;
+            }
+
+            var access = await GetUserTopicAccessAsync(userId);
+            return access.MajorIds.Contains(topicMajorId.Value)
+                || (!string.IsNullOrWhiteSpace(topicMajor.FacultyName)
+                    && access.FacultyNames.Contains(topicMajor.FacultyName, StringComparer.OrdinalIgnoreCase));
+        }
+
+        private async Task<List<ApplicationUser>> GetLecturerOptionsForAccessAsync(List<string> facultyNames)
+        {
+            if (!facultyNames.Any())
+            {
+                return new List<ApplicationUser>();
+            }
+
+            var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
+            var lecturerIds = lecturers.Select(l => l.Id).ToList();
+
+            var assignedLecturerIds = await _context.UserMajors
+                .Include(um => um.Major)
+                .Where(um => lecturerIds.Contains(um.UserId)
+                    && um.Major.FacultyName != null
+                    && facultyNames.Contains(um.Major.FacultyName))
+                .Select(um => um.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            return lecturers
+                .Where(l => assignedLecturerIds.Contains(l.Id)
+                    || (!string.IsNullOrWhiteSpace(l.Faculty)
+                        && facultyNames.Contains(l.Faculty, StringComparer.OrdinalIgnoreCase)))
+                .OrderBy(l => l.FullName)
+                .ToList();
+        }
+
         [Authorize(Roles = "Admin,Lecturer")]
         public IActionResult Create()
         {
@@ -763,6 +970,20 @@ namespace KLTN_Registration_System.Controllers
             topic.Deadline = topic.Deadline == default ? DateTime.Now.AddMonths(3) : topic.Deadline;
             topic.CreatedAt = DateTime.Now;
             topic.LecturerId = User.IsInRole("Lecturer") ? uid : topic.LecturerId;
+
+            if (User.IsInRole("Lecturer"))
+            {
+                var access = await GetUserTopicAccessAsync(uid);
+                if (!topic.MajorId.HasValue
+                    || !(access.MajorIds.Contains(topic.MajorId.Value)
+                        || await _context.Majors.AnyAsync(m => m.Id == topic.MajorId.Value
+                            && m.FacultyName != null
+                            && access.FacultyNames.Contains(m.FacultyName))))
+                {
+                    TempData["Error"] = "Bạn chỉ được tạo đề tài thuộc khoa/chuyên ngành đã được Admin phân công.";
+                    return RedirectToAction("Create", "Lecturer");
+                }
+            }
 
             topic.IsApproved = User.IsInRole("Admin");
             topic.IsRegistrationOpen = topic.IsApproved;

@@ -2,6 +2,7 @@
 using KLTN_Registration_System.Models.Entities;
 using KLTN_Registration_System.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -9,11 +10,14 @@ using System.Security.Claims;
 namespace KLTN_Registration_System.Controllers
 {
     [Authorize(Roles = "Student")]
-    public class StudentTimelineController : Controller
+    public class StudentTimelineController : BaseController
     {
         private readonly AppDbContext _context;
 
-        public StudentTimelineController(AppDbContext context)
+        public StudentTimelineController(
+            AppDbContext context,
+            UserManager<ApplicationUser> userManager)
+            : base(context, userManager)
         {
             _context = context;
         }
@@ -28,8 +32,6 @@ namespace KLTN_Registration_System.Controllers
 
             var timelines = await _context.Timelines
                 .Where(t => t.IsActive)
-                .Include(t => t.TimelineSubmissions)
-                    .ThenInclude(s => s.Versions)
                 .OrderBy(t => t.Date)
                 .ToListAsync();
 
@@ -40,8 +42,8 @@ namespace KLTN_Registration_System.Controllers
                 .ToListAsync();
 
             ViewBag.Submissions = submissions;
-
             ViewBag.StudentId = studentId;
+            await SetStudentLayoutData();
 
             return View(timelines);
         }
@@ -61,7 +63,11 @@ namespace KLTN_Registration_System.Controllers
             if (string.IsNullOrEmpty(studentId)) return Unauthorized();
 
             var timeline = await _context.Timelines.FindAsync(timelineId);
-            if (timeline == null) return NotFound();
+            if (timeline == null)
+            {
+                TempData["Error"] = "Không tìm thấy mốc thời gian.";
+                return RedirectToAction(nameof(Index));
+            }
 
             if (!timeline.IsActive || !timeline.AllowSubmission)
             {

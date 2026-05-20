@@ -12,13 +12,16 @@
     int approvedCount     = ViewBag.ApprovedCount  ?? 0;
     int pendingCount      = ViewBag.PendingCount   ?? 0;
     int totalLecturers    = ViewBag.TotalLecturers ?? 0;
+    int approvedTopics    = ViewBag.ApprovedTopics ?? 0;
+    int pendingTopics     = ViewBag.PendingTopics  ?? 0;
+    int registeredStudents = ViewBag.RegisteredStudents ?? 0;
+    int unregisteredStudents = ViewBag.UnregisteredStudents ?? Math.Max(0, totalStudents - registeredStudents);
+    int totalRegistrations = ViewBag.TotalRegistrations ?? 0;
     double regRate        = ViewBag.RegistrationRate ?? 0.0;
+    var yearOptions       = ViewBag.YearOptions as IEnumerable<string> ?? new[] { "2025-2026" };
 
-    // Filter từ query string
-    string curSemester = Context.Request.Query["semester"].ToString();
-    string curYear     = Context.Request.Query["year"].ToString();
-    if (string.IsNullOrEmpty(curSemester)) curSemester = "HK2";
-    if (string.IsNullOrEmpty(curYear))     curYear     = "2024-2025";
+    string curSemester = ViewBag.SelectedSemester as string ?? "HK2";
+    string curYear     = ViewBag.SelectedYear as string ?? yearOptions.FirstOrDefault() ?? "2025-2026";
 }
 
 @section Styles {
@@ -344,12 +347,17 @@
             </select>
             <select name="year" class="filter-select-inline"
                     onchange="document.getElementById('filterForm').submit()">
-                <option value="2023-2024" selected="@(curYear == "2023-2024")">2023-2024</option>
-                <option value="2024-2025" selected="@(curYear == "2024-2025")">2024-2025</option>
+                @foreach (var option in yearOptions)
+                {
+                    <option value="@option" selected="@(curYear == option)">@option</option>
+                }
             </select>
         </form>
 
-        <a href="/Admin/ExportStatistics?semester=@curSemester&year=@curYear"
+        <a asp-action="ExportStatistics"
+           asp-controller="Admin"
+           asp-route-semester="@curSemester"
+           asp-route-year="@curYear"
            class="btn-export">
             <i class="fa-solid fa-download"></i> Xuất báo cáo
         </a>
@@ -370,7 +378,7 @@
 
     <div class="stat-card">
         <div class="stat-label">Đề tài đã duyệt</div>
-        <div class="stat-number">@approvedCount</div>
+        <div class="stat-number">@approvedTopics</div>
         <div class="stat-meta green">
             <i class="fa-solid fa-circle-check"></i>
             Đã sẵn sàng thực hiện
@@ -378,11 +386,11 @@
     </div>
 
     <div class="stat-card">
-        <div class="stat-label">Đang chờ duyệt</div>
+        <div class="stat-label">Đăng ký chờ duyệt</div>
         <div class="stat-number">@pendingCount</div>
         <div class="stat-meta orange">
             <i class="fa-solid fa-clock"></i>
-            Cần xử lý sớm
+            @pendingTopics đề tài đang chờ
         </div>
     </div>
 
@@ -424,16 +432,16 @@
             <div class="pie-legend-item">
                 <div class="pie-legend-label">
                     <div class="pie-legend-dot" style="background:#4f46e5;"></div>
-                    Đã có đề tài
+                    Đã đăng ký
                 </div>
-                <span class="pie-legend-val">@approvedCount</span>
+                <span class="pie-legend-val">@registeredStudents</span>
             </div>
             <div class="pie-legend-item">
                 <div class="pie-legend-label">
                     <div class="pie-legend-dot" style="background:#e2e8f0;"></div>
                     Chưa đăng ký
                 </div>
-                <span class="pie-legend-val">@(totalStudents - approvedCount)</span>
+                <span class="pie-legend-val">@unregisteredStudents</span>
             </div>
         </div>
     </div>
@@ -446,7 +454,7 @@
     <!-- Bar chart -->
     <div class="chart-card">
         <div class="chart-title">Phân bố đề tài theo khoa</div>
-        <div class="chart-sub">Số lượng đề tài của từng chuyên ngành</div>
+        <div class="chart-sub">Số lượng đề tài theo từng khoa</div>
         <div class="canvas-wrap canvas-wrap-bar">
             <canvas id="majorChart"></canvas>
         </div>
@@ -487,9 +495,9 @@
     new Chart(document.getElementById('pieChart'), {
         type: 'doughnut',
         data: {
-            labels: ['Đã có đề tài', 'Chưa đăng ký'],
+            labels: ['Đã đăng ký', 'Chưa đăng ký'],
             datasets: [{
-                data: [@approvedCount, @(totalStudents - approvedCount)],
+                data: [@registeredStudents, @unregisteredStudents],
                 backgroundColor: [CHART_PRIMARY, CHART_GRAY],
                 borderWidth: 0,
                 hoverOffset: 6

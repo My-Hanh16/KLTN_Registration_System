@@ -13,6 +13,8 @@ namespace KLTN_Registration_System.Controllers.Account
 {
     public class AccountController : Controller
     {
+        private const string GenericLoginError = "Thông tin đăng nhập không chính xác.";
+
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
 
@@ -30,7 +32,13 @@ namespace KLTN_Registration_System.Controllers.Account
         [AllowAnonymous]
         public IActionResult Login(string? returnUrl = null)
         {
-            ViewData["ReturnUrl"] = returnUrl;
+            ViewData["ReturnUrl"] = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
+
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return RedirectToRoleHome();
+            }
+
             return View();
         }
 
@@ -39,6 +47,9 @@ namespace KLTN_Registration_System.Controllers.Account
             string username, string password,
             bool rememberMe = false, string? returnUrl = null)
         {
+            returnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
+            username = username?.Trim() ?? string.Empty;
+
             ViewData["ReturnUrl"] = returnUrl;
             ViewData["username"] = username;
 
@@ -54,38 +65,36 @@ namespace KLTN_Registration_System.Controllers.Account
 
             if (user == null)
             {
-                ModelState.AddModelError("username", "Tài khoản không tồn tại");
+                ModelState.AddModelError("", GenericLoginError);
                 return View();
             }
+
+            HttpContext.Session.Clear();
 
             var result = await _signInManager.PasswordSignInAsync(
                 user.UserName!, password, rememberMe, lockoutOnFailure: true);
 
             if (result.Succeeded)
             {
-                TempData["Success"] = "Đăng nhập thành công!";
-
                 var roles = await _userManager.GetRolesAsync(user);
                 if (!roles.Any())
                 {
-                    await _userManager.AddToRoleAsync(user, "Student");
-                    roles = new List<string> { "Student" };
+                    await _signInManager.SignOutAsync();
+                    HttpContext.Session.Clear();
+                    ModelState.AddModelError("", "Tài khoản chưa được phân quyền. Vui lòng liên hệ quản trị viên.");
+                    return View();
                 }
+
+                TempData["Success"] = "Đăng nhập thành công!";
 
                 HttpContext.Session.SetString("Username", user.UserName ?? "");
                 HttpContext.Session.SetString("Role", roles.FirstOrDefault() ?? "Student");
                 HttpContext.Session.SetString("UserId", user.Id);
 
-                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                if (!string.IsNullOrEmpty(returnUrl))
                     return Redirect(returnUrl);
 
-                return (roles.FirstOrDefault() ?? "Student") switch
-                {
-                    "Admin" => RedirectToAction("Statistics", "Admin"),
-                    "Lecturer" => RedirectToAction("Index", "Lecturer"),
-                    "Student" => RedirectToAction("Home", "Student"),
-                    _ => RedirectToAction("Index", "Home")
-                };
+                return RedirectToRoleHome(roles);
             }
 
             if (result.IsLockedOut)
@@ -94,7 +103,7 @@ namespace KLTN_Registration_System.Controllers.Account
                 return View();
             }
 
-            ModelState.AddModelError("password", "Sai mật khẩu");
+            ModelState.AddModelError("", GenericLoginError);
             return View();
         }
 
@@ -138,9 +147,9 @@ namespace KLTN_Registration_System.Controllers.Account
                 return View();
             }
 
-            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            if (!IsStrongPassword(newPassword))
             {
-                TempData["Error"] = "Mật khẩu mới phải có ít nhất 6 ký tự.";
+                TempData["Error"] = "Mật khẩu mới phải có ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.";
                 return View();
             }
 
@@ -178,6 +187,34 @@ namespace KLTN_Registration_System.Controllers.Account
             TempData["Error"] = errors.FirstOrDefault()
                 ?? "Đổi mật khẩu thất bại. Kiểm tra lại mật khẩu hiện tại.";
             return View();
+        }
+
+        private IActionResult RedirectToRoleHome(IList<string>? roles = null)
+        {
+            if (roles == null)
+            {
+                if (User.IsInRole("Admin")) return RedirectToAction("Statistics", "Admin");
+                if (User.IsInRole("Lecturer")) return RedirectToAction("Index", "Lecturer");
+                if (User.IsInRole("Student")) return RedirectToAction("Home", "Student");
+
+                return RedirectToAction("Index", "Home");
+            }
+
+            if (roles.Contains("Admin")) return RedirectToAction("Statistics", "Admin");
+            if (roles.Contains("Lecturer")) return RedirectToAction("Index", "Lecturer");
+            if (roles.Contains("Student")) return RedirectToAction("Home", "Student");
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        private static bool IsStrongPassword(string? password)
+        {
+            return !string.IsNullOrWhiteSpace(password)
+                && password.Length >= 8
+                && password.Any(char.IsUpper)
+                && password.Any(char.IsLower)
+                && password.Any(char.IsDigit)
+                && password.Any(ch => !char.IsLetterOrDigit(ch));
         }
     }
 }

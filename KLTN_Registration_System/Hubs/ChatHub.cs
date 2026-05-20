@@ -7,6 +7,7 @@ using KLTN_Registration_System.Models.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 namespace KLTN_Registration_System.Hubs
@@ -83,7 +84,9 @@ namespace KLTN_Registration_System.Hubs
                 attachmentName = string.IsNullOrWhiteSpace(attachmentName)
                     ? null : attachmentName.Trim();
 
-                if (string.IsNullOrWhiteSpace(content) && attachmentUrl == null)
+                var storedAttachmentName = NormalizeStoredAttachmentName(attachmentUrl);
+
+                if (string.IsNullOrWhiteSpace(content) && storedAttachmentName == null)
                     return;
 
                 if (content != null && content.Length > 2000)
@@ -122,7 +125,7 @@ namespace KLTN_Registration_System.Hubs
 
                     Content = content ?? "",
 
-                    AttachmentUrl = attachmentUrl,
+                    AttachmentUrl = storedAttachmentName,
                     AttachmentName = attachmentName,
 
                     CreatedAt = DateTime.UtcNow,
@@ -146,7 +149,9 @@ namespace KLTN_Registration_System.Hubs
                         senderName = user.FullName ?? user.UserName ?? "",
                         senderRole = comment.SenderRole,
                         content = comment.Content,
-                        attachmentUrl = comment.AttachmentUrl,
+                        attachmentUrl = comment.AttachmentUrl == null
+                            ? null
+                            : $"/Chat/DownloadUploadedFile?topicId={topicId}&fileName={Uri.EscapeDataString(comment.AttachmentUrl)}",
                         attachmentName = comment.AttachmentName,
 
                         createdAt = comment.CreatedAt.ToLocalTime(),
@@ -199,6 +204,29 @@ namespace KLTN_Registration_System.Hubs
                     (topic.Registrations ?? new List<Registration>()).Any(r =>
                         r.StudentId == user.Id &&
                         r.Status == "Approved"));
+        }
+
+        private static string? NormalizeStoredAttachmentName(string? attachmentUrl)
+        {
+            if (string.IsNullOrWhiteSpace(attachmentUrl))
+                return null;
+
+            if (attachmentUrl.StartsWith("/Chat/DownloadUploadedFile", StringComparison.OrdinalIgnoreCase))
+            {
+                var queryStart = attachmentUrl.IndexOf('?');
+                if (queryStart >= 0)
+                {
+                    var query = QueryHelpers.ParseQuery(attachmentUrl[queryStart..]);
+                    if (query.TryGetValue("fileName", out var fileNameValue))
+                    {
+                        var fileName = Path.GetFileName(fileNameValue.ToString());
+                        return string.IsNullOrWhiteSpace(fileName) ? null : fileName;
+                    }
+                }
+            }
+
+            var storedName = Path.GetFileName(attachmentUrl);
+            return string.IsNullOrWhiteSpace(storedName) ? null : storedName;
         }
     }
 }

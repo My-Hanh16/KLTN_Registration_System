@@ -12,6 +12,7 @@ namespace KLTN_Registration_System.Models.Entities
         public List<ApplicationUser>? Users { get; set; }
 
         public List<Topic>? Topics { get; set; }
+        public ICollection<UserMajor> UserMajors { get; set; } = new List<UserMajor>();
 
         // --- PHẦN BỔ SUNG MỚI (CHỈ THÊM, KHÔNG XÓA) ---
 
