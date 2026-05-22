@@ -1,2 +1,22 @@
-﻿<h2 style="color:red">Bạn không có quyền truy cập trang này!</h2>
-<a href="/Home">Quay về trang chủ</a>
+@{
+    ViewData["Title"] = "Không có quyền truy cập";
+    Layout = "~/Views/Shared/_LayoutDashboard.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/account/access-denied.css" asp-append-version="true" />
+}
+
+<section class="access-denied">
+    <div class="access-denied__icon">
+        <i class="fa-solid fa-lock"></i>
+    </div>
+
+    <h2>Bạn không có quyền truy cập trang này</h2>
+    <p>Tài khoản hiện tại không đủ quyền để xem nội dung được yêu cầu.</p>
+
+    <a href="/Home" class="access-denied__link">
+        <i class="fa-solid fa-arrow-left"></i>
+        Quay về trang chủ
+    </a>
+</section>

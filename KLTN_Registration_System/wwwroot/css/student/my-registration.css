@@ -1,0 +1,386 @@
+﻿/* --- CARD CHUNG --- */
+    .reg-card,
+    .reg-card-proposed {
+        background: #fff;
+        border-radius: 14px;
+        padding: 22px 24px;
+        margin-bottom: 14px;
+        border: 1px solid #e2e8f0;
+        transition: box-shadow 0.25s ease, transform 0.25s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+
+        .reg-card:hover,
+        .reg-card-proposed:hover {
+            box-shadow: 0 8px 24px rgba(43,78,255,0.07);
+            transform: translateY(-1px); /* Fix: -2px → -1px bớt giật */
+        }
+
+    /* Viền trái theo trạng thái */
+    .border-approved {
+        border-left: 5px solid #2b4eff;
+    }
+    /* Fix: 6px → 5px đồng đều hơn */
+    .border-pending {
+        border-left: 5px solid #f6ad55;
+    }
+
+    .border-rejected {
+        border-left: 5px solid #e53e3e;
+    }
+
+    .reg-card-proposed {
+        border-left: 5px solid #7c3aed;
+    }
+
+    /* --- STATUS BADGE --- */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 7px;
+        font-size: 10px; /* Thống nhất 10px */
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        line-height: 1.4;
+    }
+
+    .bg-soft-blue {
+        background: #eef2ff;
+        color: #2b4eff;
+    }
+
+    .bg-soft-orange {
+        background: #fffaf0;
+        color: #dd6b20;
+    }
+
+    .bg-soft-red {
+        background: #fff5f5;
+        color: #c53030;
+    }
+
+    .bg-soft-purple {
+        background: #f5f3ff;
+        color: #7c3aed;
+    }
+
+    .registration-alert {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        margin-bottom: 18px;
+        border-radius: 14px;
+        font-size: 13px;
+        font-weight: 600;
+        border: 1px solid transparent;
+    }
+
+    .registration-alert.success {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #15803d;
+    }
+
+    .registration-alert.error {
+        background: #fff5f5;
+        border-color: #fecaca;
+        color: #dc2626;
+    }
+
+    .reject-reason {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #fff5f5;
+        color: #b91c1c;
+        font-size: 12.5px;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+
+    .reject-reason i {
+        margin-top: 2px;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+    /* --- TIÊU ĐỀ TOPIC TRONG CARD --- */
+    .card-topic-title {
+        font-size: 15px; /* Fix: h4 Bootstrap (~24px) → 15px */
+        font-weight: 700;
+        color: #1e293b;
+        margin: 10px 0 14px;
+        line-height: 1.4;
+    }
+
+    /* --- ICON BOX --- */
+    .icon-box-sm {
+        width: 38px; /* Fix: 40px → 38px gọn hơn */
+        height: 38px;
+        min-width: 38px;
+        background: #f1f5f9;
+        color: #2b4eff;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+
+    /* --- LABEL NHỎ trong icon-box group --- */
+    .meta-label {
+        font-size: 10px; /* Fix: inline 9px → 10px, dùng class thay inline style */
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #94a3b8;
+        display: block;
+        letter-spacing: 0.4px;
+        margin-bottom: 2px;
+    }
+
+    .meta-value {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    /* --- STATS PANEL --- */
+    .stats-panel {
+        background: #2b4eff; /* Fix: var(--primary-blue, #2b4eff) → thẳng giá trị, biến chưa khai báo */
+        color: #fff;
+        border-radius: 18px;
+        padding: 22px 24px;
+        margin-bottom: 16px;
+    }
+
+    .stats-panel-title {
+        font-size: 11px; /* Fix: 12px → 11px, thống nhất label size */
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        opacity: 0.75;
+        margin-bottom: 18px;
+        text-align: center;
+    }
+
+    .stats-number {
+        font-size: 28px; /* Fix: h2 Bootstrap (~32px) → 28px, cân hơn trong panel nhỏ */
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 2px;
+    }
+
+    .stats-label {
+        font-size: 10px;
+        font-weight: 600;
+        opacity: 0.7;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .stats-divider {
+        border-right: 1px solid rgba(255,255,255,0.25);
+    }
+
+    .progress-track {
+        height: 5px;
+        border-radius: 99px;
+        background: rgba(255,255,255,0.2);
+        overflow: hidden;
+        margin-top: 4px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: #fff;
+        border-radius: 99px;
+    }
+
+    /* --- NOTE CARD --- */
+    .note-card {
+        background: #fff;
+        border-radius: 14px;
+        padding: 20px 22px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+
+    .note-card-title {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .note-item {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+        .note-item:last-child {
+            margin-bottom: 0;
+        }
+
+    .note-num {
+        font-size: 12px;
+        font-weight: 700;
+        color: #2b4eff;
+        flex-shrink: 0;
+        padding-top: 1px;
+    }
+
+    .note-text {
+        font-size: 12.5px;
+        color: #64748b;
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    /* --- ACTION BUTTONS --- */
+    .btn-action-link {
+        font-size: 13px;
+        font-weight: 600;
+        color: #2b4eff;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+        .btn-action-link:hover {
+            color: #1a3bd1;
+            text-decoration: underline;
+        }
+
+    .btn-chat {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        background: #2b4eff;
+        color: #fff;
+        border: none;
+        border-radius: 99px;
+        padding: 7px 18px;
+        text-decoration: none;
+        transition: background 0.2s;
+    }
+
+        .btn-chat:hover {
+            background: #1a3bd1;
+            color: #fff;
+        }
+
+    .btn-cancel {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        background: transparent;
+        color: #e53e3e;
+        border: 1.5px solid #e53e3e;
+        border-radius: 99px;
+        padding: 6px 18px;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+        .btn-cancel:hover {
+            background: #fff5f5;
+        }
+
+    /* --- SECTION HEADING --- */
+    .section-heading {
+        font-size: 14px; /* Thống nhất h5 section */
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* --- EMPTY STATE --- */
+    .empty-state {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 48px 24px;
+        text-align: center;
+    }
+
+        .empty-state i {
+            font-size: 40px;
+            color: #cbd5e1;
+            margin-bottom: 14px;
+            display: block;
+        }
+
+        .empty-state p {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin-bottom: 16px;
+        }
+
+    .page-heading {
+        margin-bottom: 1.5rem;
+    }
+
+    .page-heading h2 {
+        color: #1e293b;
+        font-size: 20px;
+        font-weight: 800;
+        margin-bottom: 4px;
+    }
+
+    .page-heading p {
+        color: #94a3b8;
+        font-size: 13.5px;
+        margin: 0;
+    }
+
+    .icon-primary {
+        color: #2b4eff;
+        font-size: 14px;
+    }
+
+    .icon-muted {
+        color: #94a3b8;
+        font-size: 14px;
+    }
+
+    .date-meta {
+        color: #94a3b8;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .section-divider {
+        border: none;
+        border-top: 1px dashed #e2e8f0;
+        margin: 28px 0;
+    }
+
+    .btn-discover {
+        border-radius: 99px;
+        padding: 9px 24px;
+    }
+
+    .success-rate-label {
+        font-size: 11.5px;
+        opacity: 0.75;
+    }
+
+    .success-rate-value {
+        font-size: 12px;
+        font-weight: 700;
+    }

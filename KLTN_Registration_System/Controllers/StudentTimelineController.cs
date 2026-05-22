@@ -35,6 +35,10 @@ namespace KLTN_Registration_System.Controllers
                 .OrderBy(t => t.Date)
                 .ToListAsync();
 
+            var hasApprovedTopic = await _context.Registrations.AnyAsync(r =>
+                r.StudentId == studentId &&
+                r.Status == "Approved");
+
             // Submission của sinh viên hiện tại
             var submissions = await _context.TimelineSubmissions
                 .Include(x => x.Versions)
@@ -43,6 +47,7 @@ namespace KLTN_Registration_System.Controllers
 
             ViewBag.Submissions = submissions;
             ViewBag.StudentId = studentId;
+            ViewBag.HasApprovedTopic = hasApprovedTopic;
             await SetStudentLayoutData();
 
             return View(timelines);
@@ -61,6 +66,8 @@ namespace KLTN_Registration_System.Controllers
             var now = DateTime.Now;
             var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(studentId)) return Unauthorized();
+
+            await SetStudentLayoutData();
 
             var timeline = await _context.Timelines.FindAsync(timelineId);
             if (timeline == null)

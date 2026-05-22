@@ -7,8 +7,10 @@
     Layout = "_LayoutStudent";
     ViewData["Title"] = "Timeline";
 
+    var timelines = Model?.ToList() ?? new List<Timeline>();
     var submissions =
         ViewBag.Submissions as List<TimelineSubmission> ?? new List<TimelineSubmission>();
+    bool hasApprovedTopic = ViewBag.HasApprovedTopic == true;
 }
 
 <div class="space-y-6">
@@ -29,11 +31,28 @@
         Timeline & Báo cáo tiến độ
     </h2>
 
-    @foreach (var item in Model)
+    @if (!hasApprovedTopic)
+    {
+        <div class="p-4 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-800 font-semibold">
+            <i class="fa-solid fa-circle-info mr-2"></i>
+            Bạn cần có đề tài đã được duyệt trước khi nộp báo cáo tiến độ.
+        </div>
+    }
+
+    @if (!timelines.Any())
+    {
+        <div class="bg-white rounded-2xl p-8 shadow text-center text-gray-500">
+            <i class="fa-regular fa-calendar-xmark text-4xl mb-3 text-gray-300"></i>
+            <p class="mb-0">Hiện chưa có mốc timeline nào đang hoạt động.</p>
+        </div>
+    }
+
+    @foreach (var item in timelines)
     {
         var submission = submissions
         .FirstOrDefault(x => x.TimelineId == item.Id);
-        var canSubmit = item.IsActive
+        var canSubmit = hasApprovedTopic
+            && item.IsActive
             && item.AllowSubmission
             && (!item.SubmissionDeadline.HasValue || DateTime.Now <= item.SubmissionDeadline.Value)
             && (submission == null || submission.Status == SubmissionStatus.Rejected);
@@ -80,8 +99,7 @@
                             </div>
 
                             <div class="text-sm text-gray-500">
-                                @submission.SubmittedAt
-                                .ToString("dd/MM/yyyy HH:mm")
+                                @submission.SubmittedAt.ToString("dd/MM/yyyy HH:mm")
                             </div>
                         </div>
 
@@ -178,6 +196,12 @@
 
                 </form>
             }
+            else if (!hasApprovedTopic)
+            {
+                <div class="mt-6 p-4 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-800">
+                    Bạn chưa có đề tài đã được duyệt nên chưa thể nộp báo cáo cho mốc này.
+                </div>
+            }
             else if (!item.AllowSubmission)
             {
                 <div class="mt-6 p-4 rounded-xl bg-gray-50 border text-gray-500">
@@ -223,6 +247,10 @@
 
                             <tbody>
 
+                                @{
+                                    var latestVersion = submission.Versions.Max(x => x.VersionNumber);
+                                }
+
                                 @foreach (var v in submission.Versions
                                                         .OrderByDescending(x => x.VersionNumber))
                                 {
@@ -232,8 +260,7 @@
 
                                             v@v.VersionNumber
 
-                                            @if (v.VersionNumber ==
-                                                                            submission.Versions.Max(x => x.VersionNumber))
+                                            @if (v.VersionNumber == latestVersion)
                                             {
                                                 <span class="ml-2 px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
                                                     Latest
@@ -244,20 +271,24 @@
 
                                         <td class="p-3">
 
-                                            <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = v.TimelineSubmissionId, versionId = v.Id })"
-                                               target="_blank"
-                                               class="text-blue-600 hover:underline">
-
-                                                @v.FileName
-
-                                            </a>
+                                            @if (!string.IsNullOrWhiteSpace(v.FilePath))
+                                            {
+                                                <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = v.TimelineSubmissionId, versionId = v.Id })"
+                                                   target="_blank"
+                                                   class="text-blue-600 hover:underline">
+                                                    @(string.IsNullOrWhiteSpace(v.FileName) ? $"Phiên bản {v.VersionNumber}" : v.FileName)
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-gray-400">Không có file</span>
+                                            }
 
                                         </td>
 
                                         <td class="p-3 text-gray-600">
 
-                                            @v.UploadedAt
-                                            .ToString("dd/MM/yyyy HH:mm")
+                                            @v.UploadedAt.ToString("dd/MM/yyyy HH:mm")
 
                                         </td>
 

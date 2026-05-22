@@ -1,169 +1,1176 @@
 ﻿@* ============================================================
-   FILE: Views/Student/ProposeTopic.cshtml  — TẠO MỚI
-   MODEL: không (dùng ViewBag)
+   FILE: Views/Student/ProposeTopic.cshtml
+   LAYOUT: _LayoutStudent
    ============================================================ *@
 @{
     Layout = "_LayoutStudent";
     ViewData["Title"] = "Đề xuất đề tài";
+
     var myProposals = ViewBag.MyProposals as List<KLTN_Registration_System.Models.Entities.Topic>
-                   ?? new List<KLTN_Registration_System.Models.Entities.Topic>();
-    var majors = ViewBag.Majors as List<KLTN_Registration_System.Models.Entities.Major>
-              ?? new List<KLTN_Registration_System.Models.Entities.Major>();
+                    ?? new List<KLTN_Registration_System.Models.Entities.Topic>();
+    var primaryMajor = ViewBag.PrimaryMajor as KLTN_Registration_System.Models.Entities.Major;
     var lecturers = ViewBag.Lecturers as List<KLTN_Registration_System.Models.Entities.ApplicationUser>
-                 ?? new List<KLTN_Registration_System.Models.Entities.ApplicationUser>();
+                    ?? new List<KLTN_Registration_System.Models.Entities.ApplicationUser>();
+
+    int pendingCount = myProposals.Count(t => t.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Pending);
+    int approvedCount = myProposals.Count(t => t.IsApproved);
+    int rejectedCount = myProposals.Count(t => t.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Rejected);
+    bool hasMajor = primaryMajor != null;
+    bool hasPendingSlot = pendingCount < 3;
+    bool canPropose = hasMajor && hasPendingSlot;
+    string lockTitle = !hasMajor ? "Chưa được gán chuyên ngành" : "Đã đạt giới hạn đề xuất";
+    string lockMessage = !hasMajor
+        ? "Liên hệ Admin để cập nhật chuyên ngành trước khi gửi đề xuất."
+        : "Huỷ bớt đề xuất đang chờ hoặc chờ Admin xét duyệt để gửi thêm.";
 }
 
-<div class="max-w-4xl mx-auto">
-    <div class="mb-6">
-        <h2 class="font-headline text-3xl font-extrabold text-on-surface tracking-tight">Đề xuất đề tài</h2>
-        <p class="text-on-surface-variant mt-1">Nếu không tìm thấy đề tài phù hợp, bạn có thể đề xuất ý tưởng riêng để Admin & Giảng viên xem xét.</p>
+@section Styles {
+    <style>
+        /* ══════════════════════════════════════
+               PAGE HEADER
+            ══════════════════════════════════════ */
+        .page-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .page-sub {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        /* ══════════════════════════════════════
+               STATS ROW
+            ══════════════════════════════════════ */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            padding: 18px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.03);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+            .stat-icon.blue {
+                background: #eff6ff;
+                color: #2563eb;
+            }
+
+            .stat-icon.amber {
+                background: #fffbeb;
+                color: #d97706;
+            }
+
+            .stat-icon.green {
+                background: #f0fdf4;
+                color: #16a34a;
+            }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1e293b;
+            line-height: 1;
+        }
+
+        /* ══════════════════════════════════════
+               ALERTS
+            ══════════════════════════════════════ */
+        .alert-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+            .alert-bar.success {
+                background: #f0fdf4;
+                border: 1px solid #bbf7d0;
+                color: #15803d;
+            }
+
+            .alert-bar.error {
+                background: #fff5f5;
+                border: 1px solid #fecaca;
+                color: #dc2626;
+            }
+
+            .alert-bar.warning {
+                background: #fffbeb;
+                border: 1px solid #fde68a;
+                color: #92400e;
+            }
+
+        /* ══════════════════════════════════════
+               MAIN GRID
+            ══════════════════════════════════════ */
+        .pt-grid {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* ══════════════════════════════════════
+               CARD
+            ══════════════════════════════════════ */
+        .pt-card {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.03);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+            .pt-card:last-child {
+                margin-bottom: 0;
+            }
+
+        .pt-head {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .pt-head-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .pt-head-sub {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .pt-body {
+            padding: 24px;
+        }
+
+        /* ══════════════════════════════════════
+               FORM FIELDS
+            ══════════════════════════════════════ */
+        .f-section {
+            margin-bottom: 18px;
+        }
+
+        .f-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .f-label {
+            display: block;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+            .f-label .req {
+                color: #ef4444;
+                margin-left: 2px;
+            }
+
+            .f-label .opt {
+                font-weight: 400;
+                font-size: 11px;
+                text-transform: none;
+                letter-spacing: 0;
+                color: #94a3b8;
+                margin-left: 6px;
+            }
+
+        .f-input, .f-select, .f-textarea {
+            width: 100%;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13.5px;
+            font-family: inherit;
+            color: #1e293b;
+            background: #fff;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+            .f-input:focus, .f-select:focus, .f-textarea:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+            }
+
+            .f-input::placeholder, .f-textarea::placeholder {
+                color: #cbd5e1;
+            }
+
+        .f-textarea {
+            resize: vertical;
+            min-height: 130px;
+            line-height: 1.65;
+        }
+
+        .f-select {
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+        }
+
+        /* Input with icon */
+        .f-wrap {
+            position: relative;
+        }
+
+        .f-ico {
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        .f-ico-top {
+            position: absolute;
+            left: 13px;
+            top: 13px;
+            color: #94a3b8;
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        .f-wrap .f-input,
+        .f-wrap .f-select {
+            padding-left: 38px;
+        }
+
+        .f-wrap-ta .f-textarea {
+            padding-left: 38px;
+        }
+
+        /* Char counter */
+        .char-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+        }
+
+        .char-hint {
+            font-size: 11px;
+            color: #cbd5e1;
+        }
+
+        .char-ct {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+            .char-ct.warn {
+                color: #f59e0b;
+            }
+
+        /* Major display box */
+        .major-box {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .major-box-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .major-name {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .major-faculty {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 1px;
+        }
+
+        /* Category chips */
+        .cat-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .cat-chip {
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 12.5px;
+            font-weight: 600;
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            color: #64748b;
+            cursor: pointer;
+            transition: all .15s;
+            user-select: none;
+        }
+
+            .cat-chip:hover {
+                border-color: #93c5fd;
+                color: #2563eb;
+                background: #f0f9ff;
+            }
+
+            .cat-chip.active {
+                border-color: #2563eb;
+                background: #eff6ff;
+                color: #2563eb;
+            }
+
+            .cat-chip.disabled {
+                cursor: not-allowed;
+                opacity: .55;
+                pointer-events: none;
+            }
+
+        /* Locked overlay */
+        .form-locked-wrap {
+            position: relative;
+        }
+
+        .locked-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            background: rgba(248,250,252,.85);
+            backdrop-filter: blur(2px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            gap: 10px;
+            text-align: center;
+            padding: 24px;
+        }
+
+            .locked-overlay i {
+                font-size: 28px;
+                color: #94a3b8;
+            }
+
+            .locked-overlay p {
+                font-size: 13.5px;
+                font-weight: 700;
+                color: #475569;
+                margin: 0;
+            }
+
+            .locked-overlay span {
+                font-size: 12px;
+                color: #94a3b8;
+            }
+
+        /* Form footer */
+        .f-foot {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            padding-top: 18px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        /* ══════════════════════════════════════
+               BUTTONS
+            ══════════════════════════════════════ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all .15s;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(37,99,235,.28);
+        }
+
+            .btn-primary:hover {
+                background: #1d4ed8;
+                transform: translateY(-1px);
+            }
+
+            .btn-primary:active {
+                transform: none;
+            }
+
+            .btn-primary:disabled {
+                background: #e2e8f0;
+                color: #94a3b8;
+                box-shadow: none;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+        .btn-ghost {
+            background: #f8fafc;
+            color: #64748b;
+            border: 1.5px solid #e2e8f0;
+            padding: 10px 16px;
+        }
+
+            .btn-ghost:hover {
+                background: #f1f5f9;
+                color: #1e293b;
+            }
+
+        .btn-spinner {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff;
+            animation: spin .7s linear infinite;
+            display: none;
+        }
+
+        @@keyframes spin {
+            to
+
+        {
+            transform: rotate(360deg);
+        }
+
+        }
+
+        /* ══════════════════════════════════════
+               SIDEBAR — PROPOSAL LIST
+            ══════════════════════════════════════ */
+        .sidebar-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Quota bar */
+        .quota-bar-wrap {
+            background: #f1f5f9;
+            border-radius: 99px;
+            height: 6px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .quota-bar {
+            height: 100%;
+            border-radius: 99px;
+            background: #2563eb;
+            transition: width .4s ease;
+        }
+
+            .quota-bar.full {
+                background: #dc2626;
+            }
+
+        .quota-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11.5px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        /* Proposal item */
+        .prop-empty {
+            text-align: center;
+            padding: 32px 16px;
+            color: #94a3b8;
+        }
+
+            .prop-empty i {
+                font-size: 26px;
+                display: block;
+                margin-bottom: 10px;
+                opacity: .3;
+            }
+
+            .prop-empty p {
+                font-size: 13px;
+                margin: 0;
+            }
+
+        .prop-item {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 14px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+            .prop-item:first-child {
+                padding-top: 0;
+            }
+
+            .prop-item:last-child {
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+
+        .prop-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .prop-date {
+            font-size: 11.5px;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+
+        .prop-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            padding: 3px 10px;
+            border-radius: 99px;
+        }
+
+            .prop-badge.pending {
+                background: #fffbeb;
+                color: #d97706;
+            }
+
+            .prop-badge.approved {
+                background: #dcfce7;
+                color: #15803d;
+            }
+
+            .prop-badge.rejected {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+
+        .prop-reject-reason {
+            margin-top: 5px;
+            font-size: 11.5px;
+            color: #dc2626;
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 4px 8px;
+            line-height: 1.4;
+        }
+
+        .btn-cancel-prop {
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all .15s;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+            .btn-cancel-prop:hover {
+                background: #dc2626;
+                color: #fff;
+            }
+
+        /* Notes card */
+        .notes-card {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 14px;
+            padding: 18px 20px;
+        }
+
+        .notes-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            color: #1d4ed8;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .notes-list {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+
+            .notes-list li {
+                font-size: 12.5px;
+                color: #1e40af;
+                line-height: 1.55;
+                padding: 6px 0;
+                border-bottom: 1px solid #bfdbfe;
+                display: flex;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+                .notes-list li:last-child {
+                    border-bottom: none;
+                    padding-bottom: 0;
+                }
+
+                .notes-list li i {
+                    font-size: 11px;
+                    margin-top: 2px;
+                    flex-shrink: 0;
+                    color: #3b82f6;
+                }
+    </style>
+}
+
+<!-- ════════════════════════════════
+     PAGE HEADER
+════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="page-title">Đề xuất đề tài</h2>
+        <p class="page-sub">Không tìm thấy đề tài phù hợp? Gửi ý tưởng của bạn để Admin & Giảng viên xem xét.</p>
     </div>
+</div>
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="mb-5 flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 rounded-2xl px-5 py-3 text-sm font-medium">
-            <span class="material-symbols-outlined text-green-600">check_circle</span>@TempData["Success"]
+<!-- ALERTS -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert-bar success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>@TempData["Success"]</span>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert-bar error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>@TempData["Error"]</span>
+    </div>
+}
+
+@if (!hasMajor && TempData["Success"] == null && TempData["Error"] == null)
+{
+    <div class="alert-bar error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>Tài khoản của bạn chưa được gán chuyên ngành nên chưa thể đề xuất đề tài.</span>
+    </div>
+}
+
+@if (hasMajor && !hasPendingSlot && TempData["Success"] == null && TempData["Error"] == null)
+{
+    <div class="alert-bar warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Bạn đã đạt tối đa <strong>3 đề xuất đang chờ duyệt</strong>. Hãy chờ Admin xử lý hoặc huỷ bớt đề xuất cũ.</span>
+    </div>
+}
+
+<!-- STATS -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fa-solid fa-lightbulb"></i></div>
+        <div>
+            <div class="stat-label">Tổng đề xuất</div>
+            <div class="stat-number">
+                @myProposals.Count
+            </div>
         </div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div class="mb-5 flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 rounded-2xl px-5 py-3 text-sm font-medium">
-            <span class="material-symbols-outlined text-red-500">error</span>@TempData["Error"]
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div>
+            <div class="stat-label">Đang chờ duyệt</div>
+            <div class="stat-number">@pendingCount</div>
         </div>
-    }
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+        <div>
+            <div class="stat-label">Đã duyệt / Từ chối</div>
+            <div class="stat-number">@approvedCount / @rejectedCount</div>
+        </div>
+    </div>
+</div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+<!-- ════════════════════════════════
+     MAIN GRID
+════════════════════════════════ -->
+<div class="pt-grid">
 
-        @* ── Form đề xuất ── *@
-        <div class="lg:col-span-3">
-            <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 shadow-sm overflow-hidden">
-                <div class="px-8 py-5 border-b border-slate-100">
-                    <h3 class="font-bold text-on-surface text-base">Ý tưởng của bạn</h3>
-                    <p class="text-xs text-on-surface-variant mt-0.5">Tối đa 3 đề xuất đang chờ duyệt.</p>
+    <!-- ══ LEFT: FORM ══ -->
+    <div class="form-locked-wrap">
+
+                @if (!canPropose)
+                {
+                    <div class="locked-overlay">
+                        <i class="fa-solid fa-lock"></i>
+                        <p>@lockTitle</p>
+                        <span>@lockMessage</span>
+            </div>
+        }
+
+        <div class="pt-card" style="margin-bottom:0;">
+            <div class="pt-head">
+                <div>
+                    <div class="pt-head-title">
+                        <i class="fa-regular fa-pen-to-square" style="color:#94a3b8;margin-right:6px;font-size:13px;"></i>
+                        Ý tưởng của bạn
+                    </div>
+                    <div class="pt-head-sub">Điền thông tin càng chi tiết, cơ hội được duyệt càng cao.</div>
                 </div>
-                <form method="post" asp-action="ProposeTopic" asp-controller="Student" class="p-8 space-y-5">
+                <span style="font-size:11px;font-weight:700;color:@(pendingCount >= 3 ? "#dc2626" : "#64748b");">
+                    @pendingCount / 3 chờ duyệt
+                </span>
+            </div>
+
+            <div class="pt-body">
+                <form method="post" asp-action="ProposeTopic" asp-controller="Student"
+                      id="proposeForm" novalidate>
                     @Html.AntiForgeryToken()
 
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Tên đề tài *</label>
-                        <input type="text" name="title" required maxlength="300"
-                               placeholder="VD: Ứng dụng AI hỗ trợ học tiếng Anh"
-                               class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    <!-- Tên đề tài -->
+                    <div class="f-section">
+                        <label class="f-label">Tên đề tài <span class="req">*</span></label>
+                        <div class="f-wrap">
+                            <i class="fa-solid fa-pen f-ico"></i>
+                            <input type="text" name="title" id="titleInput"
+                                   required maxlength="200"
+                                   class="f-input"
+                                   placeholder="VD: Ứng dụng AI hỗ trợ học tiếng Anh cho sinh viên đại học"
+                                   @(!canPropose ? "disabled" : "") />
+                        </div>
+                        <div class="char-row">
+                            <span class="char-hint">Tối đa 200 ký tự</span>
+                            <span class="char-ct" id="titleCt">0 / 200</span>
+                        </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Mô tả ý tưởng *</label>
-                        <textarea name="description" required rows="5" maxlength="1000"
-                                  placeholder="Mô tả vấn đề cần giải quyết, phương hướng thực hiện, công nghệ dự kiến dùng..."
-                                  class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"></textarea>
+                    <!-- Mô tả ý tưởng -->
+                    <div class="f-section">
+                        <label class="f-label">Mô tả ý tưởng <span class="req">*</span></label>
+                        <div class="f-wrap f-wrap-ta">
+                            <i class="fa-solid fa-align-left f-ico-top"></i>
+                            <textarea name="description" id="descInput"
+                                      required rows="5" maxlength="1000"
+                                      class="f-textarea"
+                                      placeholder="Mô tả vấn đề cần giải quyết, phương hướng thực hiện, công nghệ dự kiến sử dụng..."
+                                      @(!canPropose ? "disabled" : "")></textarea>
+                        </div>
+                        <div class="char-row">
+                            <span class="char-hint">Tối đa 1000 ký tự</span>
+                            <span class="char-ct" id="descCt">0 / 1000</span>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Chuyên ngành</label>
-                            <select name="majorId"
-                                    class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                                <option value="">-- Chọn ngành --</option>
-                                @foreach (var m in majors)
+                    <!-- Chuyên ngành (hiển thị, không chỉnh) -->
+                    <div class="f-section">
+                        <label class="f-label">Chuyên ngành của bạn</label>
+                        @if (primaryMajor != null)
+                        {
+                            <div class="major-box">
+                                <div class="major-box-icon">
+                                    <i class="fa-solid fa-book"></i>
+                                </div>
+                                <div>
+                                    <div class="major-name">@primaryMajor.Name</div>
+                                    @if (!string.IsNullOrWhiteSpace(primaryMajor.FacultyName))
+                                    {
+                                        <div class="major-faculty">@primaryMajor.FacultyName</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="major-box" style="color:#94a3b8;">
+                                <div class="major-box-icon" style="background:#f1f5f9;color:#94a3b8;">
+                                    <i class="fa-solid fa-question"></i>
+                                </div>
+                                <div>
+                                    <div class="major-name" style="color:#94a3b8;">Chưa được gán chuyên ngành</div>
+                                    <div class="major-faculty">Liên hệ Admin để cập nhật</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Lĩnh vực — chip selector -->
+                    <div class="f-section">
+                        <label class="f-label">Lĩnh vực</label>
+                        <input type="hidden" name="category" id="catInput" />
+                        <div class="cat-grid" id="catGrid">
+                            @{
+                                var cats = new[]
                                 {
-                                    <option value="@m.Id">@m.Name</option>
+                                                        ("web",      "fa-solid fa-globe",         "Ứng dụng Web"),
+                                                        ("mobile",   "fa-solid fa-mobile-screen", "Mobile"),
+                                                        ("ai",       "fa-solid fa-brain",         "Trí tuệ nhân tạo"),
+                                                        ("iot",      "fa-solid fa-microchip",     "IoT & Nhúng"),
+                                                        ("security", "fa-solid fa-shield-halved", "Bảo mật"),
+                                                        ("data",     "fa-solid fa-chart-bar",     "Dữ liệu & Phân tích"),
+                                                        ("other",    "fa-solid fa-ellipsis",      "Khác"),
+                                                        };
+                            }
+                            @foreach (var (val, ico, lbl) in cats)
+                            {
+                                <div class="cat-chip @(canPropose ? "" : "disabled")" data-val="@val">
+                                    <i class="@ico" style="font-size:11px;margin-right:4px;"></i>@lbl
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- GV mong muốn -->
+                    <div class="f-section">
+                        <label class="f-label">
+                            Giảng viên mong muốn
+                            <span class="opt">(tuỳ chọn)</span>
+                        </label>
+                        <div class="f-wrap">
+                            <i class="fa-solid fa-chalkboard-user f-ico"></i>
+                            <select name="preferredLecturerId" class="f-select"
+                                    @(!canPropose ? "disabled" : "")>
+                                <option value="">-- Để hệ thống chọn --</option>
+                                @foreach (var lec in lecturers)
+                                {
+                                    <option value="@lec.Id">
+                                        @(lec.FullName ?? lec.Email)
+                                        @(!string.IsNullOrEmpty(lec.Faculty) ? $"· {lec.Faculty}" : "")
+                                    </option>
                                 }
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Lĩnh vực</label>
-                            <select name="category"
-                                    class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                                <option value="">-- Chọn lĩnh vực --</option>
-                                <option>Ứng dụng web</option>
-                                <option>Ứng dụng mobile</option>
-                                <option>Trí tuệ nhân tạo</option>
-                                <option>IoT & Nhúng</option>
-                                <option>Bảo mật</option>
-                                <option>Dữ liệu & Phân tích</option>
-                                <option>Khác</option>
-                            </select>
-                        </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase">
-                            Giảng viên mong muốn <span class="text-slate-400 font-normal">(tuỳ chọn)</span>
-                        </label>
-                        <select name="preferredLecturerId"
-                                class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
-                            <option value="">-- Để hệ thống chọn --</option>
-                            @foreach (var lec in lecturers)
-                            {
-                                <option value="@lec.Id">@(lec.FullName ?? lec.Email) @(!string.IsNullOrEmpty(lec.Faculty) ? $"({lec.Faculty})" : "")</option>
-                            }
-                        </select>
-                    </div>
-
-                    <div class="flex justify-end">
-                        <button type="submit"
-                                class="flex items-center gap-2 px-8 py-3 bg-primary text-white rounded-xl font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg">
-                            <span class="material-symbols-outlined text-base">send</span> Gửi đề xuất
+                    <!-- Footer -->
+                    <div class="f-foot">
+                        <button type="reset" class="btn btn-ghost" id="resetBtn"
+                                @(!canPropose ? "disabled" : "")>
+                            <i class="fa-solid fa-rotate-left"></i> Đặt lại
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="sendBtn"
+                                @(!canPropose ? "disabled" : "")>
+                            <div class="btn-spinner" id="btnSpinner"></div>
+                            <i class="fa-solid fa-paper-plane" id="btnIco"></i>
+                            <span id="btnTxt">Gửi đề xuất</span>
                         </button>
                     </div>
                 </form>
             </div>
         </div>
+    </div>
 
-        @* ── Đề xuất của tôi ── *@
-        <div class="lg:col-span-2">
-            <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-100">
-                    <h3 class="font-bold text-on-surface text-sm">Đề xuất của tôi (@myProposals.Count/3)</h3>
+    <!-- ══ RIGHT: SIDEBAR ══ -->
+    <div class="sidebar-stack">
+
+        <!-- Đề xuất của tôi -->
+        <div class="pt-card">
+            <div class="pt-head">
+                <div>
+                    <div class="pt-head-title">Đề xuất của tôi</div>
+                    <div class="pt-head-sub">@pendingCount / 3 slot đang sử dụng</div>
                 </div>
-                @if (!myProposals.Any())
-                {
-                    <div class="py-10 text-center px-6">
-                        <span class="material-symbols-outlined text-4xl text-slate-300">lightbulb</span>
-                        <p class="text-xs text-slate-400 mt-2">Bạn chưa có đề xuất nào.</p>
-                    </div>
-                }
-                else
-                {
-                    <div class="divide-y divide-slate-100">
+            </div>
+            <div class="pt-body" style="padding-top:14px;padding-bottom:14px;">
+                <!-- Quota bar -->
+                <div class="quota-bar-wrap">
+                    <div class="quota-bar @(pendingCount >= 3 ? "full" : "")"
+                         style="width:@(myProposals.Count > 0 ? pendingCount * 100 / 3 : 0)%;"></div>
+                </div>
+                <div class="quota-text">
+                    <span>@pendingCount đang chờ duyệt</span>
+                    <span>@(3 - pendingCount) slot còn lại</span>
+                </div>
+
+                <div style="margin-top:14px;">
+                    @if (!myProposals.Any())
+                    {
+                        <div class="prop-empty">
+                            <i class="fa-regular fa-lightbulb"></i>
+                            <p>Bạn chưa có đề xuất nào.</p>
+                        </div>
+                    }
+                    else
+                    {
                         @foreach (var t in myProposals)
                         {
-                            string badge = t.IsApproved ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700";
-                            string badgeLabel = t.IsApproved ? "Đã duyệt" : "Chờ duyệt";
-                            <div class="p-5">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="min-w-0">
-                                        <p class="font-semibold text-sm text-on-surface leading-snug line-clamp-2">@t.Title</p>
-                                        <p class="text-xs text-slate-400 mt-0.5">@t.CreatedAt.ToString("dd/MM/yyyy")</p>
-                                        <span class="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full @badge">@badgeLabel</span>
+                            bool isRejected = t.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Rejected;
+                            string badgeCls = t.IsApproved ? "approved"
+                            : (isRejected ? "rejected" : "pending");
+                            string badgeTxt = t.IsApproved ? "Đã duyệt"
+                            : (isRejected ? "Từ chối" : "Chờ duyệt");
+                            string badgeIco = t.IsApproved ? "fa-solid fa-check"
+                            : (isRejected ? "fa-solid fa-xmark" : "fa-solid fa-hourglass-half");
+
+                            <div class="prop-item">
+                                <div style="min-width:0;flex:1;">
+                                    <div class="prop-title" title="@t.Title">@t.Title</div>
+                                    <div class="prop-date">
+                                        <i class="fa-regular fa-calendar" style="font-size:10px;"></i>
+                                        @t.CreatedAt.ToString("dd/MM/yyyy HH:mm")
                                     </div>
-                                    @if (!t.IsApproved)
+                                    <span class="prop-badge @badgeCls">
+                                        <i class="@badgeIco" style="font-size:8px;"></i>
+                                        @badgeTxt
+                                    </span>
+                                    @if (isRejected && !string.IsNullOrWhiteSpace(t.Note))
                                     {
-                                        <form method="post" asp-action="CancelProposal" asp-controller="Student" asp-route-id="@t.Id"
-                                              onsubmit="return confirm('Huỷ đề xuất này?')">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="p-1.5 rounded-lg text-red-400 hover:bg-red-50 shrink-0">
-                                                <span class="material-symbols-outlined text-base">close</span>
-                                            </button>
-                                        </form>
+                                        <div class="prop-reject-reason">
+                                            <i class="fa-solid fa-comment-slash" style="font-size:10px;margin-right:3px;"></i>
+                                            @t.Note
+                                        </div>
                                     }
                                 </div>
+
+                                @if (t.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Pending)
+                                {
+                                    <form method="post"
+                                          asp-action="CancelProposal"
+                                          asp-controller="Student"
+                                          asp-route-id="@t.Id"
+                                          class="cancel-proposal-form"
+                                          data-title="@t.Title">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-cancel-prop" title="Huỷ đề xuất">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </form>
+                                }
                             </div>
                         }
-                    </div>
-                }
-            </div>
-
-            @* Hướng dẫn *@
-            <div class="mt-4 bg-blue-50 rounded-2xl border border-blue-100 p-5">
-                <h4 class="font-bold text-blue-800 text-xs uppercase tracking-wide mb-2">Lưu ý</h4>
-                <ul class="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                    <li>Tối đa 3 đề xuất đang chờ cùng lúc.</li>
-                    <li>Admin sẽ xem xét trong 3-5 ngày làm việc.</li>
-                    <li>Sau khi duyệt, bạn cần đăng ký chính thức qua trang danh sách đề tài.</li>
-                    <li>Giảng viên mong muốn chỉ là ưu tiên, không đảm bảo phân công.</li>
-                </ul>
+                    }
+                </div>
             </div>
         </div>
+
+        <!-- Lưu ý -->
+        <div class="notes-card">
+            <div class="notes-title">
+                <i class="fa-solid fa-circle-info" style="color:#3b82f6;"></i>
+                Lưu ý quan trọng
+            </div>
+            <ul class="notes-list">
+                <li>
+                    <i class="fa-solid fa-lock"></i>
+                    Tối đa <strong>3 đề xuất</strong> đang chờ duyệt cùng lúc.
+                </li>
+                <li>
+                    <i class="fa-regular fa-clock"></i>
+                    Admin xem xét trong <strong>3–5 ngày làm việc</strong>.
+                </li>
+                <li>
+                    <i class="fa-solid fa-arrow-right"></i>
+                    Sau khi duyệt, cần <strong>đăng ký chính thức</strong> qua trang danh sách đề tài.
+                </li>
+                <li>
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    Giảng viên mong muốn chỉ là <strong>ưu tiên</strong>, không đảm bảo phân công.
+                </li>
+                <li>
+                    <i class="fa-solid fa-rotate-right"></i>
+                    Đề xuất bị từ chối có thể chỉnh sửa và <strong>gửi lại</strong>.
+                </li>
+            </ul>
+        </div>
+
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        function updateTitleCounter() {
+            const len = document.getElementById('titleInput').value.length;
+            const el  = document.getElementById('titleCt');
+            el.textContent = len + ' / 200';
+            el.classList.toggle('warn', len > 170);
+        }
+
+        function updateDescCounter() {
+            const len = document.getElementById('descInput').value.length;
+            const el  = document.getElementById('descCt');
+            el.textContent = len + ' / 1000';
+            el.classList.toggle('warn', len > 850);
+        }
+
+        function resetForm() {
+            document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+            document.getElementById('catInput').value = '';
+            document.getElementById('titleCt').textContent = '0 / 200';
+            document.getElementById('descCt').textContent  = '0 / 1000';
+            ['titleCt','descCt'].forEach(id => document.getElementById(id).classList.remove('warn'));
+        }
+
+        function onSubmit() {
+            const title = document.getElementById('titleInput').value.trim();
+            const desc  = document.getElementById('descInput').value.trim();
+
+            if (!title) {
+                alert('Vui lòng nhập tên đề tài.');
+                document.getElementById('titleInput').focus();
+                return false;
+            }
+
+            if (!desc) {
+                alert('Vui lòng nhập mô tả ý tưởng.');
+                document.getElementById('descInput').focus();
+                return false;
+            }
+
+            if (!confirm(`Xác nhận gửi đề xuất:\n"${title}"\n\nAdmin sẽ xem xét trong 3–5 ngày làm việc.`)) {
+                return false;
+            }
+
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            document.getElementById('btnSpinner').style.display = 'block';
+            document.getElementById('btnIco').style.display     = 'none';
+            document.getElementById('btnTxt').textContent       = 'Đang gửi...';
+            return true;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const ti = document.getElementById('titleInput');
+            const di = document.getElementById('descInput');
+            const form = document.getElementById('proposeForm');
+            const resetButton = document.getElementById('resetBtn');
+
+            document.querySelectorAll('.cat-chip').forEach((chip) => {
+                chip.addEventListener('click', () => {
+                    if (chip.classList.contains('disabled')) {
+                        return;
+                    }
+
+                    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    document.getElementById('catInput').value = chip.dataset.val || '';
+                });
+            });
+
+            if (ti) {
+                ti.addEventListener('input', () => {
+                    if (ti.value.length > 200) ti.value = ti.value.substring(0, 200);
+                    updateTitleCounter();
+                });
+            }
+
+            if (di) {
+                di.addEventListener('input', () => {
+                    if (di.value.length > 1000) di.value = di.value.substring(0, 1000);
+                    updateDescCounter();
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', (event) => {
+                    if (!onSubmit()) {
+                        event.preventDefault();
+                    }
+                });
+            }
+
+            if (resetButton) {
+                resetButton.addEventListener('click', resetForm);
+            }
+
+            document.querySelectorAll('.cancel-proposal-form').forEach((cancelForm) => {
+                cancelForm.addEventListener('submit', (event) => {
+                    const title = cancelForm.dataset.title || 'đề xuất này';
+                    if (!confirm(`Xác nhận huỷ đề xuất "${title}"?`)) {
+                        event.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
+}

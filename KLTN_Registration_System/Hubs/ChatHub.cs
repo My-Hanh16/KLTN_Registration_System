@@ -4,11 +4,13 @@
 
 using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
+using KLTN_Registration_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace KLTN_Registration_System.Hubs
 {
@@ -17,11 +19,19 @@ namespace KLTN_Registration_System.Hubs
     {
         private readonly AppDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly EmailService _emailService;
+        private readonly ILogger<ChatHub> _logger;
 
-        public ChatHub(AppDbContext db, UserManager<ApplicationUser> userManager)
+        public ChatHub(
+            AppDbContext db,
+            UserManager<ApplicationUser> userManager,
+            EmailService emailService,
+            ILogger<ChatHub> logger)
         {
             _db = db;
             _userManager = userManager;
+            _emailService = emailService;
+            _logger = logger;
         }
 
         // =====================================================
@@ -96,7 +106,9 @@ namespace KLTN_Registration_System.Hubs
                 if (user == null) return;
 
                 var topic = await _db.Topics
-                    .Include(t => t.Registrations)
+                    .Include(t => t.Lecturer)
+                    .Include(t => t.Registrations!)
+                        .ThenInclude(r => r.Student)
                     .FirstOrDefaultAsync(t => t.Id == topicId);
 
                 if (topic == null) return;
@@ -114,9 +126,7 @@ namespace KLTN_Registration_System.Hubs
                         r.StudentId == user.Id &&
                         r.Status == "Approved");
 
-                bool isAdmin = roles.Contains("Admin");
-
-                if (!isLecturer && !isStudent && !isAdmin) return;
+                if (!isLecturer && !isStudent) return;
 
                 var comment = new TopicComment
                 {
@@ -130,7 +140,7 @@ namespace KLTN_Registration_System.Hubs
 
                     CreatedAt = DateTime.UtcNow,
 
-                    SenderRole = isLecturer ? "Lecturer" : isAdmin ? "Admin" : "Student",
+                    SenderRole = isLecturer ? "Lecturer" : "Student",
 
                     IsDeleted = false,
                     IsRead = false
@@ -138,6 +148,13 @@ namespace KLTN_Registration_System.Hubs
 
                 _db.TopicComments.Add(comment);
                 await _db.SaveChangesAsync();
+
+                await NotifyChatRecipientsByEmailAsync(
+                    topic,
+                    user,
+                    comment.SenderRole ?? "Student",
+                    comment.Content,
+                    comment.AttachmentName);
 
                 // 🔥 IMPORTANT: FORMAT CHUẨN KHỚP VIEW
                 await Clients.Group($"topic-{topicId}")
@@ -198,8 +215,7 @@ namespace KLTN_Registration_System.Hubs
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            return roles.Contains("Admin") ||
-                   (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
+            return (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
                    (roles.Contains("Student") &&
                     (topic.Registrations ?? new List<Registration>()).Any(r =>
                         r.StudentId == user.Id &&
@@ -227,6 +243,75 @@ namespace KLTN_Registration_System.Hubs
 
             var storedName = Path.GetFileName(attachmentUrl);
             return string.IsNullOrWhiteSpace(storedName) ? null : storedName;
+        }
+
+        private async Task NotifyChatRecipientsByEmailAsync(
+            Topic topic,
+            ApplicationUser sender,
+            string senderRole,
+            string content,
+            string? attachmentName)
+        {
+            try
+            {
+                var recipients = new List<ApplicationUser>();
+
+                if (senderRole == "Student")
+                {
+                    if (topic.Lecturer != null)
+                    {
+                        recipients.Add(topic.Lecturer);
+                    }
+                }
+                else
+                {
+                    recipients.AddRange((topic.Registrations ?? new List<Registration>())
+                        .Where(r => r.Status == "Approved" && r.Student != null)
+                        .Select(r => r.Student!));
+                }
+
+                recipients = recipients
+                    .Where(r => r.Id != sender.Id && !string.IsNullOrWhiteSpace(r.Email))
+                    .GroupBy(r => r.Email!.Trim().ToUpperInvariant())
+                    .Select(g => g.First())
+                    .ToList();
+
+                if (!recipients.Any())
+                {
+                    return;
+                }
+
+                var senderName = WebUtility.HtmlEncode(sender.FullName ?? sender.Email ?? "Người dùng");
+                var topicTitle = WebUtility.HtmlEncode(topic.Title ?? "Đề tài");
+                var safeContent = string.IsNullOrWhiteSpace(content)
+                    ? "<em>Người gửi đã gửi một tệp đính kèm.</em>"
+                    : WebUtility.HtmlEncode(content).Replace("\n", "<br/>");
+                var safeAttachment = string.IsNullOrWhiteSpace(attachmentName)
+                    ? string.Empty
+                    : $"<p><strong>Tệp đính kèm:</strong> {WebUtility.HtmlEncode(attachmentName)}</p>";
+
+                var subject = $"[KLTN Portal] Tin nhắn mới - {topic.Title}";
+                var body = $@"
+                    <div style='font-family:Arial,sans-serif;line-height:1.6;color:#0f172a'>
+                        <h2 style='margin-bottom:8px'>Bạn có tin nhắn mới trên KLTN Portal</h2>
+                        <p><strong>Đề tài:</strong> {topicTitle}</p>
+                        <p><strong>Người gửi:</strong> {senderName}</p>
+                        <div style='padding:12px 14px;border-left:4px solid #2563eb;background:#f8fafc;margin:12px 0'>
+                            {safeContent}
+                        </div>
+                        {safeAttachment}
+                        <p>Vui lòng đăng nhập KLTN Portal để phản hồi trong mục trao đổi.</p>
+                    </div>";
+
+                foreach (var recipient in recipients)
+                {
+                    await _emailService.SendEmailAsync(recipient.Email!, subject, body);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Không gửi được email thông báo chat cho topic {TopicId}", topic.Id);
+            }
         }
     }
 }

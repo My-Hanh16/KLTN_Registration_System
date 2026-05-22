@@ -1,17 +1,22 @@
-﻿@{
+@{
     ViewData["Title"] = "Nhập đề tài từ Excel";
 }
 
-<div class="p-6">
-    <h2 class="text-2xl font-bold mb-4">Tải lên danh sách đề tài</h2>
-    <p class="text-gray-600 mb-4">
-        File cần có tối thiểu cột <b>Title</b> và thông tin chuyên ngành/khoa như
-        <b>MajorCode</b>, <b>MajorName</b> hoặc <b>Faculty</b>.
-        Nên dùng đúng mẫu để đề tài được gán khoa và lên thống kê chính xác.
-    </p>
+@section Styles {
+    <link rel="stylesheet" href="~/css/admin/import-topics.css" asp-append-version="true" />
+}
 
-    <a href="~/templates/mau-import-de-tai-admin.xlsx"
-       class="inline-block bg-slate-100 text-slate-700 px-4 py-2 rounded mb-4">
+<section class="import-topics">
+    <header class="import-topics__header">
+        <h2>Tải lên danh sách đề tài</h2>
+        <p>
+            File cần có tối thiểu cột <strong>Title</strong> và thông tin chuyên ngành/khoa như
+            <strong>MajorCode</strong>, <strong>MajorName</strong> hoặc <strong>Faculty</strong>.
+            Nên dùng đúng mẫu để đề tài được gán khoa và lên thống kê chính xác.
+        </p>
+    </header>
+
+    <a href="~/templates/mau-import-de-tai-admin.xlsx" class="template-download">
         Tải file Excel mẫu
     </a>
 
@@ -19,57 +24,35 @@
           asp-action="ImportTopics"
           method="post"
           enctype="multipart/form-data"
-          id="importExcelForm">
+          id="importExcelForm"
+          class="import-form">
 
         @Html.AntiForgeryToken()
 
-        <!-- Input file -->
         <input type="file"
                name="file"
                id="excelInput"
-               accept=".xlsx, .xls"
-               hidden
-               onchange="handleFileSelect()" />
+               accept=".xlsx,.xls"
+               hidden />
 
-        <!-- Hiển thị tên file -->
-        <p id="fileName" class="text-gray-600 mb-3 italic"></p>
+        <p id="fileName" class="selected-file"></p>
 
-        <!-- Button chọn file -->
-        <button type="button"
-                onclick="document.getElementById('excelInput').click()"
-                class="bg-blue-600 text-white px-4 py-2 rounded">
-            Chọn file Excel
-        </button>
+        <div class="form-actions">
+            <button type="button" id="chooseExcelBtn" class="choose-file-button">
+                Chọn file Excel
+            </button>
 
-        <!-- Button submit -->
-        <button type="submit"
-                id="submitBtn"
-                class="bg-green-600 text-white px-4 py-2 rounded ml-2 hidden">
-            Upload
-        </button>
+            <button type="submit" id="submitBtn" class="upload-button" hidden>
+                Upload
+            </button>
+        </div>
 
-        <!-- Loading -->
-        <p id="loadingText" class="text-blue-500 mt-3 hidden">
-            ⏳ Đang xử lý file...
+        <p id="loadingText" class="loading-text" hidden>
+            Đang xử lý file...
         </p>
     </form>
-</div>
+</section>
 
-<script>
-    function handleFileSelect() {
-        const input = document.getElementById("excelInput");
-        const fileName = document.getElementById("fileName");
-        const submitBtn = document.getElementById("submitBtn");
-
-        if (input.files.length > 0) {
-            fileName.innerText = "File đã chọn: " + input.files[0].name;
-            submitBtn.classList.remove("hidden");
-        }
-    }
-
-    // Hiển thị loading khi submit
-    document.getElementById("importExcelForm").addEventListener("submit", function () {
-        document.getElementById("loadingText").classList.remove("hidden");
-        document.getElementById("submitBtn").disabled = true;
-    });
-</script>
+@section Scripts {
+    <script src="~/js/admin/import-topics.js" asp-append-version="true"></script>
+}

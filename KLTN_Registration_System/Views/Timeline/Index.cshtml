@@ -3,6 +3,8 @@
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Mốc thời gian";
     var now = DateTime.Now;
+    var timelines = Model?.ToList() ?? new List<KLTN_Registration_System.Models.Entities.Timeline>();
+    bool canManageTimeline = User.IsInRole("Admin");
 }
 
 @section Styles {
@@ -643,9 +645,12 @@
         <h2 class="page-title">Mốc thời gian</h2>
         <p class="page-sub">Quản lý deadline nộp bài và deadline duyệt cho từng mốc khóa luận.</p>
     </div>
-    <button type="button" class="btn-add" onclick="openModal('modalAdd')">
-        <i class="fa-solid fa-plus"></i> Thêm mốc mới
-    </button>
+    @if (canManageTimeline)
+    {
+        <button type="button" class="btn-add" onclick="openModal('modalAdd')">
+            <i class="fa-solid fa-plus"></i> Thêm mốc mới
+        </button>
+    }
 </div>
 
 <!-- LEGEND -->
@@ -660,7 +665,7 @@
 <!-- TIMELINE LIST -->
 <div class="tl-list-card">
 
-    @if (!Model.Any())
+    @if (!timelines.Any())
     {
         <div class="empty-state">
             <i class="fa-regular fa-calendar-xmark"></i>
@@ -669,7 +674,7 @@
     }
     else
     {
-        @foreach (var tl in Model)
+        @foreach (var tl in timelines)
         {
             bool isPast = tl.Date < now;
             bool isUrgent = !isPast && (tl.Date - now).TotalDays <= 7;
@@ -794,43 +799,46 @@
                     </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="tl-actions">
-                    <form method="post" asp-action="Toggle" asp-controller="Timeline"
-                          asp-route-id="@tl.Id" class="m-0">
-                        @Html.AntiForgeryToken()
-                        <button type="submit"
-                                class="btn-icon @(tl.IsActive ? "toggle-on" : "toggle-off")"
-                                title="@(tl.IsActive ? "Ẩn mốc" : "Hiện mốc")">
-                            <i class="fa-regular @(tl.IsActive ? "fa-eye" : "fa-eye-slash")"></i>
-                        </button>
-                    </form>
+                @if (canManageTimeline)
+                {
+                    <!-- Actions -->
+                    <div class="tl-actions">
+                        <form method="post" asp-action="Toggle" asp-controller="Timeline"
+                              asp-route-id="@tl.Id" class="m-0">
+                            @Html.AntiForgeryToken()
+                            <button type="submit"
+                                    class="btn-icon @(tl.IsActive ? "toggle-on" : "toggle-off")"
+                                    title="@(tl.IsActive ? "Ẩn mốc" : "Hiện mốc")">
+                                <i class="fa-regular @(tl.IsActive ? "fa-eye" : "fa-eye-slash")"></i>
+                            </button>
+                        </form>
 
-                    <button type="button" class="btn-icon edit" title="Chỉnh sửa"
-                            onclick="openEdit(
-                                        @tl.Id,
-                                        '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.Title)',
-                                        '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.Description ?? "")',
-                                        '@tl.Date.ToString("yyyy-MM-ddTHH:mm")',
-                                        '@(tl.SubmissionDeadline.HasValue? tl.SubmissionDeadline.Value.ToString("yyyy-MM-ddTHH:mm") : "")',
-                                        '@(tl.ReviewDeadline.HasValue? tl.ReviewDeadline.Value.ToString("yyyy-MM-ddTHH:mm") : "")',
-                                        @tl.IsActive.ToString().ToLower(),
-                                        @tl.AllowSubmission.ToString().ToLower(),
-                                        '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.Type ?? "")',
-                                        '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.SubmissionType ?? "")'
-                                    )">
-                        <i class="fa-solid fa-pen"></i>
-                    </button>
-
-                    <form method="post" asp-action="Delete" asp-controller="Timeline"
-                          asp-route-id="@tl.Id" class="m-0"
-                          onsubmit="return confirmDelete(event, '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(tl.Title)')">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn-icon delete" title="Xóa">
-                            <i class="fa-solid fa-trash"></i>
+                        <button type="button"
+                                class="btn-icon edit edit-timeline-btn"
+                                title="Chỉnh sửa"
+                                data-id="@tl.Id"
+                                data-title="@tl.Title"
+                                data-desc="@(tl.Description ?? "")"
+                                data-date="@tl.Date.ToString("yyyy-MM-ddTHH:mm")"
+                                data-sub-dl="@(tl.SubmissionDeadline.HasValue ? tl.SubmissionDeadline.Value.ToString("yyyy-MM-ddTHH:mm") : "")"
+                                data-rev-dl="@(tl.ReviewDeadline.HasValue ? tl.ReviewDeadline.Value.ToString("yyyy-MM-ddTHH:mm") : "")"
+                                data-active="@tl.IsActive.ToString().ToLowerInvariant()"
+                                data-allow-sub="@tl.AllowSubmission.ToString().ToLowerInvariant()"
+                                data-type="@(tl.Type ?? "")"
+                                data-sub-type="@(tl.SubmissionType ?? "")">
+                            <i class="fa-solid fa-pen"></i>
                         </button>
-                    </form>
-                </div>
+
+                        <form method="post" asp-action="Delete" asp-controller="Timeline"
+                              asp-route-id="@tl.Id" class="m-0 delete-timeline-form"
+                              data-title="@tl.Title">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn-icon delete" title="Xóa">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                }
 
             </div>
         }
@@ -841,6 +849,8 @@
 <!-- ══════════════════════════════════════
      MODAL: THÊM MỐC
 ══════════════════════════════════════ -->
+@if (canManageTimeline)
+{
 <div id="modalAdd" class="modal-overlay" onclick="if(event.target===this)closeModal('modalAdd')">
     <div class="modal-box" onclick="event.stopPropagation()">
 
@@ -1100,17 +1110,22 @@
 
     </div>
 </div>
+}
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         function openModal(id) {
-            document.getElementById(id).classList.add('open');
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('open');
             document.body.style.overflow = 'hidden';
         }
 
         function closeModal(id) {
-            document.getElementById(id).classList.remove('open');
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('open');
             document.body.style.overflow = '';
         }
 
@@ -1156,6 +1171,29 @@
                 closeModal('modalAdd');
                 closeModal('modalEdit');
             }
+        });
+
+        document.querySelectorAll('.edit-timeline-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                openEdit(
+                    button.dataset.id,
+                    button.dataset.title || '',
+                    button.dataset.desc || '',
+                    button.dataset.date || '',
+                    button.dataset.subDl || '',
+                    button.dataset.revDl || '',
+                    button.dataset.active === 'true',
+                    button.dataset.allowSub === 'true',
+                    button.dataset.type || '',
+                    button.dataset.subType || ''
+                );
+            });
+        });
+
+        document.querySelectorAll('.delete-timeline-form').forEach(form => {
+            form.addEventListener('submit', event => {
+                confirmDelete(event, form.dataset.title || 'mốc thời gian này');
+            });
         });
 
         // Validate: ReviewDeadline phải sau SubmissionDeadline

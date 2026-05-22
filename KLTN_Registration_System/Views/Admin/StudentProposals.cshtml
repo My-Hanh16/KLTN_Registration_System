@@ -15,7 +15,7 @@
 
 <div class="px-6 py-6">
 
-    {{!-- Header --}}
+    @* Header *@
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl font-bold text-slate-800">Đề xuất đề tài từ sinh viên</h1>
@@ -97,12 +97,12 @@
                         @if (isPending)
                         {
                             <div class="flex flex-col gap-2 min-w-[180px]">
-                                {{!-- Nút Duyệt --}}
+                                @* Nút duyệt *@
                                 <button onclick="openApproveModal(@topic.Id, @Json.Serialize(topic.Title ?? ""))"
                                         class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg font-medium transition-colors">
                                     ✓ Duyệt & Phân công
                                 </button>
-                                {{!-- Nút Từ chối --}}
+                                @* Nút từ chối *@
                                 <button onclick="openRejectModal(@topic.Id, @Json.Serialize(topic.Title ?? ""))"
                                         class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-sm rounded-lg font-medium border border-red-200 transition-colors">
                                     ✕ Từ chối
@@ -116,7 +116,7 @@
     }
 </div>
 
-{{!-- Modal Duyệt --}}
+@* Modal duyệt *@
 <div id="approveModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
         <h3 class="text-lg font-bold text-slate-800 mb-1">Duyệt đề xuất</h3>
@@ -154,7 +154,7 @@
     </div>
 </div>
 
-{{!-- Modal Từ chối --}}
+@* Modal từ chối *@
 <div id="rejectModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
         <h3 class="text-lg font-bold text-slate-800 mb-1">Từ chối đề xuất</h3>

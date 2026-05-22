@@ -147,9 +147,7 @@ namespace KLTN_Registration_System.Controllers
                     r.StudentId == user.Id &&
                     r.Status == "Approved");
 
-            bool isAdmin = roles.Contains("Admin");
-
-            if (!isLecturer && !isStudent && !isAdmin)
+            if (!isLecturer && !isStudent)
                 return Forbid();
 
             // =================================================
@@ -232,7 +230,6 @@ namespace KLTN_Registration_System.Controllers
             if (topic == null) return NotFound();
 
             bool canAccess =
-                roles.Contains("Admin") ||
                 (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
                 (roles.Contains("Student") &&
                  (topic.Registrations ?? new List<Registration>()).Any(r =>
@@ -296,7 +293,6 @@ namespace KLTN_Registration_System.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
             bool canAccess =
-                roles.Contains("Admin") ||
                 (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
                 (roles.Contains("Student") &&
                  (topic.Registrations ?? new List<Registration>()).Any(r =>
@@ -373,8 +369,7 @@ namespace KLTN_Registration_System.Controllers
             if (user == null) return false;
 
             var roles = await _userManager.GetRolesAsync(user);
-            return roles.Contains("Admin") ||
-                   (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
+            return (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
                    (roles.Contains("Student") &&
                     (topic.Registrations ?? new List<Registration>()).Any(r =>
                         r.StudentId == user.Id &&

@@ -1,8 +1,7 @@
 ﻿@model KLTN_Registration_System.Models.Entities.Topic
 @{
     Layout = "_LayoutStudent";
-    var majors = ViewBag.Majors as IEnumerable<KLTN_Registration_System.Models.Entities.Major>
-                 ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.Major>();
+    var primaryMajor = ViewBag.PrimaryMajor as KLTN_Registration_System.Models.Entities.Major;
 }
 
 <div class="container mt-4">
@@ -23,29 +22,29 @@
                 <textarea asp-for="Description" class="form-control" style="border-radius: 10px;" rows="4" placeholder="Mục tiêu, công nghệ sử dụng..."></textarea>
             </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Giảng viên hướng dẫn mong muốn</label>
-                    <select asp-for="LecturerId" class="form-select" style="border-radius: 10px; padding: 10px;">
-                        <option value="">-- Chọn giảng viên --</option>
-                        @if (ViewBag.Lecturers != null)
-                        {
-                            foreach (var gv in ViewBag.Lecturers)
-                            {
-                                <option value="@gv.Id">@gv.FullName</option>
-                            }
-                        }
-                    </select>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Bộ môn / Chuyên ngành</label>
+                <div class="form-control bg-light" style="border-radius: 10px; padding: 10px;">
+                    @(primaryMajor?.Name ?? "Chưa được gán chuyên ngành")
+                    @if (!string.IsNullOrWhiteSpace(primaryMajor?.FacultyName))
+                    {
+                        <span class="text-muted"> · @primaryMajor.FacultyName</span>
+                    }
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Bộ môn / Chuyên ngành</label>
-                    <select asp-for="MajorId" class="form-select" style="border-radius: 10px; padding: 10px;">
-                        @foreach (var m in majors)
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Giảng viên hướng dẫn mong muốn</label>
+                <select asp-for="LecturerId" class="form-select" style="border-radius: 10px; padding: 10px;">
+                    <option value="">-- Chọn giảng viên --</option>
+                    @if (ViewBag.Lecturers != null)
+                    {
+                        foreach (var gv in ViewBag.Lecturers)
                         {
-                            <option value="@m.Id">@m.Name</option>
+                            <option value="@gv.Id">@gv.FullName</option>
                         }
-                    </select>
-                </div>
+                    }
+                </select>
             </div>
 
             <div class="mt-4 d-flex gap-2">

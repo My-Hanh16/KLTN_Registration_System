@@ -1,80 +1,450 @@
-@model IEnumerable<KLTN_Registration_System.Models.Entities.TimelineSubmission>
+﻿@model IEnumerable<KLTN_Registration_System.Models.Entities.TimelineSubmission>
+@using KLTN_Registration_System.Models.Entities
 
 @{
     Layout = "_LayoutDashboard";
-    ViewData["Title"] = "Bai cho duyet qua han";
-    var timelines = ViewBag.Timelines as IEnumerable<KLTN_Registration_System.Models.Entities.Timeline>
-                    ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.Timeline>();
+    ViewData["Title"] = "Quá hạn duyệt";
+    var overdueSubmissions = Model?.ToList() ?? new List<TimelineSubmission>();
+    var timelines = (ViewBag.Timelines as IEnumerable<Timeline> ?? Enumerable.Empty<Timeline>()).ToList();
+    int? selectedTimelineId = ViewBag.TimelineId is int timelineIdValue ? timelineIdValue : null;
+
+    int totalOverdue = overdueSubmissions.Count;
+    int totalTimelines = timelines.Count;
+    int affectedStudents = overdueSubmissions
+        .Where(x => !string.IsNullOrWhiteSpace(x.StudentId))
+        .Select(x => x.StudentId)
+        .Distinct()
+        .Count();
+    int affectedLecturers = ViewBag.AffectedLecturers ?? 0;
 }
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-start mb-4">
-        <div>
-            <h2 class="fw-bold mb-1">B&#224;i ch&#7901; duy&#7879;t qu&#225; h&#7841;n</h2>
-            <p class="text-muted mb-0">C&#225;c b&#224;i sinh vi&#234;n &#273;&#227; n&#7897;p nh&#432;ng gi&#7843;ng vi&#234;n ch&#432;a x&#7917; l&#253; sau h&#7841;n duy&#7879;t.</p>
+@section Styles {
+<style>
+    /* ══════════════════════════════════════
+       PAGE HEADER
+    ══════════════════════════════════════ */
+    .page-title { font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
+    .page-sub   { font-size: 13.5px; color: #94a3b8; margin: 0; }
+
+    /* ══════════════════════════════════════
+       STATS ROW
+    ══════════════════════════════════════ */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .stat-card {
+        background: #fff;
+        border: 1px solid #e8edf4;
+        border-radius: 14px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+
+    .stat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+    .stat-icon {
+        width: 42px; height: 42px; border-radius: 11px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; flex-shrink: 0;
+    }
+
+    .stat-icon.red    { background: #fff5f5; color: #dc2626; }
+    .stat-icon.amber  { background: #fffbeb; color: #d97706; }
+    .stat-icon.blue   { background: #eff6ff; color: #2563eb; }
+
+    .stat-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+    .stat-badge.red   { background: #fff5f5; color: #dc2626; }
+    .stat-badge.amber { background: #fffbeb; color: #d97706; }
+    .stat-badge.blue  { background: #eff6ff; color: #2563eb; }
+
+    .stat-label  { font-size: 12px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
+    .stat-number { font-size: 26px; font-weight: 800; color: #1e293b; line-height: 1.1; }
+
+    /* ══════════════════════════════════════
+       WARNING BANNER
+    ══════════════════════════════════════ */
+    .warn-banner {
+        display: flex; align-items: flex-start; gap: 14px;
+        background: #fff5f5; border: 1px solid #fecaca;
+        border-radius: 12px; padding: 14px 18px;
+        margin-bottom: 20px;
+        font-size: 13px; color: #991b1b; line-height: 1.6;
+    }
+
+    .warn-banner i { font-size: 18px; flex-shrink: 0; margin-top: 1px; color: #dc2626; }
+
+    /* ══════════════════════════════════════
+       FILTER + MAIN CARD
+    ══════════════════════════════════════ */
+    .main-card {
+        background: #fff;
+        border: 1px solid #e8edf4;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.03);
+        overflow: hidden;
+    }
+
+    .card-head {
+        padding: 16px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: center;
+        justify-content: space-between; gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .card-head-left { display: flex; align-items: center; gap: 12px; }
+
+    .card-head-title { font-size: 14px; font-weight: 700; color: #1e293b; margin: 0; }
+
+    /* Select filter */
+    .f-select {
+        height: 38px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+        padding: 0 34px 0 12px; font-size: 13px; font-family: inherit;
+        color: #1e293b; background: #fff; outline: none; cursor: pointer;
+        min-width: 220px;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 12px center;
+        transition: border-color .15s, box-shadow .15s;
+    }
+
+    .f-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
+
+    .result-count { font-size: 12.5px; color: #94a3b8; }
+    .result-count b { color: #1e293b; }
+
+    /* ══════════════════════════════════════
+       TABLE
+    ══════════════════════════════════════ */
+    .data-table { width: 100%; border-collapse: collapse; }
+
+    .data-table thead tr { background: #f8fafc; }
+
+    .data-table th {
+        padding: 11px 18px;
+        font-size: 10.5px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .7px;
+        color: #94a3b8; border-bottom: 1px solid #f1f5f9;
+        white-space: nowrap;
+    }
+
+    .data-table td {
+        padding: 14px 18px;
+        border-bottom: 1px solid #f8fafc;
+        vertical-align: middle; font-size: 13.5px;
+    }
+
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover { background: #fffafa; }
+
+    /* Timeline badge */
+    .tl-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: #fff5f5; color: #dc2626; border: 1px solid #fecaca;
+        border-radius: 7px; padding: 4px 10px;
+        font-size: 12px; font-weight: 700;
+    }
+
+    /* Student cell */
+    .stu-cell { display: flex; align-items: center; gap: 10px; }
+
+    .stu-avatar {
+        width: 36px; height: 36px; border-radius: 9px;
+        background: linear-gradient(135deg, #f87171, #dc2626);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 14px; font-weight: 800; flex-shrink: 0;
+    }
+
+    .stu-name  { font-size: 13.5px; font-weight: 700; color: #1e293b; margin-bottom: 1px; }
+    .stu-email { font-size: 11.5px; color: #94a3b8; }
+
+    /* Date cells */
+    .date-main { font-size: 13px; font-weight: 600; color: #334155; }
+    .date-sub  { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+
+    /* Deadline pill — overdue */
+    .deadline-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 11.5px; font-weight: 700;
+        padding: 4px 10px; border-radius: 99px;
+        background: #fff5f5; color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+
+    /* File link */
+    .file-link {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 12.5px; font-weight: 600; color: #2563eb;
+        padding: 6px 12px; border-radius: 8px;
+        border: 1.5px solid #bfdbfe; background: #eff6ff;
+        text-decoration: none; transition: all .15s;
+    }
+
+    .file-link:hover { background: #dbeafe; color: #1d4ed8; }
+
+    .no-file { font-size: 12px; color: #cbd5e1; font-style: italic; }
+
+    /* ══════════════════════════════════════
+       EMPTY STATE
+    ══════════════════════════════════════ */
+    .empty-state {
+        text-align: center; padding: 64px 24px; color: #94a3b8;
+    }
+
+    .empty-icon {
+        width: 64px; height: 64px; border-radius: 16px;
+        background: #f0fdf4; border: 1px solid #bbf7d0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 28px; color: #16a34a;
+        margin: 0 auto 16px;
+    }
+
+    .empty-state h3 { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+    .empty-state p  { font-size: 13px; margin: 0; }
+
+    /* ══════════════════════════════════════
+       BUTTON
+    ══════════════════════════════════════ */
+    .btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        height: 38px; padding: 0 16px; border-radius: 10px;
+        font-size: 13px; font-weight: 700; font-family: inherit;
+        cursor: pointer; border: none; text-decoration: none;
+        white-space: nowrap; transition: all .15s;
+    }
+
+    .btn-ghost { background: #f8fafc; color: #64748b; border: 1.5px solid #e2e8f0; }
+    .btn-ghost:hover { background: #f1f5f9; color: #1e293b; }
+</style>
+}
+
+<!-- ════════════════════════════════
+     PAGE HEADER
+════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="page-title">Bài chờ duyệt quá hạn</h2>
+        <p class="page-sub">Các bài sinh viên đã nộp nhưng giảng viên chưa xử lý sau hạn duyệt.</p>
+    </div>
+    <a asp-action="Index" asp-controller="Timeline" class="btn btn-ghost">
+        <i class="fa-regular fa-clock"></i> Quay lại mốc thời gian
+    </a>
+</div>
+
+<!-- ════════════════════════════════
+     STATS ROW
+════════════════════════════════ -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-top">
+            <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <span class="stat-badge red">Cần xử lý</span>
         </div>
-        <a asp-action="Index" asp-controller="Timeline" class="btn btn-outline-secondary">
-            Quay l&#7841;i m&#7889;c th&#7901;i gian
-        </a>
+        <div class="stat-label">Bài chờ quá hạn</div>
+        <div class="stat-number">@totalOverdue</div>
     </div>
 
-    <form method="get" class="mb-3">
-        <select name="timelineId" class="form-select" style="max-width:360px" onchange="this.form.submit()">
-            <option value="">T&#7845;t c&#7843; m&#7889;c qu&#225; h&#7841;n</option>
-            @foreach (var timeline in timelines)
-            {
-                <option value="@timeline.Id" selected="@(ViewBag.TimelineId == timeline.Id)">
-                    @timeline.Title
-                </option>
-            }
-        </select>
-    </form>
+    <div class="stat-card">
+        <div class="stat-top">
+            <div class="stat-icon amber"><i class="fa-solid fa-layer-group"></i></div>
+            <span class="stat-badge amber">Mốc</span>
+        </div>
+        <div class="stat-label">Mốc thời gian quá hạn</div>
+        <div class="stat-number">@totalTimelines</div>
+    </div>
 
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light">
+    <div class="stat-card">
+        <div class="stat-top">
+            <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
+            <span class="stat-badge blue">Sinh viên</span>
+        </div>
+        <div class="stat-label">Sinh viên bị ảnh hưởng</div>
+        <div class="stat-number">@affectedStudents</div>
+        <div style="font-size:11.5px;color:#94a3b8;margin-top:4px;">GV liên quan: @affectedLecturers</div>
+    </div>
+</div>
+
+<!-- WARNING BANNER — chỉ hiện khi có dữ liệu -->
+@if (totalOverdue > 0)
+{
+    <div class="warn-banner">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <div>
+            <strong>Cảnh báo:</strong> Có <strong>@totalOverdue bài nộp</strong> của sinh viên chưa được giảng viên
+            xử lý sau hạn duyệt. Các bài này sẽ không được tính vào tổng hợp kết quả nếu không có hành động kịp thời.
+            Hãy liên hệ giảng viên phụ trách hoặc xử lý thủ công.
+        </div>
+    </div>
+}
+
+<!-- ════════════════════════════════
+     MAIN CARD
+════════════════════════════════ -->
+<div class="main-card">
+
+    <!-- CARD HEAD: filter + count -->
+    <div class="card-head">
+        <div class="card-head-left">
+            <h3 class="card-head-title">
+                <i class="fa-solid fa-hourglass-end" style="color:#dc2626;font-size:13px;margin-right:6px;"></i>
+                Danh sách bài quá hạn
+            </h3>
+
+            <form method="get" style="margin:0;">
+                <select name="timelineId" class="f-select" onchange="this.form.submit()">
+                    <option value="">Tất cả mốc quá hạn</option>
+                    @foreach (var tl in timelines)
+                    {
+                        @if (selectedTimelineId == tl.Id)
+                        {
+                            <option value="@tl.Id" selected>@tl.Title</option>
+                        }
+                        else
+                        {
+                            <option value="@tl.Id">@tl.Title</option>
+                        }
+                    }
+                </select>
+            </form>
+        </div>
+
+        <span class="result-count">
+            <b>@totalOverdue</b> bài chờ xử lý
+        </span>
+    </div>
+
+    <!-- TABLE -->
+    <div style="overflow-x:auto;">
+        @if (!overdueSubmissions.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-circle-check"></i></div>
+                <h3>Không có bài quá hạn</h3>
+                <p>Tất cả bài nộp đã được giảng viên xử lý đúng hạn.</p>
+            </div>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <th>M&#7889;c th&#7901;i gian</th>
-                        <th>Sinh vi&#234;n</th>
-                        <th>Email</th>
-                        <th>Ng&#224;y n&#7897;p</th>
-                        <th>H&#7841;n duy&#7879;t</th>
-                        <th>File</th>
+                        <th style="width:44px;text-align:center;">#</th>
+                        <th>Mốc thời gian</th>
+                        <th>Sinh viên</th>
+                        <th>Ngày nộp</th>
+                        <th>Hạn duyệt</th>
+                        <th>Trễ hạn</th>
+                        <th style="text-align:center;">File</th>
                     </tr>
                 </thead>
                 <tbody>
-                @if (Model == null || !Model.Any())
-                {
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Kh&#244;ng c&#243; b&#224;i ch&#7901; duy&#7879;t qu&#225; h&#7841;n.</td>
-                    </tr>
-                }
-                else
-                {
-                    foreach (var item in Model)
-                    {
-                        <tr>
-                            <td>@(item.Timeline?.Title ?? "N/A")</td>
-                            <td>@(item.Student?.FullName ?? item.Student?.UserName ?? "N/A")</td>
-                            <td>@(item.Student?.Email ?? "N/A")</td>
-                            <td>@item.SubmittedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                            <td>@(item.Timeline?.ReviewDeadline?.ToString("dd/MM/yyyy HH:mm") ?? "-")</td>
-                            <td>
-                                @if (!string.IsNullOrWhiteSpace(item.FilePath))
-                                {
-                                    <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = item.Id })" target="_blank" rel="noopener">Xem file</a>
-                                }
-                                else
-                                {
-                                    <span>-</span>
-                                }
-                            </td>
-                        </tr>
+                    @{
+                        int idx = 1;
+                        @foreach (var item in overdueSubmissions)
+                        {
+                            string? studentName = item.Student?.FullName?.Trim();
+                            string displayName = string.IsNullOrWhiteSpace(studentName)
+                                ? item.Student?.UserName ?? "N/A"
+                                : studentName;
+                            string initial = string.IsNullOrWhiteSpace(studentName)
+                                ? "SV"
+                                : studentName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Last()[..1].ToUpperInvariant();
+
+                            // Tính số ngày trễ
+                            string lateDays = "—";
+                            if (item.Timeline?.ReviewDeadline.HasValue == true)
+                            {
+                                var diff = DateTime.Now - item.Timeline.ReviewDeadline.Value;
+                                if (diff.TotalDays > 0)
+                                    lateDays = $"{(int)diff.TotalDays} ngày";
+                            }
+
+                            <tr>
+                                <!-- STT -->
+                                <td style="text-align:center;font-size:12px;font-weight:700;color:#cbd5e1;">
+                                    @(idx.ToString("D2"))
+                                </td>
+
+                                <!-- Mốc thời gian -->
+                                <td>
+                                    <span class="tl-badge">
+                                        <i class="fa-regular fa-calendar" style="font-size:11px;"></i>
+                                        @(item.Timeline?.Title ?? "N/A")
+                                    </span>
+                                </td>
+
+                                <!-- Sinh viên -->
+                                <td>
+                                    <div class="stu-cell">
+                                        <div class="stu-avatar">@initial</div>
+                                        <div>
+                                            <div class="stu-name">@displayName</div>
+                                            <div class="stu-email">@(item.Student?.Email ?? "—")</div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Ngày nộp -->
+                                <td>
+                                    <div class="date-main">@item.SubmittedAt.ToString("dd/MM/yyyy")</div>
+                                    <div class="date-sub">@item.SubmittedAt.ToString("HH:mm")</div>
+                                </td>
+
+                                <!-- Hạn duyệt -->
+                                <td>
+                                    @if (item.Timeline?.ReviewDeadline.HasValue == true)
+                                    {
+                                        <div class="date-main" style="color:#dc2626;">
+                                            @item.Timeline.ReviewDeadline.Value.ToString("dd/MM/yyyy")
+                                        </div>
+                                        <div class="date-sub">@item.Timeline.ReviewDeadline.Value.ToString("HH:mm")</div>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#cbd5e1;font-size:12px;">Chưa có</span>
+                                    }
+                                </td>
+
+                                <!-- Trễ hạn -->
+                                <td>
+                                    @if (lateDays != "—")
+                                    {
+                                        <span class="deadline-pill">
+                                            <i class="fa-solid fa-clock" style="font-size:10px;"></i>
+                                            Trễ @lateDays
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#cbd5e1;font-size:12px;">—</span>
+                                    }
+                                </td>
+
+                                <!-- File -->
+                                <td style="text-align:center;">
+                                    @if (!string.IsNullOrWhiteSpace(item.FilePath))
+                                    {
+                                        <a href="@Url.Action("DownloadSubmissionFile","Timeline", new { submissionId = item.Id })"
+                                           target="_blank" class="file-link">
+                                            <i class="fa-solid fa-file-arrow-down" style="font-size:12px;"></i>
+                                            Tải file
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="no-file">Không có</span>
+                                    }
+                                </td>
+                            </tr>
+                            idx++;
+                        }
                     }
-                }
                 </tbody>
             </table>
-        </div>
+        }
     </div>
 </div>

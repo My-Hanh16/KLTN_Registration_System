@@ -500,6 +500,45 @@
     color: #1e293b;
 }
 
+.topic-empty-state {
+    align-items: center;
+    background: #ffffff;
+    border: 1px dashed #dbe4f0;
+    border-radius: 16px;
+    color: #64748b;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    min-height: 180px;
+    padding: 32px;
+    text-align: left;
+}
+
+.topic-empty-state i {
+    align-items: center;
+    background: #eef2ff;
+    border-radius: 16px;
+    color: #2b4eff;
+    display: flex;
+    flex-shrink: 0;
+    font-size: 24px;
+    height: 56px;
+    justify-content: center;
+    width: 56px;
+}
+
+.topic-empty-state h5 {
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 800;
+    margin: 0 0 4px;
+}
+
+.topic-empty-state p {
+    font-size: 13.5px;
+    margin: 0;
+}
+
 /* =========================
    RESPONSIVE
 ========================= */
@@ -677,27 +716,41 @@
 
 <!-- TOPIC LIST -->
 <div class="topic-container">
-    @foreach (var item in Model)
+    @if (!Model.Any())
     {
-        var current = item.Registrations?.Count(r => r.Status == "Approved") ?? 0;
-        var pending = item.Registrations?.Count(r => r.Status == "Pending") ?? 0;
-        var reserved = current + pending;
-        var isFull = fullTopicIds.Contains(item.Id) || reserved >= item.MaxStudents;
-        var isClosed = !item.IsRegistrationOpen || DateTime.Now > item.Deadline;
+        <div class="topic-empty-state">
+            <i class="fa-regular fa-folder-open"></i>
+            <div>
+                <h5>Không tìm thấy đề tài phù hợp</h5>
+                <p>Hãy kiểm tra lại bộ lọc hoặc liên hệ quản trị viên nếu khoa/chuyên ngành của bạn chưa được gán đúng.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        @foreach (var item in Model)
+        {
+            var current = item.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+            var pending = item.Registrations?.Count(r => r.Status == "Pending") ?? 0;
+            var reserved = current + pending;
+            var isFull = fullTopicIds.Contains(item.Id) || reserved >= item.MaxStudents;
+            var isNotOpen = !item.IsRegistrationOpen;
+            var isExpired = DateTime.Now > item.Deadline;
+            var isClosed = isExpired;
 
-        string levelText = "Cơ bản";
-        string levelColorClass = "tag-basic";
+            string levelText = "Cơ bản";
+            string levelColorClass = "tag-basic";
 
-        if (item.Level.ToString() == "Hard") {
-            levelText = "Nâng cao";
-            levelColorClass = "tag-advanced";
-        }
-        else if (item.Level.ToString() == "Medium") {
-            levelText = "Trung bình";
-            levelColorClass = "tag-medium";
-        }
+            if (item.Level.ToString() == "Hard") {
+                levelText = "Nâng cao";
+                levelColorClass = "tag-advanced";
+            }
+            else if (item.Level.ToString() == "Medium") {
+                levelText = "Trung bình";
+                levelColorClass = "tag-medium";
+            }
 
-        <div class="topic-item @(isFull || isClosed ? "topic-full" : "")">
+            <div class="topic-item @(isFull || isExpired ? "topic-full" : "")">
             <div class="topic-info">
 
                 <!-- Hàng badge / bộ môn -->
@@ -735,6 +788,10 @@
                         else
                         {
                             <span>Sĩ số: <strong>@current/@item.MaxStudents</strong></span>
+                            @if (isNotOpen)
+                            {
+                                <span class="text-muted small ms-1">(Chưa mở đăng ký)</span>
+                            }
                             @if (item.MaxStudents > 1)
                             {
                                 <small class="text-muted ms-1">(Tối đa @item.MaxStudents)</small>
@@ -763,11 +820,23 @@
                     }
                     else if (isClosed)
                     {
-                        <button class="btn-full" disabled>Đã đóng</button>
+                        <button class="btn-full" disabled>Đã hết hạn</button>
+                    }
+                    else if (isNotOpen)
+                    {
+                        <button class="btn-full" disabled title="Admin chưa mở đăng ký cho đề tài này">
+                            <i class="fa-solid fa-clock me-1"></i> Chưa mở
+                        </button>
                     }
                     else if (ViewBag.HasRegistered == true)
                     {
                         <button class="btn-full" disabled title="Bạn đã đăng ký một đề tài khác">Đã đăng ký</button>
+                    }
+                    else if (ViewBag.HasPendingProposal == true)
+                    {
+                        <button class="btn-full" disabled title="Bạn đang có đề xuất đề tài chờ duyệt">
+                            <i class="fa-solid fa-lightbulb me-1"></i> Đang đề xuất
+                        </button>
                     }
                     else
                     {
@@ -793,28 +862,32 @@
                 }
             </div>
         </div>
+        }
     }
 </div>
 
 <!-- PAGINATION -->
-<div class="d-flex justify-content-center mt-4">
-    @Html.PagedListPager(Model, page => Url.Action("Index", new {
-            page,
-            majorId = Context.Request.Query["majorId"].ToString(),
-            status = Context.Request.Query["status"].ToString(),
-            level = Context.Request.Query["level"].ToString(),
-            type = Context.Request.Query["type"].ToString(),
-            search = Context.Request.Query["search"].ToString()
-        }),
-        new PagedListRenderOptions {
-            LiElementClasses = new[] { "page-item" },
-            PageClasses = new[] { "page-link" },
-            UlElementClasses = new[] { "pagination shadow-sm" },
-            MaximumPageNumbersToDisplay = 5,
-            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
-            DisplayLinkToNextPage = PagedListDisplayMode.Always
-        })
-</div>
+@if (Model.PageCount > 1)
+{
+    <div class="d-flex justify-content-center mt-4">
+        @Html.PagedListPager(Model, page => Url.Action("Index", new {
+                page,
+                majorId = Context.Request.Query["majorId"].ToString(),
+                status = Context.Request.Query["status"].ToString(),
+                level = Context.Request.Query["level"].ToString(),
+                type = Context.Request.Query["type"].ToString(),
+                search = Context.Request.Query["search"].ToString()
+            }),
+            new PagedListRenderOptions {
+                LiElementClasses = new[] { "page-item" },
+                PageClasses = new[] { "page-link" },
+                UlElementClasses = new[] { "pagination shadow-sm" },
+                MaximumPageNumbersToDisplay = 5,
+                DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                DisplayLinkToNextPage = PagedListDisplayMode.Always
+            })
+    </div>
+}
 
 @section Scripts {
     <script>

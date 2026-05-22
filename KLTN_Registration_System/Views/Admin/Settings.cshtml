@@ -2,282 +2,1007 @@
 @{
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Cài đặt hệ thống";
-    
-    // Tạo Dictionary để truy xuất nhanh theo tên cài đặt
+
     var settings = Model.ToDictionary(s => s.Name, s => s);
-    
-    // Hàm Helper để lấy giá trị hoặc trả về rỗng nếu chưa có trong DB
-    string GetVal(string name, string fallback = "") => settings.ContainsKey(name) ? settings[name].Value : fallback;
-    string GetDateVal(string name, string fallback) => DateTime.TryParse(GetVal(name), out var dt)
-        ? dt.ToString("yyyy-MM-dd")
-        : fallback;
-    string GetDateTimeVal(string name) => DateTime.TryParse(GetVal(name), out var dt)
-        ? dt.ToString("yyyy-MM-ddTHH:mm")
-        : GetVal(name);
+
+    string GetVal(string name, string fallback = "")
+        => settings.ContainsKey(name) ? settings[name].Value : fallback;
+    string GetDateVal(string name, string fallback)
+        => DateTime.TryParse(GetVal(name), out var dt) ? dt.ToString("yyyy-MM-dd") : fallback;
+    string GetDateTimeVal(string name)
+        => DateTime.TryParse(GetVal(name), out var dt) ? dt.ToString("yyyy-MM-ddTHH:mm") : GetVal(name);
+
     var majors = ViewBag.Majors as IEnumerable<KLTN_Registration_System.Models.Entities.Major>
                  ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.Major>();
+
+    int topicTotal = ViewBag.TopicTotal ?? 0;
+    int topicRegistrationOpen = ViewBag.TopicRegistrationOpen ?? 0;
+    int topicRegistrationReady = ViewBag.TopicRegistrationReady ?? 0;
+    bool portalOpen = GetVal("IsPortalOpen") == "true";
+    bool topicRegOpen = GetVal("IsTopicRegistrationOpen", "false") == "true";
 }
 
-<!-- Chèn link CSS Tailwind và Material Symbols nếu _Layout chưa có -->
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1" rel="stylesheet" />
-
-<main class="flex-1 min-h-screen flex flex-col bg-slate-50/50">
-    <div class="p-10 space-y-8">
-        @if (TempData["Success"] != null)
-        {
-            <div class="max-w-6xl mx-auto mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-2xl flex items-center gap-3">
-                <span class="material-symbols-outlined">check_circle</span>
-                <span class="font-bold">@TempData["Success"]</span>
-            </div>
+@section Styles {
+    <style>
+        /* ══════════════════════════════════════
+               PAGE HEADER
+            ══════════════════════════════════════ */
+        .page-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
         }
-        @if (TempData["Error"] != null)
-        {
-            <div class="max-w-6xl mx-auto mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center gap-3">
-                <span class="material-symbols-outlined">error</span>
-                <span class="font-bold">@TempData["Error"]</span>
-            </div>
-        }
-        <form asp-action="SaveSettings" method="post">
-            @Html.AntiForgeryToken()
 
-            <div class="max-w-6xl mx-auto">
-                <!-- Header -->
-                <div class="flex justify-between items-end mb-8">
+        .page-sub {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        /* ══════════════════════════════════════
+               ALERT BANNERS
+            ══════════════════════════════════════ */
+        .alert-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+            .alert-bar.success {
+                background: #f0fdf4;
+                border: 1px solid #bbf7d0;
+                color: #15803d;
+            }
+
+            .alert-bar.error {
+                background: #fff5f5;
+                border: 1px solid #fecaca;
+                color: #dc2626;
+            }
+
+        /* ══════════════════════════════════════
+               SECTION CARD
+            ══════════════════════════════════════ */
+        .s-card {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.03);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+            .s-card:last-child {
+                margin-bottom: 0;
+            }
+
+        .s-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px;
+            border-bottom: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .s-head-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .s-ico {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+            .s-ico.blue {
+                background: #eff6ff;
+                color: #2563eb;
+            }
+
+            .s-ico.indigo {
+                background: #eef2ff;
+                color: #4f46e5;
+            }
+
+            .s-ico.amber {
+                background: #fffbeb;
+                color: #d97706;
+            }
+
+            .s-ico.green {
+                background: #f0fdf4;
+                color: #16a34a;
+            }
+
+            .s-ico.purple {
+                background: #f5f3ff;
+                color: #7c3aed;
+            }
+
+        .s-head-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .s-head-sub {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .s-card-body {
+            padding: 24px;
+        }
+
+        /* ══════════════════════════════════════
+               TOGGLE SWITCH
+            ══════════════════════════════════════ */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .toggle-label {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+            .toggle-label.on {
+                color: #16a34a;
+            }
+
+            .toggle-label.off {
+                color: #94a3b8;
+            }
+
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+        }
+
+            .toggle input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 99px;
+            transition: background .2s;
+        }
+
+            .toggle-slider::before {
+                content: '';
+                position: absolute;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #fff;
+                left: 3px;
+                top: 3px;
+                box-shadow: 0 1px 4px rgba(0,0,0,.2);
+                transition: transform .2s;
+            }
+
+        .toggle input:checked + .toggle-slider {
+            background: #2563eb;
+        }
+
+            .toggle input:checked + .toggle-slider::before {
+                transform: translateX(22px);
+            }
+
+        /* Green variant */
+        .toggle.green input:checked + .toggle-slider {
+            background: #16a34a;
+        }
+
+        /* ══════════════════════════════════════
+               FORM FIELDS
+            ══════════════════════════════════════ */
+        .f-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .f-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+
+        .f-grid-5 {
+            display: grid;
+            grid-template-columns: 3fr 2fr 3fr 3fr 1fr;
+            gap: 10px;
+            align-items: end;
+        }
+
+        .f-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .f-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .7px;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+
+        .f-input, .f-select, .f-input-sm {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13.5px;
+            font-family: inherit;
+            color: #1e293b;
+            background: #fff;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+            width: 100%;
+        }
+
+            .f-input:focus, .f-select:focus, .f-input-sm:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+            }
+
+        .f-input-sm {
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
+        .f-select {
+            appearance: none;
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        /* Range slider */
+        .range-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .range-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .range-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #2563eb;
+            line-height: 1;
+        }
+
+        .range-input {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 99px;
+            outline: none;
+            cursor: pointer;
+        }
+
+            .range-input::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #2563eb;
+                cursor: pointer;
+                box-shadow: 0 2px 8px rgba(37,99,235,.35);
+                transition: transform .15s;
+            }
+
+                .range-input::-webkit-slider-thumb:hover {
+                    transform: scale(1.15);
+                }
+
+        .range-marks {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2px;
+        }
+
+        .range-mark {
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* ══════════════════════════════════════
+               INFO BOX (Topic registration stats)
+            ══════════════════════════════════════ */
+        .info-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .info-box-left {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .info-box-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .info-box-desc {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 10px;
+            line-height: 1.55;
+        }
+
+        .info-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+        }
+
+        .info-chip {
+            font-size: 11px;
+            font-weight: 700;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 7px;
+            padding: 3px 10px;
+            color: #475569;
+        }
+
+        /* ══════════════════════════════════════
+               QUICK ACTION BUTTONS
+            ══════════════════════════════════════ */
+        .qa-btn {
+            width: 100%;
+            padding: 11px 16px;
+            border-radius: 10px;
+            border: none;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+            .qa-btn.slate {
+                background: #f8fafc;
+                color: #475569;
+                border: 1.5px solid #e2e8f0;
+            }
+
+                .qa-btn.slate:hover {
+                    background: #f1f5f9;
+                    color: #1e293b;
+                }
+
+            .qa-btn.red {
+                background: #fff5f5;
+                color: #dc2626;
+                border: 1.5px solid #fecaca;
+            }
+
+                .qa-btn.red:hover {
+                    background: #dc2626;
+                    color: #fff;
+                }
+
+        /* ══════════════════════════════════════
+               BUTTONS
+            ══════════════════════════════════════ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            height: 40px;
+            padding: 0 18px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: all .15s;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 3px 12px rgba(37,99,235,.28);
+        }
+
+            .btn-primary:hover {
+                background: #1d4ed8;
+            }
+
+        .btn-ghost {
+            background: #f8fafc;
+            color: #64748b;
+            border: 1.5px solid #e2e8f0;
+        }
+
+            .btn-ghost:hover {
+                background: #f1f5f9;
+                color: #1e293b;
+            }
+
+        .btn-sm {
+            height: 34px;
+            padding: 0 14px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all .15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+            .btn-sm.dark {
+                background: #1e293b;
+                color: #fff;
+            }
+
+                .btn-sm.dark:hover {
+                    background: #0f172a;
+                }
+
+            .btn-sm.ghost {
+                background: #f8fafc;
+                color: #64748b;
+                border: 1.5px solid #e2e8f0;
+            }
+
+                .btn-sm.ghost:hover {
+                    background: #f1f5f9;
+                }
+
+            .btn-sm.danger {
+                background: #fff5f5;
+                color: #dc2626;
+                border: 1.5px solid #fecaca;
+            }
+
+                .btn-sm.danger:hover {
+                    background: #dc2626;
+                    color: #fff;
+                }
+
+            .btn-sm.blue {
+                background: #2563eb;
+                color: #fff;
+            }
+
+                .btn-sm.blue:hover {
+                    background: #1d4ed8;
+                }
+
+        /* ══════════════════════════════════════
+               MAJOR TABLE
+            ══════════════════════════════════════ */
+        .major-head {
+            display: grid;
+            grid-template-columns: 3fr 1.2fr 2fr 2.5fr 1fr 160px;
+            gap: 10px;
+            padding: 10px 16px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .7px;
+            text-transform: uppercase;
+            color: #94a3b8;
+        }
+
+        .major-row {
+            display: grid;
+            grid-template-columns: 3fr 1.2fr 2fr 2.5fr 1fr 160px;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 16px;
+            background: #fff;
+            border: 1px solid #f1f5f9;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+            .major-row:hover {
+                border-color: #bfdbfe;
+                box-shadow: 0 2px 8px rgba(37,99,235,.06);
+            }
+
+            .major-row:last-child {
+                margin-bottom: 0;
+            }
+
+            .major-row input[type=text] {
+                border: 1.5px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 7px 10px;
+                font-size: 13px;
+                font-family: inherit;
+                color: #1e293b;
+                background: #f8fafc;
+                outline: none;
+                width: 100%;
+                transition: border-color .15s, box-shadow .15s;
+            }
+
+                .major-row input[type=text]:focus {
+                    border-color: #3b82f6;
+                    background: #fff;
+                    box-shadow: 0 0 0 3px rgba(59,130,246,.08);
+                }
+
+        /* Status toggle in row */
+        .major-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            font-weight: 700;
+        }
+
+        .status-pip {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+            .status-pip.active {
+                background: #16a34a;
+            }
+
+            .status-pip.hidden {
+                background: #94a3b8;
+            }
+
+        .major-status-txt.active {
+            color: #16a34a;
+        }
+
+        .major-status-txt.hidden {
+            color: #94a3b8;
+        }
+
+        .major-row-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+
+        /* Add major form */
+        .add-major-row {
+            background: #f8fafc;
+            border: 1.5px dashed #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 3fr 1.2fr 2fr 2.5fr 1fr 160px;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 16px;
+        }
+
+        .add-major-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .7px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        /* Empty state */
+        .empty-major {
+            text-align: center;
+            padding: 40px 20px;
+            border: 1.5px dashed #e2e8f0;
+            border-radius: 12px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        /* Checkbox custom */
+        .chk-wrap {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+        }
+
+            .chk-wrap input[type=checkbox] {
+                width: 16px;
+                height: 16px;
+                accent-color: #2563eb;
+                cursor: pointer;
+                border-radius: 4px;
+            }
+
+        .chk-lbl {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* Divider */
+        .section-divider {
+            height: 1px;
+            background: #f1f5f9;
+            margin: 4px 0 20px;
+        }
+    </style>
+}
+
+<!-- ════════════════════════════════
+     ALERTS
+════════════════════════════════ -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert-bar success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>@TempData["Success"]</span>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert-bar error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>@TempData["Error"]</span>
+    </div>
+}
+
+<!-- ════════════════════════════════
+     PAGE HEADER
+════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="page-title">Cài đặt hệ thống</h2>
+        <p class="page-sub">Quản lý các thông số vận hành và quy trình học thuật toàn khóa.</p>
+    </div>
+</div>
+
+<form asp-action="SaveSettings" method="post" id="settingsForm">
+    @Html.AntiForgeryToken()
+
+    <!-- ════════════════════════════════
+         ROW 1: Portal + Account
+    ════════════════════════════════ -->
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;margin-bottom:20px;align-items:start;">
+
+        <!-- CARD 1: Cổng đăng ký -->
+        <div class="s-card">
+            <div class="s-card-head">
+                <div class="s-head-left">
+                    <div class="s-ico blue"><i class="fa-solid fa-door-open"></i></div>
                     <div>
-                        <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Cấu hình hệ thống</h2>
-                        <p class="text-slate-500">Quản lý các thông số vận hành và quy trình học thuật toàn khóa.</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <button type="button" class="px-5 py-2.5 rounded-xl bg-white text-slate-700 border border-slate-200 font-semibold text-sm hover:bg-slate-50 transition-all">Sao lưu dữ liệu</button>
-                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-[0.98] transition-all">
-                            Lưu tất cả thay đổi
-                        </button>
+                        <div class="s-head-title">Quản lý cổng đăng ký</div>
+                        <div class="s-head-sub">Kiểm soát trạng thái mở / đóng của cổng portal</div>
                     </div>
                 </div>
 
-                <!-- Bento Grid -->
-                <div class="grid grid-cols-12 gap-6">
-                    
-                    <!-- 1. Quản lý cổng đăng ký -->
-                    <div class="col-span-12 md:col-span-8 bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-                        <div class="flex items-center justify-between mb-8">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                                    <span class="material-symbols-outlined text-3xl">door_open</span>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-bold">Quản lý cổng đăng ký</h3>
-                                    <p class="text-xs text-slate-500">Kiểm soát trạng thái mở/đóng của cổng portal</p>
-                                </div>
-                            </div>
+                <!-- Toggle Portal Open -->
+                <div class="toggle-wrap">
+                    <span class="toggle-label @(portalOpen ? "on" : "off")">
+                        @(portalOpen ? "ĐANG MỞ" : "ĐANG ĐÓNG")
+                    </span>
+                    <label class="toggle">
+                        <input type="hidden" name="names" value="IsPortalOpen" />
+                        <input type="hidden" name="values_IsPortalOpen" value="false" />
+                        <input type="checkbox" name="values_IsPortalOpen" value="true"
+                               @(portalOpen ? "checked" : "")
+                               onchange="this.closest('.toggle-wrap').querySelector('.toggle-label').textContent = this.checked ? 'ĐANG MỞ' : 'ĐANG ĐÓNG'; this.closest('.toggle-wrap').querySelector('.toggle-label').className = 'toggle-label ' + (this.checked ? 'on' : 'off');" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
 
-                            <label class="relative inline-flex items-center cursor-pointer">
-
-                                <input type="hidden" name="names" value="IsPortalOpen" />
-
-                                <!-- fallback false -->
-                                <input type="hidden" name="values_IsPortalOpen" value="false" />
-
-                                <!-- checkbox -->
-                                <input type="checkbox"
-                                       name="values_IsPortalOpen"
-                                       value="true"
-                                       class="sr-only peer"
-                                       @(GetVal("IsPortalOpen") == "true" ? "checked" : "") />
-
-                                <div class="w-14 h-7 bg-slate-200 peer-focus:outline-none rounded-full
-                peer peer-checked:after:translate-x-full
-                after:content-[''] after:absolute after:top-[2px]
-                after:start-[2px] after:bg-white after:rounded-full
-                after:h-6 after:w-6 after:transition-all
-                peer-checked:bg-blue-600">
-                                </div>
-
-                                <span class="ms-3 text-sm font-bold text-blue-600">
-                                    @(GetVal("IsPortalOpen") == "true"
-                                                                        ? "ĐANG MỞ"
-                                                                        : "ĐANG ĐÓNG")
-                                </span>
-                            </label>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-8">
-                            <div class="space-y-2">
-                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày bắt đầu học kỳ</label>
-                                <input type="hidden" name="names" value="Semester_Start" />
-                                <input type="date" name="values_Semester_Start" value="@GetDateVal("Semester_Start", DateTime.Today.ToString("yyyy-MM-dd"))" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày kết thúc học kỳ</label>
-                                <input type="hidden" name="names" value="Semester_End" />
-                                <input type="date" name="values_Semester_End" value="@GetDateVal("Semester_End", DateTime.Today.AddMonths(4).ToString("yyyy-MM-dd"))" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mở đăng ký đề tài</label>
-                                <input type="hidden" name="names" value="Registration_Start" />
-                                <input type="datetime-local" name="values_Registration_Start" value="@GetDateTimeVal("Registration_Start")" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Đóng đăng ký đề tài</label>
-                                <input type="hidden" name="names" value="Registration_End" />
-                                <input type="datetime-local" name="values_Registration_End" value="@GetDateTimeVal("Registration_End")" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/20" />
-                            </div>
+            <div class="s-card-body">
+                <!-- Info box: mở đăng ký đề tài -->
+                <div class="info-box" style="margin-bottom:20px;">
+                    <div class="info-box-left">
+                        <div class="info-box-title">Mở đăng ký đề tài hàng loạt</div>
+                        <div class="info-box-desc">Khi bật, hệ thống mở đăng ký cho các đề tài đã duyệt và chưa đủ sinh viên.</div>
+                        <div class="info-chips">
+                            <span class="info-chip">Tổng đã duyệt: <b>@topicTotal</b></span>
+                            <span class="info-chip">Đang mở: <b>@topicRegistrationOpen</b></span>
+                            <span class="info-chip">Sẵn sàng: <b>@topicRegistrationReady</b></span>
                         </div>
                     </div>
 
-                    <!-- 2. Quản lý tài khoản nhanh -->
-                    <div class="col-span-12 md:col-span-4 bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
-                         <div class="flex items-center gap-4 mb-6">
-                            <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                                <span class="material-symbols-outlined text-3xl">manage_accounts</span>
-                            </div>
-                            <h3 class="text-lg font-bold">Quản lý tài khoản</h3>
-                        </div>
-                        <div class="space-y-3">
-                            <button type="button" class="w-full py-3 bg-slate-50 text-slate-700 font-semibold text-sm rounded-xl hover:bg-slate-100 transition-all flex items-center justify-center gap-2">
-                                <span class="material-symbols-outlined text-lg">lock_reset</span> Reset mật khẩu hàng loạt
-                            </button>
-                            <button type="button" class="w-full py-3 bg-red-50 text-red-600 font-semibold text-sm rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-2">
-                                <span class="material-symbols-outlined text-lg">no_accounts</span> Khóa toàn bộ sinh viên
-                            </button>
+                    <div class="toggle-wrap">
+                        <span class="toggle-label @(topicRegOpen ? "on" : "off")">
+                            @(topicRegOpen ? "ĐANG MỞ" : "ĐANG ĐÓNG")
+                        </span>
+                        <label class="toggle green">
+                            <input type="hidden" name="names" value="IsTopicRegistrationOpen" />
+                            <input type="hidden" name="values_IsTopicRegistrationOpen" value="false" />
+                            <input type="checkbox" name="values_IsTopicRegistrationOpen" value="true"
+                                   @(topicRegOpen ? "checked" : "")
+                                   onchange="this.closest('.toggle-wrap').querySelector('.toggle-label').textContent = this.checked ? 'ĐANG MỞ' : 'ĐANG ĐÓNG'; this.closest('.toggle-wrap').querySelector('.toggle-label').className = 'toggle-label ' + (this.checked ? 'on' : 'off');" />
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Date fields -->
+                <div class="f-grid-2" style="margin-bottom:16px;">
+                    <div class="f-field">
+                        <label class="f-label">Ngày bắt đầu học kỳ</label>
+                        <input type="hidden" name="names" value="Semester_Start" />
+                        <input type="date" name="values_Semester_Start" class="f-input"
+                               value="@GetDateVal("Semester_Start", DateTime.Today.ToString("yyyy-MM-dd"))" />
+                    </div>
+                    <div class="f-field">
+                        <label class="f-label">Ngày kết thúc học kỳ</label>
+                        <input type="hidden" name="names" value="Semester_End" />
+                        <input type="date" name="values_Semester_End" class="f-input"
+                               value="@GetDateVal("Semester_End", DateTime.Today.AddMonths(4).ToString("yyyy-MM-dd"))" />
+                    </div>
+                    <div class="f-field">
+                        <label class="f-label">Mở đăng ký đề tài</label>
+                        <input type="hidden" name="names" value="Registration_Start" />
+                        <input type="datetime-local" name="values_Registration_Start" class="f-input"
+                               value="@GetDateTimeVal("Registration_Start")" />
+                    </div>
+                    <div class="f-field">
+                        <label class="f-label">Đóng đăng ký đề tài</label>
+                        <input type="hidden" name="names" value="Registration_End" />
+                        <input type="datetime-local" name="values_Registration_End" class="f-input"
+                               value="@GetDateTimeVal("Registration_End")" />
+                    </div>
+                </div>
+
+                <!-- Save button -->
+                <div style="display:flex;justify-content:flex-end;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Lưu tất cả thay đổi
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD 2: Sidebar (Account + Constraints) -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <!-- Quick actions -->
+            <div class="s-card">
+                <div class="s-card-head">
+                    <div class="s-head-left">
+                        <div class="s-ico indigo"><i class="fa-solid fa-user-gear"></i></div>
+                        <div>
+                            <div class="s-head-title">Quản lý tài khoản</div>
                         </div>
                     </div>
+                </div>
+                <div class="s-card-body" style="display:flex;flex-direction:column;gap:10px;">
+                    <button type="button" class="qa-btn slate">
+                        <i class="fa-solid fa-key"></i> Reset mật khẩu hàng loạt
+                    </button>
+                    <button type="button" class="qa-btn red">
+                        <i class="fa-solid fa-user-slash"></i> Khóa toàn bộ sinh viên
+                    </button>
+                </div>
+            </div>
 
-                    <!-- 3. Quy định & Ràng buộc -->
-                    <div class="col-span-12 md:col-span-5 bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-                        <div class="flex items-center gap-4 mb-8">
-                             <div class="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
-                                <span class="material-symbols-outlined text-3xl">rule</span>
-                            </div>
-                            <h3 class="text-lg font-bold">Quy định & Ràng buộc</h3>
-                        </div>
-                        <div class="space-y-6">
-                             <div class="space-y-2">
-                                <div class="flex justify-between items-center">
-                                    <label class="text-sm font-semibold">SV tối đa / đề tài</label>
-                                    <span class="text-blue-600 font-bold text-lg">@GetVal("Max_Student_Per_Topic", "3")</span>
-                                </div>
-                                <input type="hidden" name="names" value="Max_Student_Per_Topic" />
-                                <input type="range" name="values_Max_Student_Per_Topic" min="1" max="5" value="@GetVal("Max_Student_Per_Topic", "3")" class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
-                            </div>
-                            <div class="pt-2">
-                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Điều kiện GPA tối thiểu</label>
-                                <div class="flex gap-4 mt-2">
-                                    <input type="hidden" name="names" value="Min_GPA" />
-                                    <input type="number" name="values_Min_GPA" step="0.1" value="@GetVal("Min_GPA", "0")" class="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold" />
-                                    <div class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-blue-200 shadow-md">OK</div>
-                                </div>
-                            </div>
+            <!-- Constraints -->
+            <div class="s-card">
+                <div class="s-card-head">
+                    <div class="s-head-left">
+                        <div class="s-ico amber"><i class="fa-solid fa-sliders"></i></div>
+                        <div>
+                            <div class="s-head-title">Quy định & Ràng buộc</div>
                         </div>
                     </div>
+                </div>
+                <div class="s-card-body">
+                    <div class="range-wrap">
+                        <div class="range-header">
+                            <div>
+                                <div class="f-label">Sinh viên tối đa / đề tài</div>
+                                <div style="font-size:11.5px;color:#94a3b8;margin-top:2px;">Giới hạn số SV trong một nhóm đề tài</div>
+                            </div>
+                            <div class="range-value" id="rangeVal">@GetVal("Max_Student_Per_Topic", "3")</div>
+                        </div>
+                        <input type="hidden" name="names" value="Max_Student_Per_Topic" />
+                        <input type="range" name="values_Max_Student_Per_Topic"
+                               min="1" max="5"
+                               value="@GetVal("Max_Student_Per_Topic", "3")"
+                               class="range-input" id="rangeInput"
+                               oninput="document.getElementById('rangeVal').textContent = this.value" />
+                        <div class="range-marks">
+                            <span class="range-mark">1</span>
+                            <span class="range-mark">2</span>
+                            <span class="range-mark">3</span>
+                            <span class="range-mark">4</span>
+                            <span class="range-mark">5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
 
+<!-- ════════════════════════════════
+     CARD: Quản lý chuyên ngành
+════════════════════════════════ -->
+<div class="s-card">
+    <div class="s-card-head">
+        <div class="s-head-left">
+            <div class="s-ico purple"><i class="fa-solid fa-graduation-cap"></i></div>
+            <div>
+                <div class="s-head-title">Quản lý chuyên ngành</div>
+                <div class="s-head-sub">Các chuyên ngành dùng để lọc đề tài, hồ sơ sinh viên và import dữ liệu.</div>
+            </div>
+        </div>
+        <span style="font-size:12.5px;color:#94a3b8;">
+            <b style="color:#1e293b;">@majors.Count()</b> chuyên ngành
+        </span>
+    </div>
+
+    <div class="s-card-body">
+
+        <!-- ADD ROW -->
+        <form asp-action="CreateMajor" method="post">
+            @Html.AntiForgeryToken()
+            <div class="add-major-row">
+                <div>
+                    <label class="add-major-label">Tên chuyên ngành <span style="color:#ef4444;">*</span></label>
+                    <input type="text" name="name" required maxlength="150" class="f-input-sm"
+                           placeholder="Công nghệ phần mềm" />
+                </div>
+                <div>
+                    <label class="add-major-label">Mã</label>
+                    <input type="text" name="majorCode" maxlength="30" class="f-input-sm"
+                           placeholder="CNPM" style="text-transform:uppercase;" />
+                </div>
+                <div>
+                    <label class="add-major-label">Khoa</label>
+                    <input type="text" name="facultyName" maxlength="150" class="f-input-sm"
+                           placeholder="Công nghệ thông tin" />
+                </div>
+                <div>
+                    <label class="add-major-label">Mô tả</label>
+                    <input type="text" name="description" maxlength="300" class="f-input-sm"
+                           placeholder="Ghi chú ngắn (tuỳ chọn)" />
+                </div>
+                <div></div>
+                <div style="display:flex;align-items:flex-end;">
+                    <button type="submit" class="btn btn-primary" style="width:100%;height:36px;font-size:13px;">
+                        <i class="fa-solid fa-plus"></i> Thêm
+                    </button>
                 </div>
             </div>
         </form>
-        <section class="max-w-6xl mx-auto bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-            <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-6">
-                <div>
-                    <h3 class="text-xl font-extrabold text-slate-900 tracking-tight">Quản lý chuyên ngành</h3>
-                    <p class="text-sm text-slate-500">Các chuyên ngành đang được dùng để lọc đề tài, hồ sơ sinh viên và import dữ liệu.</p>
-                </div>
-                <div class="text-sm font-semibold text-slate-500">
-                    @majors.Count() chuyên ngành
-                </div>
+
+        <!-- TABLE HEADER -->
+        @if (majors.Any())
+        {
+            <div class="major-head">
+                <div>Tên chuyên ngành</div>
+                <div>Mã</div>
+                <div>Khoa</div>
+                <div>Mô tả</div>
+                <div>Trạng thái</div>
+                <div style="text-align:right;">Thao tác</div>
             </div>
 
-            <form asp-action="CreateMajor" method="post" class="grid grid-cols-12 gap-3 mb-6 rounded-2xl bg-slate-50 p-4">
-                @Html.AntiForgeryToken()
-                <div class="col-span-12 md:col-span-3">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tên chuyên ngành</label>
-                    <input name="name" required maxlength="150" class="mt-1 w-full bg-white rounded-xl px-4 py-3 text-sm border border-slate-200 focus:ring-2 focus:ring-blue-500/20" placeholder="Công nghệ phần mềm" />
-                </div>
-                <div class="col-span-12 md:col-span-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mã</label>
-                    <input name="majorCode" maxlength="30" class="mt-1 w-full bg-white rounded-xl px-4 py-3 text-sm border border-slate-200 focus:ring-2 focus:ring-blue-500/20 uppercase" placeholder="CNPM" />
-                </div>
-                <div class="col-span-12 md:col-span-3">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Khoa</label>
-                    <input name="facultyName" maxlength="150" class="mt-1 w-full bg-white rounded-xl px-4 py-3 text-sm border border-slate-200 focus:ring-2 focus:ring-blue-500/20" placeholder="Công nghệ thông tin" />
-                </div>
-                <div class="col-span-12 md:col-span-3">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả</label>
-                    <input name="description" maxlength="300" class="mt-1 w-full bg-white rounded-xl px-4 py-3 text-sm border border-slate-200 focus:ring-2 focus:ring-blue-500/20" placeholder="Ghi chú ngắn" />
-                </div>
-                <div class="col-span-12 md:col-span-1 flex items-end">
-                    <button type="submit" class="w-full px-4 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-all">
-                        Thêm
-                    </button>
-                </div>
-            </form>
+            @foreach (var major in majors)
+            {
+                <form asp-action="UpdateMajor" method="post" class="major-row">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@major.Id" />
 
-            <div class="space-y-3">
-                <div class="hidden lg:grid grid-cols-12 gap-3 px-3 text-xs font-bold uppercase tracking-wider text-slate-500">
-                    <div class="col-span-3">Chuyên ngành</div>
-                    <div class="col-span-1">Mã</div>
-                    <div class="col-span-2">Khoa</div>
-                    <div class="col-span-3">Mô tả</div>
-                    <div class="col-span-1">Trạng thái</div>
-                    <div class="col-span-2 text-right">Thao tác</div>
-                </div>
+                    <input type="text" name="name" value="@major.Name"
+                           required maxlength="150" placeholder="Tên chuyên ngành" />
 
-                @foreach (var major in majors)
-                {
-                    <div class="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-                        <form asp-action="UpdateMajor" method="post" class="grid grid-cols-12 gap-3 items-center">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@major.Id" />
-                            <div class="col-span-12 lg:col-span-3">
-                                <label class="lg:hidden text-xs font-bold text-slate-500 uppercase tracking-wider">Chuyên ngành</label>
-                                <input name="name" value="@major.Name" required maxlength="150" class="mt-1 lg:mt-0 w-full bg-slate-50 rounded-xl px-3 py-2 text-sm border border-slate-200" />
+                    <input type="text" name="majorCode" value="@major.MajorCode"
+                           maxlength="30" placeholder="Mã" style="text-transform:uppercase;" />
+
+                    <input type="text" name="facultyName" value="@major.FacultyName"
+                           maxlength="150" placeholder="Khoa" />
+
+                    <input type="text" name="description" value="@major.Description"
+                           maxlength="300" placeholder="Mô tả" />
+
+                    <div>
+                        <label class="chk-wrap">
+                            <input type="checkbox" name="isActive" value="true"
+                                   @(major.IsActive ? "checked" : "") />
+                            <div class="major-status">
+                                <span class="status-pip @(major.IsActive ? "active" : "hidden")"></span>
+                                <span class="major-status-txt @(major.IsActive ? "active" : "hidden")">
+                                    @(major.IsActive ? "Dùng" : "Ẩn")
+                                </span>
                             </div>
-                            <div class="col-span-12 sm:col-span-4 lg:col-span-1">
-                                <label class="lg:hidden text-xs font-bold text-slate-500 uppercase tracking-wider">Mã</label>
-                                <input name="majorCode" value="@major.MajorCode" maxlength="30" class="mt-1 lg:mt-0 w-full bg-slate-50 rounded-xl px-3 py-2 text-sm border border-slate-200 uppercase" />
-                            </div>
-                            <div class="col-span-12 sm:col-span-8 lg:col-span-2">
-                                <label class="lg:hidden text-xs font-bold text-slate-500 uppercase tracking-wider">Khoa</label>
-                                <input name="facultyName" value="@major.FacultyName" maxlength="150" class="mt-1 lg:mt-0 w-full bg-slate-50 rounded-xl px-3 py-2 text-sm border border-slate-200" />
-                            </div>
-                            <div class="col-span-12 lg:col-span-3">
-                                <label class="lg:hidden text-xs font-bold text-slate-500 uppercase tracking-wider">Mô tả</label>
-                                <input name="description" value="@major.Description" maxlength="300" class="mt-1 lg:mt-0 w-full bg-slate-50 rounded-xl px-3 py-2 text-sm border border-slate-200" />
-                            </div>
-                            <div class="col-span-12 sm:col-span-4 lg:col-span-1">
-                                <label class="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 whitespace-nowrap">
-                                    <input type="checkbox" name="isActive" value="true" @(major.IsActive ? "checked" : "") class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                                    @(major.IsActive ? "Đang dùng" : "Đã ẩn")
-                                </label>
-                            </div>
-                            <div class="col-span-12 sm:col-span-8 lg:col-span-2 flex flex-wrap justify-start lg:justify-end gap-2">
-                                <button type="submit" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700">
-                                    Lưu
-                                </button>
-                                <button type="submit" formaction="@Url.Action("ToggleMajor", "Admin")" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50">
-                                    @(major.IsActive ? "Ẩn" : "Bật")
-                                </button>
-                                <button type="submit" formaction="@Url.Action("DeleteMajor", "Admin")" formmethod="post" onclick="return confirm('Xóa chuyên ngành này? Nếu đã có dữ liệu liên quan, hệ thống sẽ chỉ ẩn chuyên ngành.');" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100">
-                                    Xóa
-                                </button>
-                            </div>
-                        </form>
+                        </label>
                     </div>
-                }
 
-                @if (!majors.Any())
-                {
-                    <div class="rounded-2xl border border-dashed border-slate-200 py-8 text-center text-sm text-slate-500">
-                        Chưa có chuyên ngành nào.
+                    <div class="major-row-actions">
+                        <button type="submit" class="btn-sm dark" title="Lưu thay đổi">
+                            <i class="fa-solid fa-floppy-disk"></i> Lưu
+                        </button>
+                        <button type="submit" formaction="@Url.Action("ToggleMajor", "Admin")"
+                                class="btn-sm ghost" title="@(major.IsActive ? "Ẩn" : "Bật")">
+                            @(major.IsActive ? "Ẩn" : "Bật")
+                        </button>
+                        <button type="submit" formaction="@Url.Action("DeleteMajor", "Admin")"
+                                onclick="return confirm('Xóa chuyên ngành «@major.Name»? Nếu đã có dữ liệu liên quan, hệ thống sẽ chỉ ẩn.')"
+                                class="btn-sm danger" title="Xóa">
+                            <i class="fa-solid fa-trash" style="font-size:11px;"></i>
+                        </button>
                     </div>
-                }
+                </form>
+            }
+        }
+        else
+        {
+            <div class="empty-major">
+                <i class="fa-regular fa-folder-open" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3;"></i>
+                Chưa có chuyên ngành nào. Thêm chuyên ngành đầu tiên ở trên.
             </div>
-        </section>
-        <script>
-            const range = document.querySelector('input[type="range"]');
-            const span = range.previousElementSibling.querySelector('span');
-            range.addEventListener('input', (e) => {
-                span.textContent = e.target.value;
-            });
-        </script>
+        }
     </div>
-</main>
+</div>

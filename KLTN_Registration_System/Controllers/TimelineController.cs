@@ -318,6 +318,7 @@ namespace KLTN_Registration_System.Controllers
             ViewBag.AffectedLecturers = await _context.Registrations
                 .Where(r => overdueStudentIds.Contains(r.StudentId) &&
                     r.Status == "Approved" &&
+                    r.Topic != null &&
                     r.Topic.LecturerId != null)
                 .Select(r => r.Topic.LecturerId)
                 .Distinct()
@@ -842,6 +843,7 @@ namespace KLTN_Registration_System.Controllers
                     && await _context.Registrations.AnyAsync(r =>
                         r.StudentId == submission.StudentId &&
                         r.Status == "Approved" &&
+                        r.Topic != null &&
                         r.Topic.LecturerId == currentUserId));
 
             if (!canAccess) return Forbid();

@@ -47,7 +47,7 @@ namespace KLTN_Registration_System.Controllers
             var allData = await _context.Registrations
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
-                .Where(r => r.Topic.LecturerId == lid)
+                .Where(r => r.Topic != null && r.Topic.LecturerId == lid)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
@@ -70,9 +70,7 @@ namespace KLTN_Registration_System.Controllers
             ViewBag.TotalTopics = myTopics.Count;
 
             // THÊM ĐOẠN NÀY
-            ViewBag.Majors = await _context.Majors
-                .Where(m => m.IsActive)
-                .ToListAsync();
+            ViewBag.Majors = await GetLecturerMajorsAsync(lid);
 
             // Đọc schedule từ DB thay vì hardcode
             var schedules = await _context.Timelines
@@ -130,7 +128,7 @@ namespace KLTN_Registration_System.Controllers
             if (count >= reg.Topic!.MaxStudents)
             {
                 TempData["Error"] = "Đề tài đã đủ sinh viên!";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Approval));
             }
 
             reg.Status = "Approved";
@@ -155,7 +153,7 @@ namespace KLTN_Registration_System.Controllers
                 "TopicApproved", "/Student/MyRegistration");
 
             TempData["Success"] = "Đã duyệt thành công!";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Approval));
         }
 
         [HttpPost, ValidateAntiForgeryToken]
@@ -180,7 +178,7 @@ namespace KLTN_Registration_System.Controllers
                 "TopicRejected", "/Topic/Index");
 
             TempData["Error"] = "Đã từ chối.";
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Approval));
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -193,7 +191,7 @@ namespace KLTN_Registration_System.Controllers
             var allRegs = await _context.Registrations
                 .Include(r => r.Student)
                 .Include(r => r.Topic)
-                .Where(r => r.Topic.LecturerId == lid)
+                .Where(r => r.Topic != null && r.Topic.LecturerId == lid)
                 .ToListAsync();
 
             // ===== THỐNG KÊ =====
@@ -223,8 +221,9 @@ namespace KLTN_Registration_System.Controllers
     .Select(r => r.Id)
     .FirstOrDefaultAsync();
 
-            var totalStudents = await _context.UserRoles
-                .CountAsync(ur => ur.RoleId == studentRoleId);
+            var totalStudents = string.IsNullOrWhiteSpace(studentRoleId)
+                ? 0
+                : await _context.UserRoles.CountAsync(ur => ur.RoleId == studentRoleId);
             ViewBag.GroupPercent = totalStudents == 0
                 ? 0
                 : (int)Math.Round((double)groupedStudents / totalStudents * 100);
@@ -234,11 +233,12 @@ namespace KLTN_Registration_System.Controllers
             var regs = await _context.Registrations
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
-                .Where(r => r.Topic.LecturerId == lid && r.Status == status)
+                .Where(r => r.Topic != null && r.Topic.LecturerId == lid && r.Status == status)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
             var grouped = regs
+                .Where(r => r.Topic != null)
                 .GroupBy(r => new { r.TopicId, r.Topic!.Title })
                 .Select(g => new GroupedRegistration
                 {
@@ -440,15 +440,16 @@ namespace KLTN_Registration_System.Controllers
             // KPI
             ViewBag.TotalTopics = my.Count;
 
-            ViewBag.OpenTopics = my.Count(t =>
-                t.IsApproved &&
-                t.IsRegistrationOpen);
+            ViewBag.OpenTopics = my.Count(t => t.IsApproved && t.IsRegistrationOpen);
 
-            ViewBag.PendingTopics = my.Count(t =>
-                !t.IsApproved);
+            ViewBag.PendingTopics = my.Count(t => !t.IsApproved);
+            ViewBag.FullTopics = my.Count(t => t.Status == TopicStatus.Full);
+            ViewBag.ClosedTopics = my.Count(t => t.Status == TopicStatus.Closed);
+            ViewBag.ReadyTopics = my.Count(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
+            ViewBag.CurrentPage = 1;
+            ViewBag.TotalPages = 1;
 
-            // FIX LỖI NULL
-            ViewBag.Majors = await _context.Majors.ToListAsync();
+            ViewBag.Majors = await GetLecturerMajorsAsync(uid);
 
             return View("_TopicList", topics);
         }
@@ -870,7 +871,15 @@ namespace KLTN_Registration_System.Controllers
 
             ExcelPackage.License.SetNonCommercialOrganization("KLTN Registration System");
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var allowedMajors = await GetLecturerMajorsAsync(lid);
+            if (!allowedMajors.Any())
+            {
+                TempData["Error"] = "Tài khoản giảng viên chưa được Admin phân công chuyên ngành nên chưa thể nhập đề tài.";
+                return RedirectToAction(nameof(ThesisManagement));
+            }
+
             int count = 0;
+            int skipped = 0;
 
             try
             {
@@ -883,17 +892,36 @@ namespace KLTN_Registration_System.Controllers
 
                 for (int row = 2; row <= ws.Dimension.Rows; row++)
                 {
-                    var title = ws.Cells[row, 2].Value?.ToString();
-                    if (string.IsNullOrEmpty(title)) continue;
+                    var code = ws.Cells[row, 1].Value?.ToString()?.Trim();
+                    var title = ws.Cells[row, 2].Value?.ToString()?.Trim();
+                    if (string.IsNullOrWhiteSpace(title)) continue;
+
+                    if (string.IsNullOrWhiteSpace(code))
+                        code = $"TOPIC-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+
+                    var exists = await _context.Topics.AnyAsync(t => t.TopicCode == code);
+                    if (exists)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var majorCode = ws.Cells[row, 6].Value?.ToString()?.Trim();
+                    var majorName = ws.Cells[row, 7].Value?.ToString()?.Trim();
+                    var faculty = ws.Cells[row, 8].Value?.ToString()?.Trim();
+                    var major = ResolveLecturerImportMajor(allowedMajors, majorCode, majorName, faculty);
 
                     _context.Topics.Add(new Topic
                     {
-                        TopicCode = ws.Cells[row, 1].Value?.ToString() ?? $"TOPIC-{Guid.NewGuid().ToString()[..8]}",
+                        TopicCode = code,
                         Title = title,
                         Category = ws.Cells[row, 3].Value?.ToString() ?? "Ứng dụng",
                         Description = ws.Cells[row, 4].Value?.ToString() ?? "",
                         Semester = "HK2-2025-2026",
                         LecturerId = lid,
+                        MajorId = major.Id,
+                        Faculty = major.FacultyName,
+                        DepartmentName = major.Name,
                         CreatedAt = DateTime.Now,
                         IsApproved = false,
                         Status = TopicStatus.Pending,
@@ -906,7 +934,9 @@ namespace KLTN_Registration_System.Controllers
                 }
 
                 await _context.SaveChangesAsync();
-                TempData["Success"] = $"Đã nhập {count} đề tài.";
+                TempData["Success"] = skipped > 0
+                    ? $"Đã nhập {count} đề tài, bỏ qua {skipped} mã trùng."
+                    : $"Đã nhập {count} đề tài.";
             }
             catch { TempData["Error"] = "Không thể đọc file Excel. Vui lòng kiểm tra định dạng và nội dung file."; }
 
@@ -923,12 +953,15 @@ namespace KLTN_Registration_System.Controllers
             var query = _context.Registrations
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
-                .Where(r => r.Topic.LecturerId == lid && r.Status == "Approved")
+                .Where(r => r.Topic != null && r.Topic.LecturerId == lid && r.Status == "Approved")
                 .AsQueryable();
 
             if (topicId.HasValue) query = query.Where(r => r.TopicId == topicId.Value);
 
-            var data = await query.OrderBy(r => r.Topic.Title).ThenBy(r => r.Student.FullName).ToListAsync();
+            var data = await query
+                .OrderBy(r => r.Topic!.Title)
+                .ThenBy(r => r.Student != null ? r.Student.FullName : "")
+                .ToListAsync();
 
             using var wb = new XLWorkbook();
             var ws = wb.Worksheets.Add("SV đã duyệt");
@@ -1031,24 +1064,12 @@ namespace KLTN_Registration_System.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> UpdateProfile(
-            string fullName, string? faculty, string? degree,
-            string? position, string? phoneNumber)
+        public async Task<IActionResult> UpdateProfile(string? phoneNumber)
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == lid);
             if (user == null) return NotFound();
 
-            if (string.IsNullOrWhiteSpace(fullName))
-            {
-                TempData["Error"] = "Họ tên không được để trống!";
-                return RedirectToAction(nameof(Profile));
-            }
-
-            user.FullName = fullName.Trim();
-            user.Faculty = faculty?.Trim();
-            user.Degree = degree?.Trim();
-            user.Position = position?.Trim();
             user.PhoneNumber = phoneNumber?.Trim();
 
             await _context.SaveChangesAsync();
@@ -1125,7 +1146,7 @@ namespace KLTN_Registration_System.Controllers
             var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             var myStudentIds = await _context.Registrations
-                .Where(r => r.Topic.LecturerId == lecturerId && r.Status == "Approved")
+                .Where(r => r.Topic != null && r.Topic.LecturerId == lecturerId && r.Status == "Approved")
                 .Select(r => r.StudentId)
                 .Distinct()
                 .ToListAsync();
@@ -1298,7 +1319,40 @@ namespace KLTN_Registration_System.Controllers
             return await _context.Registrations.AnyAsync(r =>
                 r.StudentId == studentId &&
                 r.Status == "Approved" &&
+                r.Topic != null &&
                 r.Topic.LecturerId == lecturerId);
+        }
+
+        private static Major ResolveLecturerImportMajor(
+            List<Major> allowedMajors,
+            string? majorCode,
+            string? majorName,
+            string? faculty)
+        {
+            static string Normalize(string? value) => (value ?? "").Trim().ToUpperInvariant();
+
+            var normalizedCode = Normalize(majorCode);
+            if (!string.IsNullOrWhiteSpace(normalizedCode))
+            {
+                var byCode = allowedMajors.FirstOrDefault(m => Normalize(m.MajorCode) == normalizedCode);
+                if (byCode != null) return byCode;
+            }
+
+            var normalizedName = Normalize(majorName);
+            if (!string.IsNullOrWhiteSpace(normalizedName))
+            {
+                var byName = allowedMajors.FirstOrDefault(m => Normalize(m.Name) == normalizedName);
+                if (byName != null) return byName;
+            }
+
+            var normalizedFaculty = Normalize(faculty);
+            if (!string.IsNullOrWhiteSpace(normalizedFaculty))
+            {
+                var byFaculty = allowedMajors.FirstOrDefault(m => Normalize(m.FacultyName) == normalizedFaculty);
+                if (byFaculty != null) return byFaculty;
+            }
+
+            return allowedMajors.First();
         }
 
         private async Task<List<Major>> GetLecturerMajorsAsync(string? lecturerId)

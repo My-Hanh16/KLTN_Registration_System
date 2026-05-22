@@ -8,7 +8,11 @@
     // Fix: resolve server-side thay vì kiểm tra role phía client
     bool isAdmin   = User.IsInRole("Admin");
     string createUrl = isAdmin ? "/Admin/Create" : "/Lecturer/Create";
-    string updateRegistrationUrl = isAdmin ? "/Admin/UpdateRegistrationStatus" : "/Lecturer/UpdateRegistrationStatus";
+    int totalTopics = ViewBag.TotalTopics ?? Model.Count();
+    int openTopics = ViewBag.OpenTopics ?? Model.Count(t => t.IsApproved && t.IsRegistrationOpen);
+    int fullTopics = ViewBag.FullTopics ?? Model.Count(t => t.Status == TopicStatus.Full);
+    int closedTopics = ViewBag.ClosedTopics ?? Model.Count(t => t.Status == TopicStatus.Closed);
+    int readyTopics = ViewBag.ReadyTopics ?? Model.Count(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
 }
 
 @section Styles {
@@ -354,44 +358,35 @@
         flex-shrink: 0;
     }
 
-    /* Toggle switch */
-    .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+    /* Registration state */
+    .registration-state { display: flex; align-items: center; gap: 8px; }
 
-    .toggle-label {
+    .registration-label {
         font-size: 11.5px;
         font-weight: 600;
         color: #64748b;
     }
 
-    .toggle {
-        position: relative;
-        width: 36px; height: 20px;
-        flex-shrink: 0;
+    .registration-pill {
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 5px 9px;
+        white-space: nowrap;
     }
 
-    .toggle input { opacity: 0; width: 0; height: 0; }
-
-    .toggle-slider {
-        position: absolute;
-        inset: 0;
-        background: #e2e8f0;
-        border-radius: 99px;
-        cursor: pointer;
-        transition: background .2s;
+    .registration-pill.open {
+        background: #ecfdf5;
+        color: #047857;
     }
 
-    .toggle-slider::after {
-        content: '';
-        position: absolute;
-        width: 14px; height: 14px;
-        left: 3px; top: 3px;
-        background: #fff;
-        border-radius: 50%;
-        transition: transform .2s;
+    .registration-pill.locked {
+        background: #f1f5f9;
+        color: #64748b;
     }
-
-    .toggle input:checked + .toggle-slider { background: #4f46e5; }
-    .toggle input:checked + .toggle-slider::after { transform: translateX(16px); }
 
     /* Card action buttons */
     .card-actions { display: flex; flex-direction: column; gap: 10px; }
@@ -646,19 +641,19 @@
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-label">Tổng đề tài</div>
-        <div class="stat-number">@Model.Count()</div>
+        <div class="stat-number">@totalTopics</div>
     </div>
     <div class="stat-card blue-accent">
         <div class="stat-label blue">Đang tuyển</div>
-        <div class="stat-number">@Model.Count(t => t.Status == TopicStatus.Available)</div>
+        <div class="stat-number">@openTopics</div>
     </div>
     <div class="stat-card orange-accent">
         <div class="stat-label orange">Đã đủ SV</div>
-        <div class="stat-number">@Model.Count(t => t.Status == TopicStatus.Full)</div>
+        <div class="stat-number">@fullTopics</div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Đã đóng</div>
-        <div class="stat-number">@Model.Count(t => t.Status == TopicStatus.Closed)</div>
+        <div class="stat-label">Sẵn sàng / Đã đóng</div>
+        <div class="stat-number">@readyTopics / @closedTopics</div>
     </div>
 </div>
 
@@ -746,12 +741,14 @@
     @foreach (var item in Model)
     {
         // Resolve status
-        string sClass = item.Status == TopicStatus.Available ? "s-available"
+        string sClass = item.Status == TopicStatus.Available && item.IsRegistrationOpen ? "s-available"
+                      : item.Status == TopicStatus.Available && !item.IsRegistrationOpen ? "s-pending"
                       : item.Status == TopicStatus.Pending   ? "s-pending"
                       : item.Status == TopicStatus.Full      ? "s-full"
                       : "s-closed";
 
-        string sText  = item.Status == TopicStatus.Available ? "Đang tuyển"
+        string sText  = item.Status == TopicStatus.Available && item.IsRegistrationOpen ? "Đang tuyển"
+                      : item.Status == TopicStatus.Available && !item.IsRegistrationOpen ? "Sẵn sàng"
                       : item.Status == TopicStatus.Pending   ? "Chờ duyệt"
                       : item.Status == TopicStatus.Full      ? "Đã đủ SV"
                       : "Đã đóng";
@@ -799,13 +796,12 @@
                     </div>
                 </div>
                 <div class="info-divider"></div>
-                <div class="toggle-wrap flex-grow-1">
-                    <span class="toggle-label">Đăng ký:</span>
-                    <label class="toggle">
-                        <input type="checkbox" @(item.IsRegistrationOpen ? "checked" : "")
-                               onchange="toggleReg(event, @item.Id)" />
-                        <span class="toggle-slider"></span>
-                    </label>
+                <div class="registration-state flex-grow-1">
+                    <span class="registration-label">Đăng ký:</span>
+                    <span class="registration-pill @(item.IsRegistrationOpen ? "open" : "locked")">
+                        <i class="fa-solid @(item.IsRegistrationOpen ? "fa-unlock" : "fa-lock")"></i>
+                        @(item.IsRegistrationOpen ? "Đang mở" : "Chưa mở")
+                    </span>
                 </div>
             </div>
 
@@ -993,7 +989,6 @@
 
     // Fix: resolve URL server-side, không check role phía client
     const CREATE_URL = '@createUrl';
-    const UPDATE_REGISTRATION_URL = '@updateRegistrationUrl';
     const IS_ADMIN   = @(isAdmin ? "true" : "false");
 
     // ── FILTER ──
@@ -1029,31 +1024,6 @@
             timer: 2500,
             timerProgressBar: true
         });
-    }
-
-    // ── TOGGLE REGISTRATION ──
-    async function toggleReg(event, topicId) {
-        const checkbox = event.target;
-        const isOpen   = checkbox.checked;
-
-        try {
-            const res  = await fetch(UPDATE_REGISTRATION_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': getToken()
-                },
-                body: JSON.stringify({ id: topicId, isOpen })
-            });
-            const data = await res.json();
-            if (!data.success) {
-                checkbox.checked = !isOpen;
-                pageToast(data.message || 'Lỗi cập nhật!', 'error');
-            }
-        } catch {
-            checkbox.checked = !isOpen;
-            pageToast('Có lỗi xảy ra!', 'error');
-        }
     }
 
     // ── IMPORT EXCEL ──

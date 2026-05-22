@@ -2,299 +2,15 @@
 @{
     Layout = "_LayoutStudent";
     ViewData["Title"] = "Đăng ký của tôi";
-    var proposedTopics = ViewBag.ProposedTopics as List<KLTN_Registration_System.Models.Entities.Topic>;
+    var registrations = Model?.ToList() ?? new List<KLTN_Registration_System.Models.Entities.Registration>();
+    var proposedTopics = ViewBag.ProposedTopics as List<KLTN_Registration_System.Models.Entities.Topic>
+                         ?? new List<KLTN_Registration_System.Models.Entities.Topic>();
 }
 
-<style>
-    /* --- CARD CHUNG --- */
-    .reg-card,
-    .reg-card-proposed {
-        background: #fff;
-        border-radius: 14px;
-        padding: 22px 24px;
-        margin-bottom: 14px;
-        border: 1px solid #e2e8f0;
-        transition: box-shadow 0.25s ease, transform 0.25s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    }
+@section Styles {
+    <link rel="stylesheet" href="~/css/student/my-registration.css" asp-append-version="true" />
+}
 
-        .reg-card:hover,
-        .reg-card-proposed:hover {
-            box-shadow: 0 8px 24px rgba(43,78,255,0.07);
-            transform: translateY(-1px); /* Fix: -2px → -1px bớt giật */
-        }
-
-    /* Viền trái theo trạng thái */
-    .border-approved {
-        border-left: 5px solid #2b4eff;
-    }
-    /* Fix: 6px → 5px đồng đều hơn */
-    .border-pending {
-        border-left: 5px solid #f6ad55;
-    }
-
-    .border-rejected {
-        border-left: 5px solid #e53e3e;
-    }
-
-    .reg-card-proposed {
-        border-left: 5px solid #7c3aed;
-    }
-
-    /* --- STATUS BADGE --- */
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 4px 12px;
-        border-radius: 7px;
-        font-size: 10px; /* Thống nhất 10px */
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        line-height: 1.4;
-    }
-
-    .bg-soft-blue {
-        background: #eef2ff;
-        color: #2b4eff;
-    }
-
-    .bg-soft-orange {
-        background: #fffaf0;
-        color: #dd6b20;
-    }
-
-    .bg-soft-red {
-        background: #fff5f5;
-        color: #c53030;
-    }
-
-    .bg-soft-purple {
-        background: #f5f3ff;
-        color: #7c3aed;
-    }
-
-    /* --- TIÊU ĐỀ TOPIC TRONG CARD --- */
-    .card-topic-title {
-        font-size: 15px; /* Fix: h4 Bootstrap (~24px) → 15px */
-        font-weight: 700;
-        color: #1e293b;
-        margin: 10px 0 14px;
-        line-height: 1.4;
-    }
-
-    /* --- ICON BOX --- */
-    .icon-box-sm {
-        width: 38px; /* Fix: 40px → 38px gọn hơn */
-        height: 38px;
-        min-width: 38px;
-        background: #f1f5f9;
-        color: #2b4eff;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-    }
-
-    /* --- LABEL NHỎ trong icon-box group --- */
-    .meta-label {
-        font-size: 10px; /* Fix: inline 9px → 10px, dùng class thay inline style */
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #94a3b8;
-        display: block;
-        letter-spacing: 0.4px;
-        margin-bottom: 2px;
-    }
-
-    .meta-value {
-        font-size: 13.5px;
-        font-weight: 600;
-        color: #1e293b;
-    }
-
-    /* --- STATS PANEL --- */
-    .stats-panel {
-        background: #2b4eff; /* Fix: var(--primary-blue, #2b4eff) → thẳng giá trị, biến chưa khai báo */
-        color: #fff;
-        border-radius: 18px;
-        padding: 22px 24px;
-        margin-bottom: 16px;
-    }
-
-    .stats-panel-title {
-        font-size: 11px; /* Fix: 12px → 11px, thống nhất label size */
-        font-weight: 700;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        opacity: 0.75;
-        margin-bottom: 18px;
-        text-align: center;
-    }
-
-    .stats-number {
-        font-size: 28px; /* Fix: h2 Bootstrap (~32px) → 28px, cân hơn trong panel nhỏ */
-        font-weight: 800;
-        line-height: 1.1;
-        margin-bottom: 2px;
-    }
-
-    .stats-label {
-        font-size: 10px;
-        font-weight: 600;
-        opacity: 0.7;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-    }
-
-    .stats-divider {
-        border-right: 1px solid rgba(255,255,255,0.25);
-    }
-
-    .progress-track {
-        height: 5px;
-        border-radius: 99px;
-        background: rgba(255,255,255,0.2);
-        overflow: hidden;
-        margin-top: 4px;
-    }
-
-    .progress-fill {
-        height: 100%;
-        background: #fff;
-        border-radius: 99px;
-    }
-
-    /* --- NOTE CARD --- */
-    .note-card {
-        background: #fff;
-        border-radius: 14px;
-        padding: 20px 22px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    }
-
-    .note-card-title {
-        font-size: 13.5px;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 14px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .note-item {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-
-        .note-item:last-child {
-            margin-bottom: 0;
-        }
-
-    .note-num {
-        font-size: 12px;
-        font-weight: 700;
-        color: #2b4eff;
-        flex-shrink: 0;
-        padding-top: 1px;
-    }
-
-    .note-text {
-        font-size: 12.5px;
-        color: #64748b;
-        line-height: 1.6;
-        margin: 0;
-    }
-
-    /* --- ACTION BUTTONS --- */
-    .btn-action-link {
-        font-size: 13px;
-        font-weight: 600;
-        color: #2b4eff;
-        text-decoration: none;
-        transition: color 0.2s;
-    }
-
-        .btn-action-link:hover {
-            color: #1a3bd1;
-            text-decoration: underline;
-        }
-
-    .btn-chat {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        font-weight: 600;
-        background: #2b4eff;
-        color: #fff;
-        border: none;
-        border-radius: 99px;
-        padding: 7px 18px;
-        text-decoration: none;
-        transition: background 0.2s;
-    }
-
-        .btn-chat:hover {
-            background: #1a3bd1;
-            color: #fff;
-        }
-
-    .btn-cancel {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        font-weight: 600;
-        background: transparent;
-        color: #e53e3e;
-        border: 1.5px solid #e53e3e;
-        border-radius: 99px;
-        padding: 6px 18px;
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-
-        .btn-cancel:hover {
-            background: #fff5f5;
-        }
-
-    /* --- SECTION HEADING --- */
-    .section-heading {
-        font-size: 14px; /* Thống nhất h5 section */
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 14px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    /* --- EMPTY STATE --- */
-    .empty-state {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 48px 24px;
-        text-align: center;
-    }
-
-        .empty-state i {
-            font-size: 40px;
-            color: #cbd5e1;
-            margin-bottom: 14px;
-            display: block;
-        }
-
-        .empty-state p {
-            font-size: 13.5px;
-            color: #94a3b8;
-            margin-bottom: 16px;
-        }
-</style>
 
 <div class="row g-4">
 
@@ -302,36 +18,57 @@
     <div class="col-lg-8">
 
         <!-- Tiêu đề trang -->
-        <div class="mb-4">
-            <h2 style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">Đăng ký của tôi</h2>
-            <p style="font-size: 13.5px; color: #94a3b8; margin: 0;">Quản lý và theo dõi tiến độ phê duyệt đề tài của bạn.</p>
+        <div class="page-heading">
+            <h2>Đăng ký của tôi</h2>
+            <p>Quản lý và theo dõi tiến độ phê duyệt đề tài của bạn.</p>
         </div>
 
+        @if (TempData["Success"] != null)
+        {
+            <div class="registration-alert success">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>@TempData["Success"]</span>
+            </div>
+        }
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="registration-alert error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>@TempData["Error"]</span>
+            </div>
+        }
+
         @* ===== PHẦN 1: ĐỀ TÀI TỰ ĐỀ XUẤT ===== *@
-        @if (proposedTopics != null && proposedTopics.Any())
+        @if (proposedTopics.Any())
         {
             <div class="section-heading">
-                <i class="fa-solid fa-wand-magic-sparkles" style="color: #2b4eff; font-size: 14px;"></i>
+                <i class="fa-solid fa-wand-magic-sparkles icon-primary"></i>
                 Đề xuất của bạn
             </div>
 
             @foreach (var topic in proposedTopics)
             {
+                var proposalStatus = topic.Status;
+                var proposalBadgeClass = topic.IsApproved && proposalStatus == KLTN_Registration_System.Models.Entities.TopicStatus.Available
+                    ? "bg-soft-blue"
+                    : proposalStatus == KLTN_Registration_System.Models.Entities.TopicStatus.Rejected
+                        ? "bg-soft-red"
+                        : "bg-soft-orange";
+                var proposalStatusText = topic.IsApproved && proposalStatus == KLTN_Registration_System.Models.Entities.TopicStatus.Available
+                    ? "ĐÃ CHẤP NHẬN"
+                    : proposalStatus == KLTN_Registration_System.Models.Entities.TopicStatus.Rejected
+                        ? "ĐÃ TỪ CHỐI"
+                        : "ĐANG CHỜ DUYỆT";
+
                 <div class="reg-card-proposed">
 
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex align-items-center gap-2">
                             <span class="status-badge bg-soft-purple">TỰ ĐỀ XUẤT</span>
-                            @if (!topic.IsApproved)
-                            {
-                                <span class="status-badge bg-soft-orange">● ĐANG CHỜ DUYỆT</span>
-                            }
-                            else
-                            {
-                                <span class="status-badge bg-soft-blue">● ĐÃ CHẤP NHẬN</span>
-                            }
+                            <span class="status-badge @proposalBadgeClass">● @proposalStatusText</span>
                         </div>
-                        <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">
+                        <span class="date-meta">
                             Gửi ngày: @topic.CreatedAt.ToString("dd/MM/yyyy")
                         </span>
                     </div>
@@ -359,31 +96,40 @@
                         </div>
                     </div>
 
+                    @if (proposalStatus == KLTN_Registration_System.Models.Entities.TopicStatus.Rejected
+                         && !string.IsNullOrWhiteSpace(topic.Note))
+                    {
+                        <div class="reject-reason">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <span>Lý do từ chối: @topic.Note</span>
+                        </div>
+                    }
+
                 </div>
             }
 
-            <hr style="border: none; border-top: 1px dashed #e2e8f0; margin: 28px 0;" />
+            <hr class="section-divider" />
         }
 
         @* ===== PHẦN 2: LỊCH SỬ ĐĂNG KÝ ===== *@
         <div class="section-heading">
-            <i class="fa-solid fa-clock-rotate-left" style="color: #94a3b8; font-size: 14px;"></i>
+            <i class="fa-solid fa-clock-rotate-left icon-muted"></i>
             Lịch sử đăng ký
         </div>
 
-        @if (!Model.Any())
+        @if (!registrations.Any())
         {
             <div class="empty-state">
                 <i class="fa-solid fa-folder-open"></i>
                 <p>Bạn chưa đăng ký đề tài nào từ danh sách chung.</p>
                 <a asp-controller="Topic" asp-action="Index"
-                   class="btn-chat" style="border-radius: 99px; padding: 9px 24px;">
+                   class="btn-chat btn-discover">
                     Khám phá đề tài
                 </a>
             </div>
         }
 
-        @foreach (var item in Model)
+        @foreach (var item in registrations)
         {
             var statusLower = item.Status?.ToLower() ?? "pending";
             var borderClass = statusLower == "approved" ? "border-approved"
@@ -400,7 +146,7 @@
 
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="status-badge @badgeClass">● @statusText</span>
-                    <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">
+                    <span class="date-meta">
                         Ngày đăng ký: @item.CreatedAt.ToString("dd/MM/yyyy")
                     </span>
                 </div>
@@ -430,12 +176,15 @@
 
                 <div class="d-flex justify-content-end align-items-center gap-3 mt-4">
 
-                    <a asp-controller="Topic"
-                       asp-action="Details"
-                       asp-route-id="@item.TopicId"
-                       class="btn-action-link">
-                        Chi tiết đề tài
-                    </a>
+                    @if (item.Topic != null)
+                    {
+                        <a asp-controller="Topic"
+                           asp-action="Details"
+                           asp-route-id="@item.TopicId"
+                           class="btn-action-link">
+                            Chi tiết đề tài
+                        </a>
+                    }
 
                     @if (statusLower == "approved")
                     {
@@ -449,7 +198,7 @@
                         <form asp-action="CancelRegistration"
                               asp-route-id="@item.Id"
                               method="post"
-                              onsubmit="return confirm('Bạn có chắc chắn muốn hủy đăng ký này?')">
+                              class="cancel-registration-form">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn-cancel">
                                 <i class="fa-solid fa-xmark"></i> Hủy đăng ký
@@ -472,25 +221,25 @@
 
             <div class="row g-0 text-center mb-4">
                 <div class="col-6 stats-divider">
-                    <div class="stats-number">@Model.Count(r => r.Status == "Pending").ToString("D2")</div>
+                    <div class="stats-number">@registrations.Count(r => string.Equals(r.Status, "Pending", StringComparison.OrdinalIgnoreCase)).ToString("D2")</div>
                     <div class="stats-label">Đang chờ</div>
                 </div>
                 <div class="col-6">
-                    <div class="stats-number">@Model.Count(r => r.Status == "Rejected").ToString("D2")</div>
+                    <div class="stats-number">@registrations.Count(r => string.Equals(r.Status, "Rejected", StringComparison.OrdinalIgnoreCase)).ToString("D2")</div>
                     <div class="stats-label">Từ chối</div>
                 </div>
             </div>
 
             <div>
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span style="font-size: 11.5px; opacity: 0.75;">Tỷ lệ thành công</span>
-                    <span style="font-size: 12px; font-weight: 700;">
-                        @(Model.Any() ? (Model.Count(r => r.Status == "Approved") * 100 / Model.Count()) : 0)%
+                    <span class="success-rate-label">Tỷ lệ thành công</span>
+                    <span class="success-rate-value">
+                        @(registrations.Any() ? (registrations.Count(r => string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase)) * 100 / registrations.Count) : 0)%
                     </span>
                 </div>
                 <div class="progress-track">
                     <div class="progress-fill"
-                         style="width: @(Model.Any() ? (Model.Count(r => r.Status == "Approved") * 100 / Model.Count()) : 0)%">
+                         data-progress="@(registrations.Any() ? (registrations.Count(r => string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase)) * 100 / registrations.Count) : 0)">
                     </div>
                 </div>
             </div>
@@ -499,7 +248,7 @@
         <!-- Note Card -->
         <div class="note-card">
             <div class="note-card-title">
-                <i class="fa-solid fa-circle-exclamation" style="color: #2b4eff; font-size: 14px;"></i>
+                <i class="fa-solid fa-circle-exclamation icon-primary"></i>
                 Lưu ý quan trọng
             </div>
             <div class="note-item">
@@ -514,3 +263,8 @@
 
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/student/my-registration.js" asp-append-version="true"></script>
+}
+

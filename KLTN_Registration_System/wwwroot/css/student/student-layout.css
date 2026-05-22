@@ -1,0 +1,533 @@
+﻿:root {
+            --primary-blue: #4f46e5;
+            --primary-light: #eef2ff;
+            --bg-light: #f5f7fb;
+            --sidebar-text: #6b7280;
+            --sidebar-w: 250px;
+            --topbar-h: 70px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        .is-hidden {
+            display: none !important;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-flex;
+            vertical-align: middle;
+            text-transform: none !important;
+            /* Fix: cố định 18px để khớp với FA icon trong cùng menu-item */
+            font-size: 18px !important;
+            line-height: 1;
+        }
+
+        html, body {
+            margin: 0;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: var(--bg-light);
+            color: #1e293b;
+            overflow-x: hidden;
+            height: 100%;
+            /* Thêm: Inter hiển thị sắc nét hơn trên màn hình */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ═══════════════════════════════════════
+                   SIDEBAR
+                ═══════════════════════════════════════ */
+        .sidebar {
+            width: var(--sidebar-w);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: #ffffff;
+            border-right: 1px solid #e9ecf3;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.04);
+        }
+
+        /* Brand */
+        .sidebar-brand {
+            padding: 22px 22px 18px;
+            border-bottom: 1px solid #f1f3f9;
+        }
+
+            .sidebar-brand h4 {
+                /* Fix: 20px → 18px — bớt chênh lệch với menu text 13.5px */
+                font-size: 18px;
+                font-weight: 800;
+                color: var(--primary-blue);
+                margin: 0 0 2px;
+                letter-spacing: -0.5px;
+                line-height: 1.3;
+            }
+
+            .sidebar-brand small {
+                color: #94a3b8;
+                /* Fix: 12px → 11px — nhỏ hơn brand title, rõ phân cấp */
+                font-size: 11px;
+                font-weight: 500;
+            }
+
+        /* Nav */
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 8px 10px;
+            scrollbar-width: none;
+        }
+
+            .sidebar-nav::-webkit-scrollbar {
+                display: none;
+            }
+
+        .menu-section {
+            margin: 20px 0 6px 10px;
+            /* Fix: 10.5px → 10px — thống nhất tất cả section label */
+            font-size: 10px;
+            font-weight: 700;
+            /* Fix: 1.2px → 1px — bớt giãn chữ, dễ đọc hơn ở size nhỏ */
+            letter-spacing: 1px;
+            color: #b0bac8;
+            text-transform: uppercase;
+        }
+
+        .menu-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            /* Fix: 12px → 10px — khoảng cách icon-text gọn và đồng đều */
+            gap: 10px;
+            /* Fix: 11px → 10px top/bottom — tất cả items đều nhau */
+            padding: 10px 14px;
+            margin: 2px 0;
+            border-radius: 12px;
+            text-decoration: none !important;
+            color: #64748b;
+            /* Thống nhất 1 giá trị duy nhất cho toàn bộ menu */
+            font-size: 14.5px;
+            font-weight: 500;
+            transition: all .2s ease;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            width: 100%;
+            text-align: left;
+            /* Thêm: tránh text bị nhảy chiều cao */
+            line-height: 1.4;
+        }
+
+            .menu-item i {
+                /* Fix: cố định width + size để tất cả icon FA căn thẳng hàng */
+                width: 18px;
+                min-width: 18px;
+                font-size: 14px;
+                text-align: center;
+                flex-shrink: 0;
+                line-height: 1;
+            }
+
+            .menu-item .material-symbols-outlined {
+                /* Fix: khớp với FA icon bên trên */
+                width: 18px;
+                min-width: 18px;
+                flex-shrink: 0;
+            }
+
+            .menu-item:hover {
+                background: var(--primary-light);
+                color: var(--primary-blue);
+            }
+
+            .menu-item.active {
+                background: var(--primary-light);
+                color: var(--primary-blue);
+                font-weight: 700;
+            }
+
+                /* Active indicator */
+                .menu-item.active::before {
+                    content: '';
+                    position: absolute;
+                    left: 0;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 3px;
+                    height: 60%;
+                    background: var(--primary-blue);
+                    border-radius: 0 3px 3px 0;
+                }
+
+        /* Badge trên menu item */
+        .menu-badge {
+            margin-left: auto;
+            background: #ef4444;
+            color: #fff;
+            /* Fix: 10px — đồng đều với notif-dot */
+            font-size: 10px;
+            font-weight: 700;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 99px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        /* Footer */
+        .sidebar-footer {
+            border-top: 1px solid #f1f3f9;
+            padding: 10px 10px 14px;
+        }
+
+        .logout-btn {
+            color: #ef4444 !important;
+        }
+
+            .logout-btn:hover {
+                background: #fff5f5 !important;
+                color: #dc2626 !important;
+            }
+
+        /* ═══════════════════════════════════════
+                   MAIN LAYOUT
+                ═══════════════════════════════════════ */
+        .main-wrapper {
+            margin-left: var(--sidebar-w);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ═══════════════════════════════════════
+                   TOPBAR
+                ═══════════════════════════════════════ */
+        .topbar {
+            height: var(--topbar-h);
+            background: #ffffff;
+            border-bottom: 1px solid #eef0f6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            z-index: 900;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        /* Search */
+        .search-wrap {
+            flex: 1;
+            max-width: 480px;
+        }
+
+            .search-wrap form {
+                position: relative;
+            }
+
+                .search-wrap form::before {
+                    content: "\f002";
+                    font-family: "Font Awesome 6 Free";
+                    font-weight: 900;
+                    position: absolute;
+                    left: 16px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: #94a3b8;
+                    /* Fix: đồng đều với font-size input bên dưới */
+                    font-size: 13px;
+                    pointer-events: none;
+                }
+
+            .search-wrap input {
+                width: 100%;
+                height: 42px;
+                border-radius: 12px;
+                border: 1.5px solid #e8ecf4;
+                padding: 0 16px 0 42px;
+                background: #f8fafc;
+                /* Fix: 13.5px — đồng đều với menu-item font-size */
+                font-size: 14.5px;
+                font-family: 'Inter', sans-serif;
+                font-weight: 400;
+                color: #1e293b;
+                transition: all .2s;
+            }
+
+                .search-wrap input:focus {
+                    outline: none;
+                    border-color: var(--primary-blue);
+                    background: #fff;
+                    box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+                }
+
+                .search-wrap input::placeholder {
+                    color: #94a3b8;
+                    font-weight: 400;
+                }
+
+        /* Topbar right */
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .topbar-icon-btn {
+            position: relative;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: #f8fafc;
+            border: 1.5px solid #e8ecf4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            transition: all .2s;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+            .topbar-icon-btn:hover {
+                background: var(--primary-light);
+                border-color: var(--primary-blue);
+                color: var(--primary-blue);
+            }
+
+            .topbar-icon-btn i {
+                font-size: 15px;
+                line-height: 1;
+            }
+
+        .notif-dot {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            min-width: 17px;
+            height: 17px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            border-radius: 99px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #fff;
+            padding: 0 3px;
+            line-height: 1;
+        }
+
+        /* Divider */
+        .topbar-divider {
+            width: 1px;
+            height: 28px;
+            background: #e8ecf4;
+            margin: 0 4px;
+        }
+
+        /* User chip */
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 12px 5px 6px;
+            border-radius: 12px;
+            border: 1.5px solid #e8ecf4;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all .2s;
+            text-decoration: none;
+        }
+
+            .user-chip:hover {
+                border-color: var(--primary-blue);
+                background: var(--primary-light);
+            }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            background: linear-gradient(135deg, #4f46e5, #818cf8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            /* Fix: 13px → 12px — tránh initials bị chật trong khung 32px */
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .user-info-text .u-name {
+            /* Fix: 13.5px → 13px — gần hơn với u-role (11px), tương phản vừa đủ */
+            font-size: 14px;
+            /* Fix: 700 → 600 — bớt đậm để u-role không bị mờ quá */
+            font-weight: 600;
+            color: #1e293b;
+            line-height: 1.3;
+            white-space: nowrap;
+        }
+
+        .user-info-text .u-role {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 500;
+            line-height: 1.3;
+        }
+
+        /* ═══════════════════════════════════════
+                   CONTENT
+                ═══════════════════════════════════════ */
+        .page-content {
+            flex: 1;
+            padding: 28px;
+        }
+
+        /* ═══════════════════════════════════════
+                   TOAST
+                ═══════════════════════════════════════ */
+        .toast-wrap {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast-item {
+            min-width: 300px;
+            max-width: 380px;
+            background: #fff;
+            border-radius: 14px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all .35s cubic-bezier(.175,.885,.32,1.275);
+        }
+
+            .toast-item.show {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            .toast-item.success {
+                border-left: 4px solid #22c55e;
+            }
+
+            .toast-item.error {
+                border-left: 4px solid #ef4444;
+            }
+
+        .toast-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Fix: 16px → 15px — cân đối với khung 34px */
+            font-size: 15px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .toast-item.success .toast-icon {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .toast-item.error .toast-icon {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .toast-body {
+            flex: 1;
+        }
+
+            .toast-body .t-title {
+                /* Fix: 14px → 13.5px — thống nhất với menu-item font-size */
+                font-size: 13.5px;
+                font-weight: 700;
+                color: #111827;
+                margin-bottom: 2px;
+                line-height: 1.4;
+            }
+
+            .toast-body .t-msg {
+                /* Fix: 13px → 12.5px — nhỏ hơn title, phân cấp rõ */
+                font-size: 12.5px;
+                color: #6b7280;
+                font-weight: 400;
+                line-height: 1.5;
+            }
+
+        .toast-close {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            /* Fix: 14px → 13px — đồng đều */
+            font-size: 13px;
+            padding: 0;
+            line-height: 1;
+        }
+
+            .toast-close:hover {
+                color: #374151;
+            }
+
+        /* ═══════════════════════════════════════
+                   COLLAPSE / ACCORDION FIXES
+                ═══════════════════════════════════════ */
+        .collapse:not(.show) {
+            display: none !important;
+        }
+
+        .collapse.show {
+            display: block !important;
+            height: auto !important;
+        }
+
+        .collapsing {
+            position: relative;
+            height: 0;
+            overflow: hidden;
+            transition: height .35s ease;
+        }
+
+        .accordion-button::after {
+            margin-left: auto;
+        }
+
+        .accordion-button:focus {
+            box-shadow: none !important;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background: #eef4ff;
+            color: #2563eb;
+        }
