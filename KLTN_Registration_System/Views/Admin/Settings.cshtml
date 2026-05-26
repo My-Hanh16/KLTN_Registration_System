@@ -14,12 +14,37 @@
 
     var majors = ViewBag.Majors as IEnumerable<KLTN_Registration_System.Models.Entities.Major>
                  ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.Major>();
+    var periods = ViewBag.RegistrationPeriods as IEnumerable<KLTN_Registration_System.Models.Entities.RegistrationPeriod>
+                  ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.RegistrationPeriod>();
+    var activePeriod = ViewBag.ActivePeriod as KLTN_Registration_System.Models.Entities.RegistrationPeriod;
 
     int topicTotal = ViewBag.TopicTotal ?? 0;
     int topicRegistrationOpen = ViewBag.TopicRegistrationOpen ?? 0;
     int topicRegistrationReady = ViewBag.TopicRegistrationReady ?? 0;
+    int eligibleStudentCount = ViewBag.EligibleStudentCount ?? 0;
     bool portalOpen = GetVal("IsPortalOpen") == "true";
     bool topicRegOpen = GetVal("IsTopicRegistrationOpen", "false") == "true";
+    string SuggestNextAcademicYear()
+    {
+        var parts = (activePeriod?.AcademicYear ?? "").Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 2 && int.TryParse(parts[0], out var start) && int.TryParse(parts[1], out var end))
+        {
+            return $"{start + 1}-{end + 1}";
+        }
+
+        return $"{DateTime.Now.Year}-{DateTime.Now.Year + 1}";
+    }
+
+    string nextAcademicYear = SuggestNextAcademicYear();
+    string nextSemesterCode = activePeriod?.SemesterCode == "HK1" ? "HK2" : "HK1";
+    string semesterStartValue = activePeriod?.SemesterStart.ToString("yyyy-MM-dd")
+        ?? GetDateVal("Semester_Start", DateTime.Today.ToString("yyyy-MM-dd"));
+    string semesterEndValue = activePeriod?.SemesterEnd.ToString("yyyy-MM-dd")
+        ?? GetDateVal("Semester_End", DateTime.Today.AddMonths(4).ToString("yyyy-MM-dd"));
+    string registrationStartValue = activePeriod?.RegistrationOpenAt.ToString("yyyy-MM-ddTHH:mm")
+        ?? GetDateTimeVal("Registration_Start");
+    string registrationEndValue = activePeriod?.RegistrationCloseAt.ToString("yyyy-MM-ddTHH:mm")
+        ?? GetDateTimeVal("Registration_End");
 }
 
 @section Styles {
@@ -532,9 +557,15 @@
                 color: #fff;
             }
 
-                .btn-sm.blue:hover {
-                    background: #1d4ed8;
-                }
+            .btn-sm.blue:hover {
+                background: #1d4ed8;
+            }
+
+            .btn-sm[disabled] {
+                opacity: .7;
+                cursor: not-allowed;
+                box-shadow: none;
+            }
 
         /* ══════════════════════════════════════
                MAJOR TABLE
@@ -723,6 +754,80 @@
     </div>
 </div>
 
+<div class="s-card">
+    <div class="s-card-head">
+        <div class="s-head-left">
+            <div class="s-ico green"><i class="fa-solid fa-calendar-days"></i></div>
+            <div>
+                <div class="s-head-title">Đợt đăng ký khóa luận</div>
+                <div class="s-head-sub">
+                    Đợt hiện hành:
+                    <b style="color:#1e293b;">@(activePeriod?.Name ?? "Chưa có")</b>
+                </div>
+            </div>
+        </div>
+        <span style="font-size:12.5px;color:#94a3b8;">
+            <b style="color:#1e293b;">@periods.Count()</b> đợt
+        </span>
+    </div>
+    <div class="s-card-body">
+        <form asp-action="CreateRegistrationPeriod" method="post" style="margin-bottom:16px;">
+            @Html.AntiForgeryToken()
+            <div class="f-grid-5">
+                <div class="f-field">
+                    <label class="f-label">Năm học</label>
+                    <input type="text" name="academicYear" class="f-input-sm" required value="@nextAcademicYear" placeholder="2026-2027" />
+                </div>
+                <div class="f-field">
+                    <label class="f-label">Học kỳ</label>
+                    <select name="semesterCode" class="f-select">
+                        <option value="HK1" selected="@(nextSemesterCode == "HK1")">HK1</option>
+                        <option value="HK2" selected="@(nextSemesterCode == "HK2")">HK2</option>
+                        <option value="HK3">HK3</option>
+                    </select>
+                </div>
+                <div class="f-field">
+                    <label class="f-label">Mở đăng ký</label>
+                    <input type="datetime-local" name="registrationOpenAt" class="f-input-sm" required
+                           value="@DateTime.Today.ToString("yyyy-MM-ddTHH:mm")" />
+                </div>
+                <div class="f-field">
+                    <label class="f-label">Đóng đăng ký</label>
+                    <input type="datetime-local" name="registrationCloseAt" class="f-input-sm" required
+                           value="@DateTime.Today.AddDays(30).ToString("yyyy-MM-ddTHH:mm")" />
+                </div>
+                <div style="display:flex;align-items:end;">
+                    <input type="hidden" name="semesterStart" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="semesterEnd" value="@DateTime.Today.AddMonths(4).ToString("yyyy-MM-dd")" />
+                    <input type="hidden" name="setActive" value="true" />
+                    <button type="submit" class="btn btn-primary" style="height:36px;width:100%;font-size:12.5px;">
+                        <i class="fa-solid fa-plus"></i> Tạo
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        @if (periods.Any())
+        {
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                @foreach (var period in periods)
+                {
+                    <form asp-action="SetActiveRegistrationPeriod" method="post">
+                        @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@period.Id" />
+                        <button type="submit"
+                                disabled="@period.IsActive"
+                                onclick="return confirm('Chuyển đợt hiện hành sang @period.Name? Các trang quản lý sẽ dùng dữ liệu của đợt này.');"
+                                class="btn-sm @(period.IsActive ? "blue" : "ghost")">
+                            @(period.IsActive ? "Đang dùng: " : "")@period.Name
+                        </button>
+                    </form>
+                }
+            </div>
+        }
+    </div>
+</div>
+
 <form asp-action="SaveSettings" method="post" id="settingsForm">
     @Html.AntiForgeryToken()
 
@@ -765,6 +870,7 @@
                         <div class="info-box-title">Mở đăng ký đề tài hàng loạt</div>
                         <div class="info-box-desc">Khi bật, hệ thống mở đăng ký cho các đề tài đã duyệt và chưa đủ sinh viên.</div>
                         <div class="info-chips">
+                            <span class="info-chip">SV đủ điều kiện: <b>@eligibleStudentCount</b></span>
                             <span class="info-chip">Tổng đã duyệt: <b>@topicTotal</b></span>
                             <span class="info-chip">Đang mở: <b>@topicRegistrationOpen</b></span>
                             <span class="info-chip">Sẵn sàng: <b>@topicRegistrationReady</b></span>
@@ -792,25 +898,25 @@
                         <label class="f-label">Ngày bắt đầu học kỳ</label>
                         <input type="hidden" name="names" value="Semester_Start" />
                         <input type="date" name="values_Semester_Start" class="f-input"
-                               value="@GetDateVal("Semester_Start", DateTime.Today.ToString("yyyy-MM-dd"))" />
+                               value="@semesterStartValue" />
                     </div>
                     <div class="f-field">
                         <label class="f-label">Ngày kết thúc học kỳ</label>
                         <input type="hidden" name="names" value="Semester_End" />
                         <input type="date" name="values_Semester_End" class="f-input"
-                               value="@GetDateVal("Semester_End", DateTime.Today.AddMonths(4).ToString("yyyy-MM-dd"))" />
+                               value="@semesterEndValue" />
                     </div>
                     <div class="f-field">
                         <label class="f-label">Mở đăng ký đề tài</label>
                         <input type="hidden" name="names" value="Registration_Start" />
                         <input type="datetime-local" name="values_Registration_Start" class="f-input"
-                               value="@GetDateTimeVal("Registration_Start")" />
+                               value="@registrationStartValue" />
                     </div>
                     <div class="f-field">
                         <label class="f-label">Đóng đăng ký đề tài</label>
                         <input type="hidden" name="names" value="Registration_End" />
                         <input type="datetime-local" name="values_Registration_End" class="f-input"
-                               value="@GetDateTimeVal("Registration_End")" />
+                               value="@registrationEndValue" />
                     </div>
                 </div>
 
@@ -837,12 +943,12 @@
                     </div>
                 </div>
                 <div class="s-card-body" style="display:flex;flex-direction:column;gap:10px;">
-                    <button type="button" class="qa-btn slate">
-                        <i class="fa-solid fa-key"></i> Reset mật khẩu hàng loạt
-                    </button>
-                    <button type="button" class="qa-btn red">
-                        <i class="fa-solid fa-user-slash"></i> Khóa toàn bộ sinh viên
-                    </button>
+                    <a asp-action="StudentManagement" asp-controller="Admin" class="qa-btn slate">
+                        <i class="fa-solid fa-users-gear"></i> Quản lý sinh viên
+                    </a>
+                    <a asp-action="ImportUsers" asp-controller="Admin" asp-route-role="Student" class="qa-btn slate">
+                        <i class="fa-solid fa-file-arrow-up"></i> Nhập danh sách SV
+                    </a>
                 </div>
             </div>
 

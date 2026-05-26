@@ -778,17 +778,33 @@
 
                     <!-- Deadline display -->
                     <div class="deadline-grid">
-                        <div class="deadline-item @subDlClass">
-                            <i class="fa-regular fa-clock"></i>
-                            <span class="deadline-label">SV nộp trước:</span>
-                            @subDlText
-                        </div>
+                        @if (tl.AllowSubmission)
+                        {
+                            <div class="deadline-item @subDlClass">
+                                <i class="fa-solid fa-door-open"></i>
+                                <span class="deadline-label">SV được nộp từ:</span>
+                                @tl.Date.ToString("dd/MM/yyyy HH:mm")
+                            </div>
+                            <div class="deadline-item @subDlClass">
+                                <i class="fa-regular fa-clock"></i>
+                                <span class="deadline-label">SV nộp trước:</span>
+                                @subDlText
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="deadline-item dl-none">
+                                <i class="fa-solid fa-lock"></i>
+                                <span class="deadline-label">SV nộp bài:</span>
+                                Không yêu cầu nộp
+                            </div>
+                        }
                         <div class="deadline-item @revDlClass">
                             <i class="fa-solid fa-user-check"></i>
                             <span class="deadline-label">GV duyệt trước:</span>
                             @revDlText
                         </div>
-                        @if (!string.IsNullOrEmpty(tl.SubmissionType))
+                        @if (tl.AllowSubmission && !string.IsNullOrEmpty(tl.SubmissionType))
                         {
                             <div class="deadline-item">
                                 <i class="fa-solid fa-file"></i>
@@ -888,9 +904,13 @@
 
                     <div class="form-grid-2">
                         <div class="form-group">
-                            <label class="form-label">Ngày hiển thị <span class="req">*</span></label>
+                            <label class="form-label">Mở nộp từ / Ngày hiển thị <span class="req">*</span></label>
                             <input type="datetime-local" name="date" required
                                    class="form-control-custom" />
+                            <div class="form-hint">
+                                <i class="fa-solid fa-circle-info"></i>
+                                Nếu bật cho nộp bài, đây là thời điểm SV bắt đầu nộp được
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Loại mốc</label>
@@ -918,7 +938,7 @@
                                    class="form-control-custom" />
                             <div class="form-hint">
                                 <i class="fa-solid fa-circle-info"></i>
-                                Quá hạn này SV không nộp được
+                                SV được nộp từ ngày mở nộp đến hạn này
                             </div>
                         </div>
                         <div class="form-group">
@@ -1020,8 +1040,12 @@
 
                     <div class="form-grid-2">
                         <div class="form-group">
-                            <label class="form-label">Ngày hiển thị <span class="req">*</span></label>
+                            <label class="form-label">Mở nộp từ / Ngày hiển thị <span class="req">*</span></label>
                             <input type="datetime-local" name="date" id="editDate" required class="form-control-custom" />
+                            <div class="form-hint">
+                                <i class="fa-solid fa-circle-info"></i>
+                                Nếu bật cho nộp bài, đây là thời điểm SV bắt đầu nộp được
+                            </div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Loại mốc</label>
@@ -1048,7 +1072,7 @@
                                    class="form-control-custom" />
                             <div class="form-hint">
                                 <i class="fa-solid fa-circle-info"></i>
-                                Quá hạn này SV không nộp được
+                                SV được nộp từ ngày mở nộp đến hạn này
                             </div>
                         </div>
                         <div class="form-group">
@@ -1137,7 +1161,7 @@
             document.getElementById('editSubDl').value     = subDl;
             document.getElementById('editRevDl').value     = revDl;
             document.getElementById('editActive').checked  = isActive;
-            document.getElementById('editAllowSub').checked = allowSub;
+            document.getElementById('editAllowSub').checked = allowSub || !!subDl;
             document.getElementById('editSubType').value   = subType;
 
             // Set select type
@@ -1196,13 +1220,36 @@
             });
         });
 
+        document.querySelectorAll('form').forEach(form => {
+            const subDl = form.querySelector('[name="submissionDeadline"]');
+            const allowSub = form.querySelector('[name="allowSubmission"]');
+            if (!subDl || !allowSub) return;
+
+            subDl.addEventListener('change', () => {
+                if (subDl.value) allowSub.checked = true;
+            });
+        });
+
         // Validate: ReviewDeadline phải sau SubmissionDeadline
         document.querySelectorAll('form').forEach(form => {
             form.addEventListener('submit', function(e) {
+                const openAt = this.querySelector('[name="date"]');
                 const subDl = this.querySelector('[name="submissionDeadline"]');
                 const revDl = this.querySelector('[name="reviewDeadline"]');
+                const allowSub = this.querySelector('[name="allowSubmission"]');
+                const requiresSubmission = allowSub && allowSub.checked;
                 if (!subDl || !revDl) return;
-                if (subDl.value && revDl.value && revDl.value <= subDl.value) {
+                if (requiresSubmission && openAt && openAt.value && subDl.value && openAt.value >= subDl.value) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Thời gian nộp không hợp lệ',
+                        text: 'Thời điểm mở nộp phải trước hạn cuối sinh viên nộp bài.',
+                        confirmButtonColor: '#4f46e5'
+                    });
+                    return;
+                }
+                if (requiresSubmission && subDl.value && revDl.value && revDl.value <= subDl.value) {
                     e.preventDefault();
                     Swal.fire({
                         icon: 'error',

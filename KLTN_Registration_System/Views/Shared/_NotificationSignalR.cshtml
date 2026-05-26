@@ -1,198 +1,163 @@
-﻿@* ============================================================
-   FILE: Views/Shared/_NotificationSignalR.cshtml  —  MỚI
-   Partial view — nhúng vào cuối _LayoutDashboard.cshtml
-   và _LayoutStudent.cshtml (trước thẻ </body>)
-   ============================================================ *@
+@* Realtime notification client shared by student/dashboard layouts. *@
 
-@* ── Khung toast thông báo realtime (ẩn mặc định) ── *@
-<div id="notif-toast-container"
-     style="position:fixed;top:1.2rem;right:1.2rem;z-index:9999;
-            display:flex;flex-direction:column;gap:8px;max-width:360px;">
-</div>
+<div id="notif-toast-container" class="notif-toast-container" aria-live="polite" aria-atomic="false"></div>
 
-@* ── Script SignalR client ── *@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"
         integrity="sha512-2P2xHrBRPMBPFBiANGCxBpGkZqWJLUhIAULGxs5Jy7vHXAVkwlXG89SPnNB1lWaNUF2cVq1JdVcVIX6XnHoQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <script>
     (function () {
-        // ── Kết nối hub ──────────────────────────────────────────
+        const container = document.getElementById('notif-toast-container');
+        const fallbackUrl = '@Url.Action("Notifications", "Student")';
+
+        if (!container || typeof signalR === 'undefined') {
+            return;
+        }
+
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/hubs/notification")
+            .withUrl('/hubs/notification')
             .withAutomaticReconnect([0, 2000, 5000, 10000])
             .configureLogging(signalR.LogLevel.Warning)
             .build();
 
-        // ── Nhận thông báo mới ───────────────────────────────────
-            connection.on("ReceiveNotification", function (data) {
-
-        // Badge
-        updateBadge(data.unreadCount);
-
-        // Toast
-        showToast(data);
-
-        // Append realtime vào list notification
-        appendNotification(data);
-    });
-
-        // ── Chỉ cập nhật badge (khi mark-as-read) ───────────────
-        connection.on("UpdateBadge", function (count) {
-            updateBadge(count);
+        connection.on('ReceiveNotification', function (data) {
+            updateBadge(toInt(data?.unreadCount));
+            showToast(data || {});
+            appendNotification(data || {});
         });
 
-        // ── Khởi động kết nối ────────────────────────────────────
+        connection.on('UpdateBadge', function (count) {
+            updateBadge(toInt(count));
+        });
+
+        startConnection();
+
         async function startConnection() {
             try {
                 await connection.start();
-            } catch (err) {
-                setTimeout(startConnection, 5000);
+            } catch {
+                window.setTimeout(startConnection, 5000);
             }
         }
-        startConnection();
 
-        // ── Cập nhật badge số thông báo chưa đọc ────────────────
         function updateBadge(count) {
-            // Tìm tất cả badge (có thể có nhiều selector tùy layout)
-            document.querySelectorAll(
-                '.notif-badge, #notif-badge, [data-notif-badge]'
-            ).forEach(function (el) {
-                if (count > 0) {
-                    el.textContent = count > 99 ? '99+' : count;
-                    el.style.display = 'inline-flex';
-                } else {
-                    el.style.display = 'none';
-                }
-            });
+            document.querySelectorAll('.notif-badge, #notif-badge, [data-notif-badge]')
+                .forEach(function (el) {
+                    if (count > 0) {
+                        el.textContent = count > 99 ? '99+' : String(count);
+                        el.classList.remove('is-hidden');
+                        el.style.display = 'inline-flex';
+                    } else {
+                        el.textContent = '0';
+                        el.classList.add('is-hidden');
+                        el.style.display = 'none';
+                    }
+                });
         }
 
-        // ── Hiện toast góc phải ──────────────────────────────────
         function showToast(data) {
-            const colors = {
-                'RegistrationApproved': '#16a34a',
-                'RegistrationRejected': '#dc2626',
-                'TopicApproved':        '#2563eb',
-                'System':               '#6b7280'
-            };
-            const icons = {
-                'RegistrationApproved': '✅',
-                'RegistrationRejected': '❌',
-                'TopicApproved':        '📋',
-                'System':               '🔔'
-            };
-
-            const color = colors[data.type] || colors['System'];
-            const icon  = icons[data.type]  || icons['System'];
-
+            const type = data.type || 'System';
+            const meta = getNotificationMeta(type);
             const toast = document.createElement('div');
-            toast.style.cssText = `
-                background: #fff;
-                border: 1px solid #e5e7eb;
-                border-left: 4px solid ${color};
-                border-radius: 10px;
-                padding: 12px 14px;
-                box-shadow: 0 4px 16px rgba(0,0,0,0.10);
-                cursor: pointer;
-                animation: slideInToast .3s ease;
-                max-width: 360px;
-            `;
-            toast.innerHTML = `
-                <div style="display:flex;align-items:flex-start;gap:10px;">
-                    <span style="font-size:18px;line-height:1;">${icon}</span>
-                    <div style="flex:1;min-width:0;">
-                        <p style="margin:0 0 3px;font-weight:600;font-size:14px;
-                                   color:#111;white-space:nowrap;overflow:hidden;
-                                   text-overflow:ellipsis;">${escHtml(data.title)}</p>
-                        <p style="margin:0 0 4px;font-size:12px;color:#374151;
-                                   display:-webkit-box;-webkit-line-clamp:2;
-                                   -webkit-box-orient:vertical;overflow:hidden;">
-                            ${escHtml(data.content)}
-                        </p>
-                        <p style="margin:0;font-size:11px;color:#9ca3af;">${escHtml(data.createdAt)}</p>
-                    </div>
-                    <button onclick="this.closest('[data-toast]').remove()"
-                            style="border:none;background:none;cursor:pointer;
-                                   color:#9ca3af;font-size:16px;padding:0;line-height:1;">×</button>
-                </div>`;
-
+            toast.className = 'notif-toast';
+            toast.style.setProperty('--notif-color', meta.color);
             toast.setAttribute('data-toast', '');
-            toast.addEventListener('click', function (e) {
-                if (e.target.tagName === 'BUTTON') return;
-                window.location.href = safeLocalUrl(data.redirectUrl) || '/Student/Notifications';
+            toast.setAttribute('role', 'status');
+
+            const icon = document.createElement('div');
+            icon.className = 'notif-toast-icon';
+            icon.innerHTML = meta.icon;
+
+            const body = document.createElement('div');
+            body.className = 'notif-toast-body';
+
+            const title = document.createElement('p');
+            title.className = 'notif-toast-title';
+            title.textContent = data.title || 'Thông báo mới';
+
+            const content = document.createElement('p');
+            content.className = 'notif-toast-content';
+            content.textContent = data.content || '';
+
+            const time = document.createElement('p');
+            time.className = 'notif-toast-time';
+            time.textContent = data.createdAt || 'Vừa xong';
+
+            body.append(title, content, time);
+
+            const close = document.createElement('button');
+            close.className = 'notif-toast-close';
+            close.type = 'button';
+            close.setAttribute('aria-label', 'Đóng thông báo');
+            close.innerHTML = '&times;';
+            close.addEventListener('click', function (event) {
+                event.stopPropagation();
+                dismissToast(toast);
             });
 
-            const container = document.getElementById('notif-toast-container');
+            toast.append(icon, body, close);
+
+            toast.addEventListener('click', function () {
+                const url = safeLocalUrl(data.redirectUrl) || safeLocalUrl(data.targetUrl) || fallbackUrl || '/';
+                window.location.href = url;
+            });
+
             container.prepend(toast);
-
-            // Tự đóng sau 6 giây
-            setTimeout(function () {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity .4s';
-                setTimeout(function () { toast.remove(); }, 400);
-            }, 6000);
+            window.setTimeout(function () { toast.classList.add('show'); }, 20);
+            window.setTimeout(function () { dismissToast(toast); }, 6000);
         }
-            function appendNotification(data) {
 
-        // Tìm container list notification
-        const list =
-            document.querySelector('#notification-list') ||
-            document.querySelector('.notification-list');
+        function appendNotification(data) {
+            const list = document.querySelector('#notification-list') || document.querySelector('.notification-list');
+            if (!list) return;
 
-        if (!list) return;
+            const item = document.createElement('div');
+            item.className = 'notification-item';
+            item.style.cssText = 'background:#fff;border-radius:16px;padding:20px;margin-bottom:14px;border-left:4px solid #2563eb;box-shadow:0 2px 8px rgba(0,0,0,0.04);';
 
-        const html = `
-            <div class="notification-item"
-                 style="
-                    background:#fff;
-                    border-radius:16px;
-                    padding:20px;
-                    margin-bottom:14px;
-                    border-left:4px solid #2563eb;
-                    box-shadow:0 2px 8px rgba(0,0,0,0.04);
-                 ">
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;justify-content:space-between;gap:20px;';
 
-                <div style="display:flex;justify-content:space-between;gap:20px;">
+            const text = document.createElement('div');
+            const title = document.createElement('h4');
+            title.style.cssText = 'margin:0 0 6px;font-size:18px;font-weight:700;color:#111827;';
+            title.textContent = data.title || 'Thông báo mới';
 
-                    <div>
-                        <h4 style="
-                            margin:0 0 6px;
-                            font-size:18px;
-                            font-weight:700;
-                            color:#111827;">
-                            ${escHtml(data.title)}
-                        </h4>
+            const content = document.createElement('p');
+            content.style.cssText = 'margin:0;color:#6b7280;font-size:15px;';
+            content.textContent = data.content || '';
 
-                        <p style="
-                            margin:0;
-                            color:#6b7280;
-                            font-size:15px;">
-                            ${escHtml(data.content)}
-                        </p>
-                    </div>
+            const time = document.createElement('div');
+            time.style.cssText = 'white-space:nowrap;color:#9ca3af;font-size:13px;';
+            time.textContent = data.createdAt || 'Vừa xong';
 
-                    <div style="
-                        white-space:nowrap;
-                        color:#9ca3af;
-                        font-size:13px;">
-                        ${escHtml(data.createdAt)}
-                    </div>
+            text.append(title, content);
+            row.append(text, time);
+            item.append(row);
+            list.prepend(item);
+        }
 
-                </div>
-            </div>
-        `;
+        function dismissToast(toast) {
+            if (!toast) return;
+            toast.classList.remove('show');
+            window.setTimeout(function () { toast.remove(); }, 300);
+        }
 
-        list.insertAdjacentHTML('afterbegin', html);
-    }
+        function getNotificationMeta(type) {
+            const map = {
+                RegistrationApproved: { color: '#16a34a', icon: '<i class="fa-solid fa-circle-check"></i>' },
+                RegistrationRejected: { color: '#dc2626', icon: '<i class="fa-solid fa-circle-xmark"></i>' },
+                TopicApproved: { color: '#2563eb', icon: '<i class="fa-solid fa-clipboard-check"></i>' },
+                TopicRejected: { color: '#dc2626', icon: '<i class="fa-solid fa-ban"></i>' },
+                NewRegistration: { color: '#4f46e5', icon: '<i class="fa-solid fa-user-plus"></i>' },
+                NewTopic: { color: '#7c3aed', icon: '<i class="fa-regular fa-lightbulb"></i>' },
+                Timeline: { color: '#0891b2', icon: '<i class="fa-solid fa-timeline"></i>' },
+                DefenseResult: { color: '#ca8a04', icon: '<i class="fa-solid fa-award"></i>' },
+                System: { color: '#64748b', icon: '<i class="fa-regular fa-bell"></i>' }
+            };
 
-        function escHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g,'&amp;')
-                .replace(/</g,'&lt;')
-                .replace(/>/g,'&gt;')
-                .replace(/"/g,'&quot;')
-                .replace(/'/g,'&#39;');
+            return map[type] || map.System;
         }
 
         function safeLocalUrl(url) {
@@ -201,20 +166,117 @@
             if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '';
             return value;
         }
+
+        function toInt(value) {
+            const parsed = Number.parseInt(value, 10);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+        }
     })();
 </script>
 
-@* ── CSS animation toast ── *@
 <style>
-    @@keyframes slideInToast {
-        from {
-            opacity: 0;
-            transform: translateX(30px);
+    .notif-toast-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 360px;
+        position: fixed;
+        right: 1.2rem;
+        top: 1.2rem;
+        z-index: 99999;
+    }
+
+    .notif-toast {
+        align-items: flex-start;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-left: 4px solid var(--notif-color, #64748b);
+        border-radius: 12px;
+        box-shadow: 0 8px 26px rgba(15, 23, 42, .14);
+        cursor: pointer;
+        display: flex;
+        gap: 10px;
+        max-width: 360px;
+        opacity: 0;
+        padding: 12px 14px;
+        transform: translateX(28px);
+        transition: opacity .25s ease, transform .25s ease;
+    }
+
+    .notif-toast.show {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .notif-toast-icon {
+        align-items: center;
+        background: #f8fafc;
+        border-radius: 10px;
+        color: var(--notif-color, #64748b);
+        display: inline-flex;
+        flex-shrink: 0;
+        height: 34px;
+        justify-content: center;
+        width: 34px;
+    }
+
+    .notif-toast-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notif-toast-title {
+        color: #111827;
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0 0 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .notif-toast-content {
+        color: #374151;
+        display: -webkit-box;
+        font-size: 12px;
+        line-height: 1.45;
+        margin: 0 0 4px;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .notif-toast-time {
+        color: #9ca3af;
+        font-size: 11px;
+        margin: 0;
+    }
+
+    .notif-toast-close {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0;
+    }
+
+    .notif-toast-close:hover {
+        color: #374151;
+    }
+
+    @@media (max-width: 640px) {
+        .notif-toast-container {
+            left: 14px;
+            max-width: none;
+            right: 14px;
+            top: 14px;
         }
 
-        to {
-            opacity: 1;
-            transform: translateX(0);
+        .notif-toast {
+            max-width: none;
+            width: 100%;
         }
     }
 </style>

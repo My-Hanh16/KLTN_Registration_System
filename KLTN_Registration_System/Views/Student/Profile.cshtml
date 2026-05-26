@@ -10,6 +10,10 @@
     ViewData["Title"] = "Hồ sơ của tôi";
 
     var reg = ViewBag.CurrentRegistration as KLTN_Registration_System.Models.Entities.Registration;
+    bool hasCompletedThesis = ViewBag.StudentHasCompletedThesis == true;
+    bool canParticipate = ViewBag.CanParticipateInCurrentPeriod == true;
+    DateTime? thesisCompletedAt = ViewBag.ThesisCompletedAt as DateTime?;
+    string activePeriodName = ViewBag.ActivePeriodName as string ?? "";
 
     var majors = ViewBag.Majors as List<KLTN_Registration_System.Models.Entities.Major>
                  ?? new List<KLTN_Registration_System.Models.Entities.Major>();
@@ -51,9 +55,29 @@
         <h2>Hồ sơ cá nhân</h2>
 
         <p>
-            Quản lý thông tin sinh viên và bảo mật tài khoản hệ thống khóa luận tốt nghiệp.
+            Quản lý thông tin sinh viên và bảo mật tài khoản hệ thống khóa luận tốt nghiệp
+            @if (!string.IsNullOrWhiteSpace(activePeriodName))
+            {
+                <span>trong đợt @activePeriodName</span>
+            }.
         </p>
     </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="profile-alert success">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>@TempData["Success"]</span>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="profile-alert error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
 
     <div class="row g-4">
 
@@ -122,6 +146,13 @@
                             <strong>@(ViewBag.TotalRegistrations ?? 0)</strong>
                         </div>
 
+                        <div class="stat-item">
+                            <span>Trạng thái KLTN</span>
+                            <strong class="@(hasCompletedThesis ? "stat-success" : canParticipate ? "" : "stat-danger")">
+                                @(hasCompletedThesis ? "Hoàn thành" : canParticipate ? "Đủ điều kiện" : "Chưa đủ")
+                            </strong>
+                        </div>
+
                     </div>
 
                 </div>
@@ -156,8 +187,34 @@
                             @(reg.Topic?.Lecturer?.FullName ?? "Chưa cập nhật")
                         </div>
 
+                        <div class="topic-meta">
+                            Lĩnh vực:
+                            @(reg.Topic?.Major?.Name ?? reg.Topic?.DepartmentName ?? "Chưa cập nhật")
+                        </div>
+
                         <div class="status-badge @statusClass">
                             @statusLabel
+                        </div>
+
+                        <div class="profile-topic-actions">
+                            <a asp-controller="Topic"
+                               asp-action="Details"
+                               asp-route-id="@reg.TopicId"
+                               class="profile-topic-link">
+                                <i class="fa-solid fa-circle-info"></i>
+                                Chi tiết đề tài
+                            </a>
+
+                            @if (reg.Status == "Approved")
+                            {
+                                <a asp-controller="Chat"
+                                   asp-action="Topic"
+                                   asp-route-topicId="@reg.TopicId"
+                                   class="profile-topic-link primary">
+                                    <i class="fa-regular fa-comments"></i>
+                                    Trao đổi GVHD
+                                </a>
+                            }
                         </div>
 
                         @if (reg.Status == "Rejected" &&
@@ -174,18 +231,28 @@
 
                             <i class="fa-regular fa-folder-open"></i>
 
-                            <p>
-                                Bạn chưa đăng ký đề tài nào
-                            </p>
+                            @if (hasCompletedThesis)
+                            {
+                                <p>Bạn đã hoàn thành khóa luận. Hồ sơ chỉ còn dùng để xem lại thông tin.</p>
+                            }
+                            else if (!canParticipate)
+                            {
+                                <p>Bạn chưa thuộc danh sách sinh viên đủ điều kiện của đợt hiện tại.</p>
+                            }
+                            else
+                            {
+                                <p>Bạn chưa đăng ký đề tài nào trong đợt hiện tại.</p>
 
-                            <a href="/Topic/Index"
-                               class="btn-topic">
+                                <a asp-controller="Topic"
+                                   asp-action="Index"
+                                   class="btn-topic">
 
-                                <i class="fa-solid fa-book-open"></i>
+                                    <i class="fa-solid fa-book-open"></i>
 
-                                Xem danh sách đề tài
+                                    Xem danh sách đề tài
 
-                            </a>
+                                </a>
+                            }
 
                         </div>
                     }
@@ -290,6 +357,19 @@
 
                             </div>
 
+                            <div class="form-group full">
+
+                                <label class="form-label">
+                                    Trạng thái khóa luận
+                                </label>
+
+                                <input type="text"
+                                       value="@(hasCompletedThesis ? $"Đã hoàn thành{(thesisCompletedAt.HasValue ? $" - {thesisCompletedAt.Value:dd/MM/yyyy}" : "")}" : canParticipate ? "Đủ điều kiện tham gia đợt hiện tại" : "Chưa đủ điều kiện đợt hiện tại")"
+                                       readonly
+                                       class="form-control form-disabled" />
+
+                            </div>
+
                         </div>
 
                         <div class="d-flex justify-content-end mt-4">
@@ -374,7 +454,7 @@
                                     <input type="password"
                                            name="newPassword"
                                            id="newPwd"
-                                           minlength="6"
+                                           minlength="8"
                                            required
                                            class="form-control" />
 
@@ -399,8 +479,9 @@
                                 <div class="password-wrapper">
 
                                     <input type="password"
+                                           name="confirmPassword"
                                            id="confirmPwd"
-                                           minlength="6"
+                                           minlength="8"
                                            required
                                            class="form-control" />
 

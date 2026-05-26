@@ -18,5 +18,77 @@ html {
 }
 
 body {
+  background: #f5f7fb;
+  color: #0f172a;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
   margin-bottom: 60px;
+}
+
+.navbar {
+  min-height: 68px;
+}
+
+.navbar-brand {
+  letter-spacing: -0.4px;
+}
+
+.navbar .nav-link {
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px !important;
+}
+
+.navbar .nav-link.active {
+  background: #eef2ff;
+  color: #4f46e5 !important;
+  font-weight: 800;
+}
+
+.navbar .btn-link.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+}
+
+main[role="main"] {
+  min-height: calc(100vh - 150px);
+}
+
+.portal-alert {
+  align-items: center;
+  border-radius: 14px;
+  display: flex;
+  font-size: 13.5px;
+  font-weight: 700;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.portal-alert-success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.portal-alert-error {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.footer {
+  bottom: 0;
+  line-height: normal;
+  position: absolute;
+  width: 100%;
+}
+
+@media (max-width: 576px) {
+  body {
+    margin-bottom: 90px;
+  }
+
+  .navbar .nav-link {
+    margin: 2px 0;
+  }
 }

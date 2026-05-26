@@ -11,6 +11,7 @@
     var submissions =
         ViewBag.Submissions as List<TimelineSubmission> ?? new List<TimelineSubmission>();
     bool hasApprovedTopic = ViewBag.HasApprovedTopic == true;
+    bool hasCompletedThesis = ViewBag.HasCompletedThesis == true;
 }
 
 <div class="space-y-6">
@@ -38,6 +39,13 @@
             Bạn cần có đề tài đã được duyệt trước khi nộp báo cáo tiến độ.
         </div>
     }
+    @if (hasCompletedThesis)
+    {
+        <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 font-semibold">
+            <i class="fa-solid fa-circle-check mr-2"></i>
+            Bạn đã hoàn thành khóa luận. Timeline chỉ còn dùng để xem lại lịch sử nộp bài.
+        </div>
+    }
 
     @if (!timelines.Any())
     {
@@ -50,11 +58,18 @@
     @foreach (var item in timelines)
     {
         var submission = submissions
-        .FirstOrDefault(x => x.TimelineId == item.Id);
+        .Where(x => x.TimelineId == item.Id)
+        .OrderByDescending(x => x.SubmittedAt)
+        .FirstOrDefault();
+        var isRejectedResubmission = submission?.Status == SubmissionStatus.Rejected;
+        var isNotOpenYet = item.Date > DateTime.Now;
+        var isExpired = item.SubmissionDeadline.HasValue && DateTime.Now > item.SubmissionDeadline.Value;
         var canSubmit = hasApprovedTopic
+            && !hasCompletedThesis
             && item.IsActive
             && item.AllowSubmission
-            && (!item.SubmissionDeadline.HasValue || DateTime.Now <= item.SubmissionDeadline.Value)
+            && (!isNotOpenYet || isRejectedResubmission)
+            && (!isExpired || isRejectedResubmission)
             && (submission == null || submission.Status == SubmissionStatus.Rejected);
 
         <div class="bg-white rounded-2xl p-6 shadow">
@@ -202,16 +217,34 @@
                     Bạn chưa có đề tài đã được duyệt nên chưa thể nộp báo cáo cho mốc này.
                 </div>
             }
+            else if (hasCompletedThesis)
+            {
+                <div class="mt-6 p-4 rounded-xl bg-green-50 border border-green-200 text-green-700">
+                    Bạn đã hoàn thành khóa luận nên không cần nộp thêm ở mốc này.
+                </div>
+            }
             else if (!item.AllowSubmission)
             {
                 <div class="mt-6 p-4 rounded-xl bg-gray-50 border text-gray-500">
                     Mốc này chưa mở chức năng nộp bài.
                 </div>
             }
-            else if (item.SubmissionDeadline.HasValue && DateTime.Now > item.SubmissionDeadline.Value)
+            else if (isNotOpenYet && !isRejectedResubmission)
+            {
+                <div class="mt-6 p-4 rounded-xl bg-gray-50 border text-gray-500">
+                    Chưa đến thời gian mở nộp bài.
+                </div>
+            }
+            else if (isExpired && !isRejectedResubmission)
             {
                 <div class="mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600">
                     Đã quá hạn nộp bài.
+                </div>
+            }
+            else if (isRejectedResubmission)
+            {
+                <div class="mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700">
+                    Bài nộp đã bị từ chối. Bạn cần nộp lại bản mới để giảng viên xem xét.
                 </div>
             }
 

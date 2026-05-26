@@ -35,24 +35,27 @@ namespace KLTN_Registration_System.Controllers
             if (user == null) return Unauthorized();
 
             var roles = await _userManager.GetRolesAsync(user);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
             // =====================================================
             // LECTURER
             // =====================================================
             if (roles.Contains("Lecturer"))
             {
-                var topics = await _db.Topics
+                var topics = await FilterTopicsByActivePeriod(_db.Topics, activePeriod)
                     .Where(t => t.LecturerId == user.Id)
-
+                    .Where(t => t.Registrations!.Any(r => r.Status == "Approved"))
                     .Include(t => t.Registrations!)
                         .ThenInclude(r => r.Student)
-
                     .OrderByDescending(t => t.CreatedAt)
                     .ToListAsync();
+
+                var topicIds = topics.Select(t => t.Id).ToList();
 
                 // COUNT UNREAD TRỰC TIẾP DB
                 var unreadMap = await _db.TopicComments
                     .Where(c =>
+                        topicIds.Contains(c.TopicId) &&
                         !c.IsDeleted &&
                         !c.IsRead &&
                         c.SenderId != user.Id)
@@ -74,9 +77,11 @@ namespace KLTN_Registration_System.Controllers
             // =====================================================
             if (roles.Contains("Student"))
             {
-                var topics = await _db.Registrations
+                var topics = await FilterRegistrationsByActivePeriod(_db.Registrations, activePeriod)
                     .Include(r => r.Topic)
                         .ThenInclude(t => t.Lecturer)
+                    .Include(r => r.Topic)
+                        .ThenInclude(t => t.Major)
                     .Include(r => r.Topic)
                         .ThenInclude(t => t.Comments)
 
@@ -124,8 +129,9 @@ namespace KLTN_Registration_System.Controllers
             if (user == null) return Unauthorized();
 
             var roles = await _userManager.GetRolesAsync(user);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
-            var topic = await _db.Topics
+            var topic = await FilterTopicsByActivePeriod(_db.Topics, activePeriod)
                 .Include(t => t.Lecturer)
                 .Include(t => t.Registrations!)
                     .ThenInclude(r => r.Student)
@@ -142,8 +148,8 @@ namespace KLTN_Registration_System.Controllers
 
             bool isStudent =
                 roles.Contains("Student") &&
-                topic.Registrations != null &&
-                topic.Registrations.Any(r =>
+                await FilterRegistrationsByActivePeriod(_db.Registrations, activePeriod).AnyAsync(r =>
+                    r.TopicId == topic.Id &&
                     r.StudentId == user.Id &&
                     r.Status == "Approved");
 
@@ -222,8 +228,9 @@ namespace KLTN_Registration_System.Controllers
             if (user == null) return Unauthorized();
 
             var roles = await _userManager.GetRolesAsync(user);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
-            var topic = await _db.Topics
+            var topic = await FilterTopicsByActivePeriod(_db.Topics, activePeriod)
                 .Include(t => t.Registrations)
                 .FirstOrDefaultAsync(t => t.Id == topicId);
 
@@ -232,7 +239,8 @@ namespace KLTN_Registration_System.Controllers
             bool canAccess =
                 (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
                 (roles.Contains("Student") &&
-                 (topic.Registrations ?? new List<Registration>()).Any(r =>
+                 await FilterRegistrationsByActivePeriod(_db.Registrations, activePeriod).AnyAsync(r =>
+                     r.TopicId == topic.Id &&
                      r.StudentId == user.Id &&
                      r.Status == "Approved"));
 
@@ -284,8 +292,9 @@ namespace KLTN_Registration_System.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized(new { error = "Bạn cần đăng nhập." });
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
-            var topic = await _db.Topics
+            var topic = await FilterTopicsByActivePeriod(_db.Topics, activePeriod)
                 .Include(t => t.Registrations)
                 .FirstOrDefaultAsync(t => t.Id == topicId);
 
@@ -295,7 +304,8 @@ namespace KLTN_Registration_System.Controllers
             bool canAccess =
                 (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
                 (roles.Contains("Student") &&
-                 (topic.Registrations ?? new List<Registration>()).Any(r =>
+                 await FilterRegistrationsByActivePeriod(_db.Registrations, activePeriod).AnyAsync(r =>
+                     r.TopicId == topic.Id &&
                      r.StudentId == user.Id &&
                      r.Status == "Approved"));
 
@@ -353,7 +363,8 @@ namespace KLTN_Registration_System.Controllers
 
         public async Task<IActionResult> DownloadUploadedFile(int topicId, string fileName)
         {
-            var topic = await _db.Topics
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var topic = await FilterTopicsByActivePeriod(_db.Topics, activePeriod)
                 .Include(t => t.Registrations)
                 .FirstOrDefaultAsync(t => t.Id == topicId);
 
@@ -369,11 +380,22 @@ namespace KLTN_Registration_System.Controllers
             if (user == null) return false;
 
             var roles = await _userManager.GetRolesAsync(user);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+
+            var isCurrentPeriodTopic = topic.RegistrationPeriodId == activePeriod.Id
+                || (topic.RegistrationPeriodId == null && topic.Semester == activePeriod.Name);
+            if (!isCurrentPeriodTopic)
+            {
+                return false;
+            }
+
             return (roles.Contains("Lecturer") && topic.LecturerId == user.Id) ||
                    (roles.Contains("Student") &&
-                    (topic.Registrations ?? new List<Registration>()).Any(r =>
-                        r.StudentId == user.Id &&
-                        r.Status == "Approved"));
+                    await FilterRegistrationsByActivePeriod(_db.Registrations, activePeriod)
+                        .AnyAsync(r =>
+                            r.TopicId == topic.Id &&
+                            r.StudentId == user.Id &&
+                            r.Status == "Approved"));
         }
 
         private IActionResult DownloadChatFile(string storedPathOrName, string? downloadName)

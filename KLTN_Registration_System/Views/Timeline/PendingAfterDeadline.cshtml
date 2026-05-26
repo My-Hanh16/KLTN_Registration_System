@@ -9,13 +9,19 @@
     int? selectedTimelineId = ViewBag.TimelineId is int timelineIdValue ? timelineIdValue : null;
 
     int totalOverdue = overdueSubmissions.Count;
-    int totalTimelines = timelines.Count;
+    int totalTimelines = overdueSubmissions
+        .Select(x => x.TimelineId)
+        .Distinct()
+        .Count();
     int affectedStudents = overdueSubmissions
         .Where(x => !string.IsNullOrWhiteSpace(x.StudentId))
         .Select(x => x.StudentId)
         .Distinct()
         .Count();
     int affectedLecturers = ViewBag.AffectedLecturers ?? 0;
+    string selectedSemester = ViewBag.Semester as string ?? Context.Request.Query["semester"].ToString();
+    string selectedYear = ViewBag.Year as string ?? Context.Request.Query["year"].ToString();
+    string selectedPeriodName = ViewBag.SelectedPeriodName as string ?? "";
 }
 
 @section Styles {
@@ -228,9 +234,13 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="page-title">Bài chờ duyệt quá hạn</h2>
-        <p class="page-sub">Các bài sinh viên đã nộp nhưng giảng viên chưa xử lý sau hạn duyệt.</p>
+        <p class="page-sub">Các bài sinh viên đã nộp nhưng giảng viên chưa xử lý sau hạn duyệt trong đợt @selectedPeriodName.</p>
     </div>
-    <a asp-action="Index" asp-controller="Timeline" class="btn btn-ghost">
+    <a asp-action="Index"
+       asp-controller="Timeline"
+       asp-route-semester="@selectedSemester"
+       asp-route-year="@selectedYear"
+       class="btn btn-ghost">
         <i class="fa-regular fa-clock"></i> Quay lại mốc thời gian
     </a>
 </div>
@@ -253,7 +263,7 @@
             <div class="stat-icon amber"><i class="fa-solid fa-layer-group"></i></div>
             <span class="stat-badge amber">Mốc</span>
         </div>
-        <div class="stat-label">Mốc thời gian quá hạn</div>
+        <div class="stat-label">Mốc có bài quá hạn</div>
         <div class="stat-number">@totalTimelines</div>
     </div>
 
@@ -295,6 +305,8 @@
             </h3>
 
             <form method="get" style="margin:0;">
+                <input type="hidden" name="semester" value="@selectedSemester" />
+                <input type="hidden" name="year" value="@selectedYear" />
                 <select name="timelineId" class="f-select" onchange="this.form.submit()">
                     <option value="">Tất cả mốc quá hạn</option>
                     @foreach (var tl in timelines)

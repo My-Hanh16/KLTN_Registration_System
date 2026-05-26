@@ -1,13 +1,35 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+@{
+    var controller = ViewContext.RouteData.Values["Controller"]?.ToString() ?? "";
+    var action = ViewContext.RouteData.Values["Action"]?.ToString() ?? "";
+
+    string IsActive(string targetController, string? targetAction = null)
+    {
+        var controllerMatches = string.Equals(controller, targetController, StringComparison.OrdinalIgnoreCase);
+        var actionMatches = string.IsNullOrWhiteSpace(targetAction)
+            || string.Equals(action, targetAction, StringComparison.OrdinalIgnoreCase);
+
+        return controllerMatches && actionMatches ? "active" : "";
+    }
+
+    string dashboardController = User.IsInRole("Admin")
+        ? "Admin"
+        : User.IsInRole("Lecturer")
+            ? "Lecturer"
+            : "Student";
+    string dashboardAction = User.IsInRole("Student") ? "Home" : "Index";
+}
+
+<!DOCTYPE html>
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - KLTN_Registration_System</title>
+    <title>@ViewData["Title"] - KLTN Portal</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/KLTN_Registration_System.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     <header>
@@ -16,46 +38,41 @@
                 <a class="navbar-brand fw-bold text-primary" asp-area="" asp-controller="Home" asp-action="Index">
                     <i class="fa-solid fa-graduation-cap me-2"></i>KLTN PORTAL
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Mở menu">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
 
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-dark @IsActive("Home", "Index")"
+                               asp-controller="Home"
+                               asp-action="Index">Trang chủ</a>
                         </li>
 
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            @if (User.IsInRole("Admin"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-danger fw-bold" asp-controller="Admin" asp-action="Index">Quản trị</a>
-                                </li>
-                            }
+                            <li class="nav-item">
+                                <a class="nav-link text-dark @IsActive(dashboardController, dashboardAction)"
+                                   asp-controller="@dashboardController"
+                                   asp-action="@dashboardAction">Bảng điều khiển</a>
+                            </li>
 
                             @if (User.IsInRole("Student"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Student" asp-action="Home">Dashboard</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Student" asp-action="MyRegistration">Đăng ký của tôi</a>
-                                </li>
-                            }
-
-                            @if (User.IsInRole("Lecturer"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Topic" asp-action="Manage">Quản lý đề tài</a>
+                                    <a class="nav-link text-dark @IsActive("Student", "MyRegistration")"
+                                       asp-controller="Student"
+                                       asp-action="MyRegistration">Đăng ký của tôi</a>
                                 </li>
                             }
                         }
 
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Topic" asp-action="Index">Danh sách đề tài</a>
+                            <a class="nav-link text-dark @IsActive("Topic", "Index")"
+                               asp-controller="Topic"
+                               asp-action="Index">Danh sách đề tài</a>
                         </li>
                     </ul>
 
@@ -81,19 +98,35 @@
                         else
                         {
                             <li class="nav-item">
-                                <a class="nav-link btn btn-outline-primary px-4 border-0" asp-controller="Account" asp-action="Login">
-                                    Đăng nhập
-                                </a>
+                                <a class="nav-link btn btn-outline-primary px-4 border-0"
+                                   asp-controller="Account"
+                                   asp-action="Login">Đăng nhập</a>
                             </li>
                         }
                     </ul>
-
                 </div>
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
+            @if (TempData["Success"] != null)
+            {
+                <div class="portal-alert portal-alert-success">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>@TempData["Success"]</span>
+                </div>
+            }
+
+            @if (TempData["Error"] != null)
+            {
+                <div class="portal-alert portal-alert-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>@TempData["Error"]</span>
+                </div>
+            }
+
             @RenderBody()
         </main>
     </div>
@@ -109,4 +142,4 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
-</html> 
+</html>

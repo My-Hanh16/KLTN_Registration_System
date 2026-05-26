@@ -4,13 +4,17 @@
     ViewData["Title"] = "Dashboard Giảng viên";
 
     // Ép kiểu dữ liệu an toàn từ ViewBag
-    var guidingGroups = ViewBag.GuidingGroups as List<KLTN_Registration_System.Models.Entities.Registration> ?? new List<KLTN_Registration_System.Models.Entities.Registration>();
+    var guidingTopics = ViewBag.GuidingTopics as List<KLTN_Registration_System.Models.Entities.Topic> ?? new List<KLTN_Registration_System.Models.Entities.Topic>();
     var upcomingSchedules = ViewBag.UpcomingSchedules as List<dynamic> ?? new List<dynamic>();
+    var majors = ViewBag.Majors as List<KLTN_Registration_System.Models.Entities.Major> ?? new List<KLTN_Registration_System.Models.Entities.Major>();
+    bool noMajorAssigned = !majors.Any();
 
     // Logic tính toán phân bổ đề tài
     var total = (int)(ViewBag.TotalTopics ?? 0);
     var app = (int)(ViewBag.AppCount ?? 0);
     var res = (int)(ViewBag.ResCount ?? 0);
+    var activePeriod = ViewBag.ActivePeriod as KLTN_Registration_System.Models.Entities.RegistrationPeriod;
+    string activePeriodName = activePeriod?.Name ?? "Chưa cấu hình";
 
     // Tính toán phần trăm chính xác (làm tròn 1 chữ số thập phân)
     double appRate = total > 0 ? ((double)app / total * 100) : 0;
@@ -28,6 +32,36 @@
         height: 8px;
         border-radius: 50%;
         display: inline-block;
+    }
+
+    .dashboard-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin-bottom: 18px;
+        font-size: 13px;
+        font-weight: 700;
+        border: 1px solid transparent;
+    }
+
+    .dashboard-alert.success {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #15803d;
+    }
+
+    .dashboard-alert.error {
+        background: #fff5f5;
+        border-color: #fecaca;
+        color: #dc2626;
+    }
+
+    .dashboard-alert.warning {
+        background: #fffbeb;
+        border-color: #fde68a;
+        color: #92400e;
     }
 </style>
 <style>
@@ -58,10 +92,16 @@
         <p class="font-body opacity-90 max-w-lg">
             Bạn có <b>@ViewBag.TotalPending</b> yêu cầu mới cần xem xét và <b>@upcomingSchedules.Count</b> buổi hẹn hướng dẫn hôm nay.
         </p>
+        <div class="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20">
+            <span class="material-symbols-outlined">event</span>
+            Đợt hiện tại: @activePeriodName
+        </div>
     </div>
     <div class="z-10 relative">
         <button onclick="openCreateModal()"
-                class="bg-surface-container-lowest text-primary font-bold px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-slate-50 transition-all shadow-lg active:scale-95 border-0">
+                disabled="@noMajorAssigned"
+                title="@(noMajorAssigned ? "Bạn cần được Admin phân công chuyên ngành trước khi tạo đề tài." : "Tạo đề tài mới")"
+                class="bg-surface-container-lowest text-primary font-bold px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-slate-50 transition-all shadow-lg active:scale-95 border-0 disabled:opacity-60 disabled:cursor-not-allowed">
 
             <span class="material-symbols-outlined">add</span>
 
@@ -71,45 +111,96 @@
     <div class="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
 </section>
 
+@if (TempData["Success"] != null)
+{
+    <div class="dashboard-alert success">
+        <span class="material-symbols-outlined">check_circle</span>
+        <span>@TempData["Success"]</span>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="dashboard-alert error">
+        <span class="material-symbols-outlined">error</span>
+        <span>@TempData["Error"]</span>
+    </div>
+}
+
+@if (noMajorAssigned)
+{
+    <div class="dashboard-alert warning">
+        <span class="material-symbols-outlined">assignment_late</span>
+        <span>Bạn chưa được Admin phân công chuyên ngành, vì vậy chưa thể tạo đề tài mới.</span>
+    </div>
+}
+
 <div class="grid grid-cols-12 gap-8">
     <div class="col-span-12 lg:col-span-8 space-y-8">
 
         <div>
             <div class="flex justify-between items-end mb-4">
-                <h3 class="font-headline text-xl font-bold text-on-surface">Nhóm Đang Hướng Dẫn</h3>
-                <a class="text-sm font-semibold text-primary hover:underline no-underline" href="#">Xem tất cả (@ViewBag.TotalApproved)</a>
+                <h3 class="font-headline text-xl font-bold text-on-surface">Đề Tài Đang Hướng Dẫn</h3>
+                <a asp-controller="Lecturer" asp-action="GuidedTopics"
+                   class="text-sm font-semibold text-primary hover:underline no-underline">
+                    Xem tất cả (@ViewBag.TotalApproved)
+                </a>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                @if (!guidingGroups.Any())
+                @if (!guidingTopics.Any())
                 {
                     <div class="col-span-2 py-10 text-center bg-white rounded-2xl border-2 border-dashed border-slate-200 text-slate-400">
-                        Chưa có nhóm nào được phê duyệt hướng dẫn.
+                        Chưa có đề tài nào có sinh viên được duyệt.
                     </div>
                 }
                 else
                 {
-                    @foreach (var group in guidingGroups)
+                    @foreach (var topic in guidingTopics)
                     {
+                        var students = topic.Registrations?
+                            .Where(r => r.Status == "Approved" && r.Student != null)
+                            .OrderBy(r => r.Student!.FullName)
+                            .Select(r => r.Student!)
+                            .ToList() ?? new List<KLTN_Registration_System.Models.Entities.ApplicationUser>();
+                        var leader = students.FirstOrDefault();
+                        var fillPercent = topic.MaxStudents > 0
+                            ? Math.Min(100, (int)Math.Round((double)students.Count / topic.MaxStudents * 100))
+                            : 0;
+
                         <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/10 hover:translate-y-[-4px] transition-all duration-300">
                             <div class="flex justify-between items-start mb-4">
                                 <span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold rounded-full uppercase">
-                                    @(group.Topic?.Major?.Name ?? "KLTN")
+                                    @(topic.Major?.Name ?? topic.DepartmentName ?? "KLTN")
                                 </span>
-                                <span class="material-symbols-outlined text-slate-300 cursor-pointer">more_vert</span>
+                                <span class="text-[11px] font-bold text-slate-400">@students.Count/@topic.MaxStudents SV</span>
                             </div>
-                            <h4 class="font-headline text-lg font-bold mb-2 leading-tight text-on-surface">@group.Topic?.Title</h4>
-                            <div class="flex items-center gap-2 text-xs text-on-surface-variant mb-6">
+                            <h4 class="font-headline text-lg font-bold mb-2 leading-tight text-on-surface">@topic.Title</h4>
+                            <div class="flex items-center gap-2 text-xs text-on-surface-variant mb-3">
                                 <span class="material-symbols-outlined text-sm">group</span>
-                                <span>Trưởng nhóm: <b>@(!string.IsNullOrEmpty(group.Student?.FullName) ? group.Student.FullName : group.Student?.UserName)</b></span>
+                                <span>Trưởng nhóm: <b>@(!string.IsNullOrEmpty(leader?.FullName) ? leader.FullName : leader?.UserName ?? "Chưa có")</b></span>
+                            </div>
+                            <div class="flex flex-wrap gap-2 mb-6">
+                                @foreach (var student in students.Take(3))
+                                {
+                                    <span class="px-3 py-1 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-bold">
+                                        @(!string.IsNullOrEmpty(student.FullName) ? student.FullName : student.UserName)
+                                    </span>
+                                }
+                                @if (students.Count > 3)
+                                {
+                                    <span class="px-3 py-1 rounded-xl bg-slate-100 text-slate-500 text-[11px] font-bold">
+                                        +@(students.Count - 3)
+                                    </span>
+                                }
                             </div>
                             <div class="space-y-2">
                                 <div class="flex justify-between text-xs font-semibold">
-                                    <span>Tiến độ thực hiện</span>
-                                    <span class="text-primary">5%</span>
+                                    <span>Sĩ số đề tài</span>
+                                    <span class="text-primary">@fillPercent%</span>
                                 </div>
                                 <div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                                    <div class="bg-primary h-full rounded-full" style="width: 5%"></div>
+                                    <div class="bg-primary h-full rounded-full" style="width: @fillPercent%"></div>
                                 </div>
                             </div>
                         </div>
@@ -343,11 +434,20 @@
                 <select id="majorId"
                         class="w-full border rounded-xl p-3 mt-1">
 
-                    @foreach (var major in ViewBag.Majors)
+                    @if (!majors.Any())
                     {
-                        <option value="@major.Id">
-                            @major.Name
+                        <option value="">
+                            Chưa được phân công chuyên ngành
                         </option>
+                    }
+                    else
+                    {
+                        @foreach (var major in majors)
+                        {
+                            <option value="@major.Id">
+                                @major.Name
+                            </option>
+                        }
                     }
 
                 </select>
@@ -403,7 +503,8 @@
             </button>
 
             <button onclick="createTopic()"
-                    class="px-6 py-3 rounded-xl bg-primary text-white font-bold">
+                    disabled="@noMajorAssigned"
+                    class="px-6 py-3 rounded-xl bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                 Tạo đề tài
             </button>
 
@@ -423,6 +524,10 @@
 <script>
 
     function openCreateModal() {
+        if (@(noMajorAssigned.ToString().ToLowerInvariant())) {
+            showToast('Bạn chưa được Admin phân công chuyên ngành nên chưa thể tạo đề tài.', false);
+            return;
+        }
 
         document.getElementById('createModal').style.display = 'block';
     }
@@ -439,7 +544,17 @@
 
         if (!title.trim()) {
 
-            alert('Vui lòng nhập tên đề tài');
+            showToast('Vui lòng nhập tên đề tài', false);
+
+            return;
+        }
+
+        const majorElement = document.getElementById('majorId');
+        const majorId = parseInt(majorElement?.value || '');
+
+        if (!majorId) {
+
+            showToast('Bạn chưa được phân công chuyên ngành để tạo đề tài.', false);
 
             return;
         }
@@ -454,9 +569,7 @@
             description:
                 document.getElementById('topicDescription').value,
 
-            majorId: parseInt(
-                document.getElementById('majorId').value
-            ),
+            majorId: majorId,
 
             deadline: deadlineElement && deadlineElement.value
                 ? deadlineElement.value
@@ -478,7 +591,7 @@
 
                 headers: {
                     'Content-Type': 'application/json',
-                    'RequestVerificationToken': document.querySelector('#createTopicModal input[name="__RequestVerificationToken"]')?.value ?? ''
+                    'RequestVerificationToken': document.querySelector('#createModal input[name="__RequestVerificationToken"]')?.value ?? ''
                 },
 
                 body: JSON.stringify(topic)

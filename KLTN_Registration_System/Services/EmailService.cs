@@ -32,6 +32,7 @@ namespace KLTN_Registration_System.Services
             email.Body = new TextPart(TextFormat.Html) { Text = body };
 
             using var smtp = new MailKit.Net.Smtp.SmtpClient();
+            smtp.CheckCertificateRevocation = false;
 
             await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
             await smtp.AuthenticateAsync(senderEmail, appPassword);

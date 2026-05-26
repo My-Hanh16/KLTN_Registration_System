@@ -16,9 +16,12 @@ namespace KLTN_Registration_System.Models.Entities
         // Không phá cấu trúc cũ, chỉ thêm navigation
         public int? MajorId { get; set; }
         public Major? Major { get; set; }
+        public bool HasCompletedThesis { get; set; } = false;
+        public DateTime? ThesisCompletedAt { get; set; }
 
         public ICollection<UserMajor> UserMajors { get; set; } = new List<UserMajor>();
         public ICollection<Registration> Registrations { get; set; } = new List<Registration>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+        public ICollection<PeriodStudent> PeriodStudents { get; set; } = new List<PeriodStudent>();
     }
 }

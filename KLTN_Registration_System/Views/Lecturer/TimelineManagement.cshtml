@@ -1,7 +1,11 @@
 ﻿@model IEnumerable<KLTN_Registration_System.Models.Entities.Timeline>
 @using KLTN_Registration_System.Models.Enums
+@using KLTN_Registration_System.Controllers
 @{
     Layout = "_LayoutDashboard";
+
+    static string FormatReviewDeadline(DateTime value)
+        => $"{value:HH:mm} ngày {value:dd/MM/yyyy}";
 }
 
 @section Styles {
@@ -27,7 +31,7 @@
             ══════════════════════════════════════ */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
             gap: 16px;
             margin-bottom: 24px;
         }
@@ -71,6 +75,11 @@
                 color: #dc2626;
             }
 
+            .stat-icon.slate {
+                background: #f1f5f9;
+                color: #475569;
+            }
+
         .stat-badge {
             font-size: 10px;
             font-weight: 700;
@@ -98,6 +107,11 @@
                 color: #dc2626;
             }
 
+            .stat-badge.slate {
+                background: #f1f5f9;
+                color: #475569;
+            }
+
         .stat-label {
             font-size: 12px;
             color: #64748b;
@@ -110,6 +124,160 @@
             font-weight: 800;
             color: #1e293b;
             line-height: 1.1;
+        }
+
+        .defense-panel {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 16px;
+            padding: 20px 22px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+
+        .defense-panel-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .defense-title {
+            color: #1e293b;
+            font-size: 16px;
+            font-weight: 800;
+            margin-bottom: 3px;
+        }
+
+        .defense-sub {
+            color: #94a3b8;
+            font-size: 12.5px;
+            margin: 0;
+        }
+
+        .defense-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+
+        .defense-item {
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            background: #fff;
+            padding: 14px;
+        }
+
+        .defense-item.eligible {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .defense-student {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .defense-name {
+            color: #1e293b;
+            font-size: 13.5px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .defense-code {
+            color: #64748b;
+            font-size: 11.5px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        .defense-badge {
+            border-radius: 999px;
+            padding: 5px 9px;
+            font-size: 10.5px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .defense-badge.ok {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .defense-badge.no {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .defense-topic {
+            color: #475569;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .defense-progress {
+            height: 7px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            overflow: hidden;
+            margin-bottom: 9px;
+        }
+
+        .defense-progress > div {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg,#4f46e5,#22c55e);
+        }
+
+        .defense-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .defense-empty {
+            padding: 18px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 14px;
+            color: #94a3b8;
+            font-size: 13px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .page-alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .page-alert.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+        }
+
+        .page-alert.error {
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            color: #dc2626;
         }
 
         /* ══════════════════════════════════════
@@ -819,7 +987,13 @@
 
     int totalPending = allSubs.Count(s => s.Status == SubmissionStatus.Pending);
     int totalApproved = allSubs.Count(s => s.Status == SubmissionStatus.Approved);
+    int totalRejected = allSubs.Count(s => s.Status == SubmissionStatus.Rejected);
     int totalTimelines = Model.Count();
+    var activePeriod = ViewBag.ActivePeriod as KLTN_Registration_System.Models.Entities.RegistrationPeriod;
+    string activePeriodName = activePeriod?.Name ?? "";
+    var defenseEligibility = ViewBag.DefenseEligibility as List<LecturerController.DefenseEligibilityVM>
+        ?? new List<LecturerController.DefenseEligibilityVM>();
+    int defenseEligibleCount = defenseEligibility.Count(x => x.IsEligible);
     int nearDeadline = Model.Count(t =>
     {
         if (t.ReviewDeadline == null) return false;
@@ -834,9 +1008,32 @@
     <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
             <h2 class="page-title">Duyệt tiến độ sinh viên</h2>
-            <p class="page-sub">Theo dõi, đánh giá và phê duyệt bài nộp trước thời hạn tổng hợp lên Admin.</p>
+            <p class="page-sub">
+                Theo dõi, đánh giá và phê duyệt bài nộp trước thời hạn tổng hợp lên Admin
+                @if (!string.IsNullOrWhiteSpace(activePeriodName))
+                {
+                    <span> trong đợt @activePeriodName</span>
+                }
+                .
+            </p>
         </div>
     </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="page-alert success">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>@TempData["Success"]</span>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="page-alert error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
 
     <!-- STATS -->
     <div class="stats-grid">
@@ -869,12 +1066,74 @@
 
         <div class="stat-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="stat-icon slate"><i class="fa-solid fa-ban"></i></div>
+                <span class="stat-badge slate">Phản hồi</span>
+            </div>
+            <div class="stat-label">Bài đã từ chối</div>
+            <div class="stat-number">@totalRejected</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
                 <span class="stat-badge red">Cảnh báo</span>
             </div>
             <div class="stat-label">Mốc sắp hết hạn duyệt</div>
             <div class="stat-number">@nearDeadline</div>
         </div>
+    </div>
+
+    <div class="defense-panel">
+        <div class="defense-panel-head">
+            <div>
+                <div class="defense-title">Điều kiện báo cáo khóa luận</div>
+                <p class="defense-sub">Sinh viên chỉ đủ điều kiện khi mọi mốc bắt buộc đã được duyệt.</p>
+            </div>
+            <span class="stat-badge @(defenseEligibleCount == defenseEligibility.Count && defenseEligibility.Any() ? "green" : "blue")">
+                @defenseEligibleCount/@defenseEligibility.Count đủ điều kiện
+            </span>
+        </div>
+
+        @if (!defenseEligibility.Any())
+        {
+            <div class="defense-empty">
+                Chưa có sinh viên nào được duyệt vào đề tài của bạn trong đợt hiện tại.
+            </div>
+        }
+        else
+        {
+            <div class="defense-list">
+                @foreach (var item in defenseEligibility)
+                {
+                    int progress = item.RequiredCount > 0
+                        ? Math.Min(100, item.ApprovedCount * 100 / item.RequiredCount)
+                        : 0;
+
+                    <div class="defense-item @(item.IsEligible ? "eligible" : "blocked")">
+                        <div class="defense-student">
+                            <div>
+                                <div class="defense-name">@item.StudentName</div>
+                                <div class="defense-code">@item.StudentCode</div>
+                            </div>
+                            <span class="defense-badge @(item.IsEligible ? "ok" : "no")">
+                                @(item.IsEligible ? "Đủ điều kiện" : "Chưa đủ")
+                            </span>
+                        </div>
+
+                        <div class="defense-topic">@item.TopicTitle</div>
+                        <div class="defense-progress">
+                            <div style="width:@progress%"></div>
+                        </div>
+                        <div class="defense-meta">
+                            <span>Duyệt: @item.ApprovedCount/@item.RequiredCount</span>
+                            <span>Chờ: @item.PendingCount</span>
+                            <span>Từ chối: @item.RejectedCount</span>
+                            <span>Thiếu: @item.MissingCount</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     </div>
 
     <!-- ══ TIMELINE SECTIONS ══ -->
@@ -937,6 +1196,7 @@
         }
 
         bool isLocked = deadlineStatus == "passed";
+        bool shouldOpenSection = pendingCount > 0 && !isLocked;
 
         var refDate = reviewDeadline ?? (submissions.Any()
         ? submissions.Max(s => s.SubmittedAt)
@@ -946,8 +1206,12 @@
         string btnId = $"tl-btn-{timeline.Id}";
 
         // Chuỗi JS-safe cho deadline
+        string deadlineDisplay = reviewDeadline.HasValue
+        ? FormatReviewDeadline(reviewDeadline.Value)
+        : "";
+
         string jsDeadlineTime = reviewDeadline.HasValue
-        ? $"\"{reviewDeadline.Value:HH:mm, dd/MM/yyyy}\""
+        ? System.Text.Json.JsonSerializer.Serialize(deadlineDisplay)
         : "null";
         string jsDeadlineStatus = $"\"{deadlineStatus}\"";
 
@@ -993,7 +1257,7 @@
                 </div>
 
                 <!-- Toggle button -->
-                <button id="@btnId" type="button" class="btn-toggle"
+                <button id="@btnId" type="button" class="btn-toggle @(shouldOpenSection ? "open" : "")"
                         onclick="event.stopPropagation(); toggleSection('@sectionId','@btnId')">
                     @if (pendingCount > 0 && !isLocked)
                     {
@@ -1009,7 +1273,7 @@
             </div>
 
             <!-- BODY -->
-            <div id="@sectionId" class="tl-body">
+            <div id="@sectionId" class="tl-body @(shouldOpenSection ? "open" : "")">
 
                 @if (deadlineStatus == "near" && reviewDeadline.HasValue)
                 {
@@ -1017,7 +1281,7 @@
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <div>
                             <strong>Sắp hết hạn duyệt!</strong> Bạn phải hoàn tất duyệt toàn bộ bài nộp trước
-                            <strong>@reviewDeadline.Value.ToString("HH:mm ngày dd/MM/yyyy")</strong>
+                            <strong>@deadlineDisplay</strong>
                             (@deadlineText). Sau thời điểm này hệ thống sẽ khóa và tự động tổng hợp kết quả lên Admin.
                         </div>
                     </div>
@@ -1029,7 +1293,7 @@
                         <i class="fa-solid fa-lock"></i>
                         <div>
                             <strong>Đã hết hạn duyệt.</strong> Thời hạn kết thúc lúc
-                            <strong>@reviewDeadline.Value.ToString("HH:mm ngày dd/MM/yyyy")</strong>.
+                            <strong>@deadlineDisplay</strong>.
                             Kết quả đã được tổng hợp và gửi lên Admin. Nếu cần điều chỉnh, hãy liên hệ Ban quản lý.
                         </div>
                     </div>

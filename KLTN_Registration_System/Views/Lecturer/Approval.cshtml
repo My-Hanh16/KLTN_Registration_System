@@ -1,9 +1,12 @@
 ﻿@using KLTN_Registration_System.Controllers
+@using KLTN_Registration_System.Models.Entities
 @model IEnumerable<KLTN_Registration_System.Controllers.LecturerController.GroupedRegistration>
 @{
     Layout = "_LayoutDashboard";
     string currentStatus = Context.Request.Query["status"].ToString();
     if (string.IsNullOrEmpty(currentStatus)) currentStatus = "Pending";
+    var pendingProposals = ViewBag.PendingStudentProposals as List<Topic> ?? new List<Topic>();
+    var lecturers = ViewBag.Lecturers as List<ApplicationUser> ?? new List<ApplicationUser>();
 }
 
 @section Styles {
@@ -72,6 +75,95 @@
     </div>
 
 </div>
+
+@if (pendingProposals.Any())
+{
+    <div class="table-card mb-4">
+        <div class="table-header">
+            <div>
+                <h3 class="table-title">Đề xuất sinh viên chọn bạn hướng dẫn</h3>
+                <div class="text-muted small">Đồng ý hướng dẫn, chuyển sang giảng viên khác, hoặc từ chối để sinh viên đề xuất đề tài mới trước hạn đăng ký.</div>
+            </div>
+            <span class="stat-badge blue">@pendingProposals.Count đề xuất</span>
+        </div>
+
+        <div class="table-scroll">
+            <table class="approval-table">
+                <thead>
+                    <tr>
+                        <th class="col-topic">Đề tài & sinh viên đề xuất</th>
+                        <th class="text-center">Chuyên ngành</th>
+                        <th class="text-center">Ngày gửi</th>
+                        <th class="text-end th-actions">Quyết định</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var topic in pendingProposals)
+                    {
+                        <tr>
+                            <td>
+                                <div>
+                                    <span class="topic-name">@topic.Title</span>
+                                    <span class="type-badge individual">Sinh viên đề xuất</span>
+                                </div>
+                                <div class="student-chips">
+                                    <div class="student-chip">
+                                        <i class="fa-regular fa-user"></i>
+                                        @(topic.Student?.FullName ?? topic.Student?.Email ?? "Sinh viên")
+                                    </div>
+                                </div>
+                                <div class="text-muted small mt-2">@topic.Description</div>
+                            </td>
+                            <td class="text-center">
+                                <span class="mssv-badge">@(topic.Major?.Name ?? topic.DepartmentName ?? "Chưa rõ")</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="date-text">@topic.CreatedAt.ToString("dd/MM/yyyy")</span>
+                            </td>
+                            <td class="text-end td-actions">
+                                <div class="d-flex justify-content-end align-items-center gap-2 flex-wrap">
+                                    <form asp-action="ApproveStudentProposal" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="topicId" value="@topic.Id" />
+                                        <button type="submit" class="btn-approve" title="Đồng ý hướng dẫn">
+                                            <i class="fa-solid fa-check"></i>
+                                        </button>
+                                    </form>
+
+                                    <form asp-action="ForwardStudentProposal" method="post" class="d-flex gap-2 align-items-center">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="topicId" value="@topic.Id" />
+                                        <select name="assignLecturerId" class="modal-textarea"
+                                                style="width:220px;min-height:38px;padding:8px 10px;" required>
+                                            <option value="">Chuyển cho GV khác...</option>
+                                            @foreach (var lecturer in lecturers)
+                                            {
+                                                <option value="@lecturer.Id">@lecturer.FullName</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn-approve" title="Phân công giảng viên khác">
+                                            <i class="fa-solid fa-user-plus"></i>
+                                        </button>
+                                    </form>
+
+                                    <form asp-action="RejectStudentProposal" method="post" class="d-flex gap-2 align-items-center">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="topicId" value="@topic.Id" />
+                                        <input name="reason" class="modal-textarea" style="width:220px;min-height:38px;padding:8px 10px;"
+                                               placeholder="Lý do từ chối, yêu cầu SV đổi đề tài..." />
+                                        <button type="submit" class="btn-reject" title="Từ chối hướng dẫn">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
 
 <!-- TABLE -->
 <div class="table-card">

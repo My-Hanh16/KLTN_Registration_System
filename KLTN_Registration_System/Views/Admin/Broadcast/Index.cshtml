@@ -5,6 +5,7 @@
 @{
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Broadcast thông báo";
+    string selectedPeriodName = ViewBag.SelectedPeriodName?.ToString() ?? ViewBag.AdminSelectedPeriodName?.ToString() ?? "đợt đang mở";
 }
 
 @section Styles {
@@ -738,7 +739,7 @@
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="page-title">Broadcast thông báo</h2>
-        <p class="page-sub">Gửi thông báo đến toàn bộ sinh viên, giảng viên hoặc tất cả người dùng.</p>
+        <p class="page-sub">Gửi thông báo theo đợt @selectedPeriodName. Nhóm sinh viên chỉ gồm sinh viên đủ điều kiện của đợt này.</p>
     </div>
 </div>
 
@@ -763,7 +764,7 @@
     <div class="stat-card">
         <div class="stat-icon green"><i class="fa-solid fa-graduation-cap"></i></div>
         <div>
-            <div class="stat-label">Sinh viên</div>
+            <div class="stat-label">Sinh viên đợt này</div>
             <div class="stat-number">@(ViewBag.TotalStudents ?? 0)</div>
         </div>
     </div>

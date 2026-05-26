@@ -1,211 +1,807 @@
 ﻿@* ============================================================
    FILE: Views/Admin/StudentProposals.cshtml
    MODEL: IEnumerable<Topic>
-   Quản lý đề xuất đề tài từ sinh viên — duyệt / từ chối
    ============================================================ *@
 @using KLTN_Registration_System.Models.Entities
 @model IEnumerable<Topic>
 @{
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Đề xuất từ sinh viên";
+
     int pendingCount = ViewBag.PendingCount ?? 0;
     int approvedCount = ViewBag.ApprovedCount ?? 0;
+    int rejectedCount = ViewBag.RejectedCount ?? 0;
+    int totalCount = pendingCount + approvedCount + rejectedCount;
     string? statusFilter = ViewBag.StatusFilter;
+
+    const string lecturerApprovedPrefix = "[LECTURER_APPROVED]";
+    const string lecturerRejectedPrefix = "[LECTURER_REJECTED]";
+    var lecturerOptions = ViewBag.Lecturers as IList<ApplicationUser> ?? new List<ApplicationUser>();
 }
 
-<div class="px-6 py-6">
+@section Styles {
+    <style>
+        /* ══════════════════════════════════════
+               PAGE HEADER
+            ══════════════════════════════════════ */
+        .page-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
 
-    @* Header *@
-    <div class="flex items-center justify-between mb-6">
+        .page-sub {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        /* ══════════════════════════════════════
+               STATS ROW
+            ══════════════════════════════════════ */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            padding: 18px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.03);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+            .stat-icon.blue {
+                background: #eff6ff;
+                color: #2563eb;
+            }
+
+            .stat-icon.amber {
+                background: #fffbeb;
+                color: #d97706;
+            }
+
+            .stat-icon.green {
+                background: #f0fdf4;
+                color: #16a34a;
+            }
+
+            .stat-icon.red {
+                background: #fff5f5;
+                color: #dc2626;
+            }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1e293b;
+            line-height: 1;
+        }
+
+        /* ══════════════════════════════════════
+               ALERTS
+            ══════════════════════════════════════ */
+        .alert-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+
+            .alert-bar.success {
+                background: #f0fdf4;
+                border: 1px solid #bbf7d0;
+                color: #15803d;
+            }
+
+            .alert-bar.error {
+                background: #fff5f5;
+                border: 1px solid #fecaca;
+                color: #dc2626;
+            }
+
+        /* ══════════════════════════════════════
+               FILTER TABS
+            ══════════════════════════════════════ */
+        .filter-tabs {
+            display: flex;
+            gap: 4px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 12px;
+            width: fit-content;
+            margin-bottom: 20px;
+        }
+
+        .filter-tab {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 7px 18px;
+            border-radius: 9px;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+
+            .filter-tab:hover {
+                background: #fff;
+                color: #4f46e5;
+            }
+
+            .filter-tab.active {
+                background: #fff;
+                color: #1e293b;
+                box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            }
+
+                .filter-tab.active.all {
+                    color: #1e293b;
+                }
+
+                .filter-tab.active.amber {
+                    color: #d97706;
+                }
+
+                .filter-tab.active.green {
+                    color: #16a34a;
+                }
+
+        .tab-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 18px;
+            padding: 0 6px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 800;
+            margin-left: 5px;
+        }
+
+            .tab-count.amber {
+                background: #fef3c7;
+                color: #d97706;
+            }
+
+            .tab-count.green {
+                background: #dcfce7;
+                color: #15803d;
+            }
+
+            .tab-count.red {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+
+            .tab-count.blue {
+                background: #dbeafe;
+                color: #2563eb;
+            }
+
+        /* ══════════════════════════════════════
+               PROPOSAL CARD
+            ══════════════════════════════════════ */
+        .proposal-card {
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.03);
+            margin-bottom: 14px;
+            overflow: hidden;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+            .proposal-card:last-child {
+                margin-bottom: 0;
+            }
+
+            .proposal-card:hover {
+                border-color: #c7d2fe;
+                box-shadow: 0 4px 16px rgba(0,0,0,.06);
+            }
+
+        .proposal-body {
+            padding: 20px 24px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        /* Left: info */
+        .prop-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .prop-badges {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        /* Status badge */
+        .s-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            padding: 3px 10px;
+            border-radius: 99px;
+        }
+
+            .s-badge.added {
+                background: #dcfce7;
+                color: #15803d;
+            }
+
+            .s-badge.lec-ok {
+                background: #dbeafe;
+                color: #1d4ed8;
+            }
+
+            .s-badge.lec-no {
+                background: #fee2e2;
+                color: #dc2626;
+            }
+
+            .s-badge.admin-no {
+                background: #fff5f5;
+                color: #b91c1c;
+            }
+
+            .s-badge.need-lec {
+                background: #fef3c7;
+                color: #d97706;
+            }
+
+            .s-badge.waiting {
+                background: #f1f5f9;
+                color: #64748b;
+            }
+
+        /* Topic code */
+        .topic-code {
+            font-size: 11px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            background: #f1f5f9;
+            color: #64748b;
+            border-radius: 5px;
+            padding: 2px 7px;
+        }
+
+        .prop-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .prop-desc {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .prop-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            font-size: 12.5px;
+            color: #64748b;
+        }
+
+        .prop-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+            .prop-meta-item i {
+                font-size: 11px;
+                color: #94a3b8;
+            }
+
+            .prop-meta-item strong {
+                color: #334155;
+            }
+
+        /* Note box */
+        .note-box {
+            margin-top: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 8px 12px;
+            font-size: 12.5px;
+            color: #475569;
+            line-height: 1.55;
+        }
+
+        /* Right: actions panel */
+        .prop-actions {
+            width: 280px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Action group */
+        .action-group {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .action-group-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .7px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        /* Inline select */
+        .act-select {
+            width: 100%;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            color: #1e293b;
+            background: #fff;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 28px;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+            .act-select:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+            }
+
+            .act-select.red:focus {
+                border-color: #dc2626;
+                box-shadow: 0 0 0 3px rgba(220,38,38,.08);
+            }
+
+        .act-input {
+            width: 100%;
+            border: 1.5px solid #fca5a5;
+            border-radius: 9px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            color: #1e293b;
+            background: #fff;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+            .act-input:focus {
+                border-color: #dc2626;
+                box-shadow: 0 0 0 3px rgba(220,38,38,.08);
+            }
+
+            .act-input::placeholder {
+                color: #cbd5e1;
+            }
+
+        /* Action buttons */
+        .act-btn {
+            width: 100%;
+            padding: 9px 14px;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+            .act-btn.green {
+                background: #16a34a;
+                color: #fff;
+                box-shadow: 0 3px 10px rgba(22,163,74,.22);
+            }
+
+                .act-btn.green:hover {
+                    background: #15803d;
+                }
+
+            .act-btn.blue {
+                background: #2563eb;
+                color: #fff;
+                box-shadow: 0 3px 10px rgba(37,99,235,.22);
+            }
+
+                .act-btn.blue:hover {
+                    background: #1d4ed8;
+                }
+
+            .act-btn.red-outline {
+                background: #fff5f5;
+                color: #dc2626;
+                border: 1.5px solid #fca5a5;
+            }
+
+                .act-btn.red-outline:hover {
+                    background: #dc2626;
+                    color: #fff;
+                }
+
+        /* ══════════════════════════════════════
+               EMPTY STATE
+            ══════════════════════════════════════ */
+        .empty-state {
+            text-align: center;
+            padding: 64px 24px;
+            background: #fff;
+            border: 1px solid #e8edf4;
+            border-radius: 14px;
+            color: #94a3b8;
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 16px;
+            opacity: .6;
+        }
+
+        .empty-state h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            margin: 0;
+        }
+    </style>
+}
+
+<!-- ════════════════════════════════
+     ALERTS
+════════════════════════════════ -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert-bar success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>@TempData["Success"]</span>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert-bar error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>@TempData["Error"]</span>
+    </div>
+}
+
+<!-- ════════════════════════════════
+     PAGE HEADER
+════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h2 class="page-title">Đề xuất đề tài từ sinh viên</h2>
+        <p class="page-sub">Duyệt hoặc từ chối đề tài do sinh viên tự đề xuất, phân công giảng viên hướng dẫn.</p>
+    </div>
+</div>
+
+<!-- ════════════════════════════════
+     STATS ROW
+════════════════════════════════ -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="fa-solid fa-lightbulb"></i></div>
         <div>
-            <h1 class="text-2xl font-bold text-slate-800">Đề xuất đề tài từ sinh viên</h1>
-            <p class="text-sm text-slate-500 mt-0.5">Duyệt hoặc từ chối đề tài do sinh viên tự đề xuất</p>
-        </div>
-        <div class="flex gap-2 text-sm">
-            <a asp-action="StudentProposals" class="px-4 py-2 rounded-lg @(statusFilter == null ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")">
-                Tất cả (@(pendingCount + approvedCount))
-            </a>
-            <a asp-action="StudentProposals" asp-route-status="pending"
-               class="px-4 py-2 rounded-lg @(statusFilter == "pending" ? "bg-yellow-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")">
-                Chờ duyệt (@pendingCount)
-            </a>
-            <a asp-action="StudentProposals" asp-route-status="approved"
-               class="px-4 py-2 rounded-lg @(statusFilter == "approved" ? "bg-green-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200")">
-                Đã duyệt (@approvedCount)
-            </a>
+            <div class="stat-label">Tổng đề xuất</div>
+            <div class="stat-number">@totalCount</div>
         </div>
     </div>
-
-    @if (TempData["Success"] != null)
-    {
-        <div class="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">✅ @TempData["Success"]</div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">⚠️ @TempData["Error"]</div>
-    }
-
-    @if (!Model.Any())
-    {
-        <div class="text-center py-16 text-slate-400">
-            <svg class="w-16 h-16 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p class="text-lg font-medium">Không có đề xuất nào</p>
+    <div class="stat-card">
+        <div class="stat-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div>
+            <div class="stat-label">Chờ xử lý</div>
+            <div class="stat-number">@pendingCount</div>
         </div>
-    }
-    else
-    {
-        <div class="grid gap-4">
-            @foreach (var topic in Model)
-            {
-                bool isPending = !topic.IsApproved;
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                @if (isPending)
-                                {
-                                    <span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">Chờ duyệt</span>
-                                }
-                                else
-                                {
-                                    <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Đã duyệt</span>
-                                }
-                                @if (!string.IsNullOrEmpty(topic.TopicCode))
-                                {
-                                    <span class="text-xs text-slate-400 font-mono">@topic.TopicCode</span>
-                                }
-                            </div>
-                            <h3 class="text-base font-semibold text-slate-800 mb-1">@topic.Title</h3>
-                            <p class="text-sm text-slate-500 line-clamp-2 mb-3">@topic.Description</p>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+        <div>
+            <div class="stat-label">Đã duyệt vào hệ thống</div>
+            <div class="stat-number">@approvedCount</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="fa-solid fa-ban"></i></div>
+        <div>
+            <div class="stat-label">Đã từ chối</div>
+            <div class="stat-number">@rejectedCount</div>
+        </div>
+    </div>
+</div>
 
-                            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                                <span>👤 SV: <strong>@(topic.Student?.FullName ?? topic.Student?.Email ?? "?")</strong></span>
-                                <span>📅 @topic.CreatedAt.ToString("dd/MM/yyyy")</span>
-                                @if (!string.IsNullOrEmpty(topic.Category))
-                                {
-                                    <span>🏷️ @topic.Category</span>
-                                }
-                                @if (topic.Lecturer != null)
-                                {
-                                    <span>👨‍🏫 GV mong muốn: <strong>@topic.Lecturer.FullName</strong></span>
-                                }
-                            </div>
+<!-- ════════════════════════════════
+     FILTER TABS
+════════════════════════════════ -->
+<div class="filter-tabs">
+    <a asp-action="StudentProposals"
+       class="filter-tab all @(statusFilter == null ? "active" : "")">
+        Tất cả
+        <span class="tab-count blue">@totalCount</span>
+    </a>
+    <a asp-action="StudentProposals" asp-route-status="pending"
+       class="filter-tab amber @(statusFilter == "pending" ? "active" : "")">
+        Chờ duyệt
+        @if (pendingCount > 0)
+        {
+            <span class="tab-count amber">@pendingCount</span>
+        }
+    </a>
+    <a asp-action="StudentProposals" asp-route-status="approved"
+       class="filter-tab green @(statusFilter == "approved" ? "active" : "")">
+        Đã duyệt
+        <span class="tab-count green">@approvedCount</span>
+    </a>
+    <a asp-action="StudentProposals" asp-route-status="rejected"
+       class="filter-tab @(statusFilter == "rejected" ? "active" : "")">
+        Đã từ chối
+        <span class="tab-count red">@rejectedCount</span>
+    </a>
+</div>
+
+<!-- ════════════════════════════════
+     PROPOSAL LIST
+════════════════════════════════ -->
+@if (!Model.Any())
+{
+    <div class="empty-state">
+        <div class="empty-icon"><i class="fa-regular fa-file-lines"></i></div>
+        <h3>Không có đề xuất nào</h3>
+        <p>@(statusFilter == "pending" ? "Hiện tại chưa có đề xuất nào đang chờ duyệt." : "Chưa có đề xuất nào trong danh sách này.")</p>
+    </div>
+}
+else
+{
+    <div>
+        @foreach (var topic in Model)
+        {
+            bool isPending = !topic.IsApproved;
+            bool lecturerApproved = !string.IsNullOrWhiteSpace(topic.Note) && topic.Note.StartsWith(lecturerApprovedPrefix);
+            bool lecturerRejected = !string.IsNullOrWhiteSpace(topic.Note) && topic.Note.StartsWith(lecturerRejectedPrefix);
+            bool needsLecturer = string.IsNullOrWhiteSpace(topic.LecturerId);
+            bool adminRejected = topic.Status == TopicStatus.Rejected;
+
+            string badgeCls, badgeTxt, badgeIco;
+
+            if (topic.IsApproved)
+            { badgeCls = "added"; badgeTxt = "Đã thêm vào hệ thống"; badgeIco = "fa-solid fa-check"; }
+            else if (adminRejected)
+            { badgeCls = "admin-no"; badgeTxt = "Admin đã từ chối"; badgeIco = "fa-solid fa-ban"; }
+            else if (lecturerApproved)
+            { badgeCls = "lec-ok"; badgeTxt = "GV đồng ý"; badgeIco = "fa-solid fa-thumbs-up"; }
+            else if (lecturerRejected)
+            { badgeCls = "lec-no"; badgeTxt = "GV từ chối"; badgeIco = "fa-solid fa-thumbs-down"; }
+            else if (needsLecturer)
+            { badgeCls = "need-lec"; badgeTxt = "Cần phân công GV"; badgeIco = "fa-solid fa-user-clock"; }
+            else
+            { badgeCls = "waiting"; badgeTxt = "Đang chờ GV phản hồi"; badgeIco = "fa-solid fa-hourglass-half"; }
+
+            string noteClean = (topic.Note ?? "")
+            .Replace(lecturerApprovedPrefix, "")
+            .Replace(lecturerRejectedPrefix, "")
+            .Trim();
+
+            <div class="proposal-card">
+                <div class="proposal-body">
+
+                    <!-- LEFT: Info -->
+                    <div class="prop-info">
+                        <div class="prop-badges">
+                            <span class="s-badge @badgeCls">
+                                <i class="@badgeIco" style="font-size:9px;"></i>
+                                @badgeTxt
+                            </span>
+                            @if (!string.IsNullOrEmpty(topic.TopicCode))
+                            {
+                                <span class="topic-code">@topic.TopicCode</span>
+                            }
+                            @if (!string.IsNullOrEmpty(topic.Category))
+                            {
+                                <span style="font-size:11.5px;color:#94a3b8;font-weight:500;">@topic.Category</span>
+                            }
                         </div>
 
-                        @if (isPending)
+                        <div class="prop-title">@topic.Title</div>
+
+                        @if (!string.IsNullOrWhiteSpace(topic.Description))
                         {
-                            <div class="flex flex-col gap-2 min-w-[180px]">
-                                @* Nút duyệt *@
-                                <button onclick="openApproveModal(@topic.Id, @Json.Serialize(topic.Title ?? ""))"
-                                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg font-medium transition-colors">
-                                    ✓ Duyệt & Phân công
-                                </button>
-                                @* Nút từ chối *@
-                                <button onclick="openRejectModal(@topic.Id, @Json.Serialize(topic.Title ?? ""))"
-                                        class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-sm rounded-lg font-medium border border-red-200 transition-colors">
-                                    ✕ Từ chối
-                                </button>
+                            <div class="prop-desc">@topic.Description</div>
+                        }
+
+                        <div class="prop-meta">
+                            <div class="prop-meta-item">
+                                <i class="fa-solid fa-user"></i>
+                                Sinh viên: <strong>@(topic.Student?.FullName ?? topic.Student?.Email ?? "?")</strong>
+                            </div>
+                            <div class="prop-meta-item">
+                                <i class="fa-regular fa-calendar"></i>
+                                @topic.CreatedAt.ToString("dd/MM/yyyy")
+                            </div>
+                            @if (topic.Lecturer != null)
+                            {
+                                <div class="prop-meta-item">
+                                    <i class="fa-solid fa-chalkboard-user"></i>
+                                    GV mong muốn: <strong>@topic.Lecturer.FullName</strong>
+                                </div>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(noteClean))
+                        {
+                            <div class="note-box">
+                                <i class="fa-solid fa-comment" style="font-size:11px;margin-right:5px;color:#94a3b8;"></i>
+                                @noteClean
                             </div>
                         }
                     </div>
-                </div>
-            }
-        </div>
-    }
-</div>
 
-@* Modal duyệt *@
-<div id="approveModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-lg font-bold text-slate-800 mb-1">Duyệt đề xuất</h3>
-        <p id="approveTitle" class="text-sm text-slate-500 mb-4"></p>
-
-        <form asp-action="ApproveStudentProposal" asp-controller="Admin" method="post">
-            @Html.AntiForgeryToken()
-            <input type="hidden" id="approveTopicId" name="topicId" />
-
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">
-                    Phân công giảng viên hướng dẫn
-                </label>
-                <select name="assignLecturerId"
-                        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">-- Không phân công (SV tự liên hệ) --</option>
-                    @foreach (var lec in (ViewBag.Lecturers as IList<KLTN_Registration_System.Models.Entities.ApplicationUser> ?? new List<KLTN_Registration_System.Models.Entities.ApplicationUser>()))
+                    <!-- RIGHT: Actions (chỉ khi pending) -->
+                    @if (isPending && !adminRejected)
                     {
-                        <option value="@lec.Id">@lec.FullName (@lec.Email)</option>
+                        <div class="prop-actions">
+
+                            <!-- Duyệt & thêm vào hệ thống -->
+                            @if (lecturerApproved)
+                            {
+                                <div class="action-group">
+                                    <div class="action-group-label">
+                                        <i class="fa-solid fa-circle-check" style="color:#16a34a;margin-right:3px;"></i>
+                                        Duyệt & thêm vào hệ thống
+                                    </div>
+                                    <form asp-action="ApproveStudentProposal" asp-controller="Admin"
+                                          method="post" style="display:flex;flex-direction:column;gap:8px;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="topicId" value="@topic.Id" />
+                                        <input type="hidden" name="status" value="@statusFilter" />
+                                        <input type="hidden" name="assignLecturerId" value="@topic.LecturerId" />
+                                        <button type="submit" class="act-btn green">
+                                            <i class="fa-solid fa-check"></i> Thêm vào hệ thống
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+
+                            <!-- Phân công GV khác -->
+                            <div class="action-group">
+                                <div class="action-group-label">
+                                    <i class="fa-solid fa-rotate" style="color:#2563eb;margin-right:3px;"></i>
+                                    Phân công giảng viên khác
+                                </div>
+                                <form asp-action="ReassignStudentProposal" asp-controller="Admin"
+                                      method="post" style="display:flex;flex-direction:column;gap:8px;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="topicId" value="@topic.Id" />
+                                    <input type="hidden" name="status" value="@statusFilter" />
+                                    <select name="assignLecturerId" required class="act-select">
+                                        <option value="">-- Chọn giảng viên --</option>
+                                        @foreach (var lec in lecturerOptions)
+                                        {
+                                            <option value="@lec.Id">@lec.FullName</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="act-btn blue">
+                                        <i class="fa-solid fa-rotate"></i> Phân công GV
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Từ chối -->
+                            <div class="action-group" style="background:#fff5f5;border-color:#fecaca;">
+                                <div class="action-group-label" style="color:#dc2626;">
+                                    <i class="fa-solid fa-xmark" style="margin-right:3px;"></i>
+                                    Từ chối đề xuất
+                                </div>
+                                <form asp-action="RejectStudentProposal" asp-controller="Admin"
+                                      method="post" style="display:flex;flex-direction:column;gap:8px;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="topicId" value="@topic.Id" />
+                                    <input type="hidden" name="status" value="@statusFilter" />
+                                    <input type="text" name="reason" class="act-input"
+                                           placeholder="Nhập lý do từ chối..." required minlength="5" />
+                                    <button type="submit" class="act-btn red-outline">
+                                        <i class="fa-solid fa-xmark"></i> Từ chối đề xuất
+                                    </button>
+                                </form>
+                            </div>
+
+                        </div>
                     }
-                </select>
-            </div>
+                    else
+                    {
+                        <div style="flex-shrink:0;">
+                            <div style="display:flex;align-items:center;gap:7px;padding:10px 16px;background:@(adminRejected ? "#fff5f5" : "#f0fdf4");border:1px solid @(adminRejected ? "#fecaca" : "#bbf7d0");border-radius:10px;font-size:12.5px;font-weight:700;color:@(adminRejected ? "#dc2626" : "#15803d");">
+                                <i class="fa-solid @(adminRejected ? "fa-ban" : "fa-circle-check")"></i>
+                                @(adminRejected ? "Đề xuất đã bị từ chối" : "Đã thêm vào hệ thống")
+                            </div>
+                        </div>
+                    }
 
-            <div class="flex gap-3">
-                <button type="submit"
-                        class="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold">
-                    Xác nhận duyệt
-                </button>
-                <button type="button" onclick="closeModals()"
-                        class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm">
-                    Hủy
-                </button>
+                </div>
             </div>
-        </form>
+        }
     </div>
-</div>
-
-@* Modal từ chối *@
-<div id="rejectModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-lg font-bold text-slate-800 mb-1">Từ chối đề xuất</h3>
-        <p id="rejectTitle" class="text-sm text-slate-500 mb-4"></p>
-
-        <form asp-action="RejectStudentProposal" asp-controller="Admin" method="post">
-            @Html.AntiForgeryToken()
-            <input type="hidden" id="rejectTopicId" name="topicId" />
-
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Lý do từ chối (tùy chọn)</label>
-                <textarea name="reason" rows="3"
-                          class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                          placeholder="Nhập lý do để sinh viên biết..."></textarea>
-            </div>
-
-            <div class="flex gap-3">
-                <button type="submit"
-                        class="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold">
-                    Xác nhận từ chối
-                </button>
-                <button type="button" onclick="closeModals()"
-                        class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm">
-                    Hủy
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-@section Scripts {
-    <script>
-        function openApproveModal(id, title) {
-            document.getElementById('approveTopicId').value = id;
-            document.getElementById('approveTitle').textContent = title;
-            document.getElementById('approveModal').classList.remove('hidden');
-        }
-        function openRejectModal(id, title) {
-            document.getElementById('rejectTopicId').value = id;
-            document.getElementById('rejectTitle').textContent = title;
-            document.getElementById('rejectModal').classList.remove('hidden');
-        }
-        function closeModals() {
-            document.getElementById('approveModal').classList.add('hidden');
-            document.getElementById('rejectModal').classList.add('hidden');
-        }
-        // Đóng khi click ngoài modal
-        ['approveModal','rejectModal'].forEach(id => {
-            document.getElementById(id).addEventListener('click', function(e) {
-                if (e.target === this) closeModals();
-            });
-        });
-    </script>
 }

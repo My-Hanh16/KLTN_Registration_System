@@ -5,6 +5,18 @@
     var registrations = Model?.ToList() ?? new List<KLTN_Registration_System.Models.Entities.Registration>();
     var proposedTopics = ViewBag.ProposedTopics as List<KLTN_Registration_System.Models.Entities.Topic>
                          ?? new List<KLTN_Registration_System.Models.Entities.Topic>();
+    bool canParticipate = ViewBag.CanParticipateInCurrentPeriod != false;
+    bool hasCompletedThesis = ViewBag.StudentHasCompletedThesis == true;
+    string activePeriodName = ViewBag.ActivePeriodName as string ?? "";
+    int pendingRegistrationCount = registrations.Count(r => string.Equals(r.Status, "Pending", StringComparison.OrdinalIgnoreCase));
+    int rejectedRegistrationCount = registrations.Count(r => string.Equals(r.Status, "Rejected", StringComparison.OrdinalIgnoreCase));
+    int approvedRegistrationCount = registrations.Count(r => string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase));
+    int pendingProposalCount = proposedTopics.Count(t => t.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Pending);
+    int rejectedProposalCount = proposedTopics.Count(t => t.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Rejected);
+    int approvedProposalCount = proposedTopics.Count(t => t.IsApproved && t.Status != KLTN_Registration_System.Models.Entities.TopicStatus.Rejected);
+    int totalTrackedCount = registrations.Count + proposedTopics.Count;
+    int successCount = approvedRegistrationCount + approvedProposalCount;
+    int successRate = totalTrackedCount > 0 ? Math.Min(100, successCount * 100 / totalTrackedCount) : 0;
 }
 
 @section Styles {
@@ -20,24 +32,14 @@
         <!-- Tiêu đề trang -->
         <div class="page-heading">
             <h2>Đăng ký của tôi</h2>
-            <p>Quản lý và theo dõi tiến độ phê duyệt đề tài của bạn.</p>
-        </div>
-
-        @if (TempData["Success"] != null)
-        {
-            <div class="registration-alert success">
-                <i class="fa-solid fa-circle-check"></i>
-                <span>@TempData["Success"]</span>
-            </div>
-        }
-
-        @if (TempData["Error"] != null)
-        {
-            <div class="registration-alert error">
-                <i class="fa-solid fa-circle-exclamation"></i>
-                <span>@TempData["Error"]</span>
-            </div>
-        }
+            <p>
+                Quản lý và theo dõi tiến độ phê duyệt đề tài của bạn
+                @if (!string.IsNullOrWhiteSpace(activePeriodName))
+                {
+                    <span>trong đợt @activePeriodName</span>
+                }.
+            </p>
+        </div>   
 
         @* ===== PHẦN 1: ĐỀ TÀI TỰ ĐỀ XUẤT ===== *@
         @if (proposedTopics.Any())
@@ -56,7 +58,9 @@
                         ? "bg-soft-red"
                         : "bg-soft-orange";
                 var proposalStatusText = topic.IsApproved && proposalStatus == KLTN_Registration_System.Models.Entities.TopicStatus.Available
-                    ? "ĐÃ CHẤP NHẬN"
+                    ? "ĐÃ THÊM VÀO HỆ THỐNG"
+                    : topic.IsApproved
+                        ? "ĐÃ ĐƯỢC DUYỆT"
                     : proposalStatus == KLTN_Registration_System.Models.Entities.TopicStatus.Rejected
                         ? "ĐÃ TỪ CHỐI"
                         : "ĐANG CHỜ DUYỆT";
@@ -81,7 +85,7 @@
                                 <div class="icon-box-sm"><i class="fa-solid fa-user-tie"></i></div>
                                 <div>
                                     <span class="meta-label">Giảng viên mong muốn</span>
-                                    <span class="meta-value">@(!string.IsNullOrEmpty(topic.Lecturer?.FullName) ? topic.Lecturer.FullName : topic.Lecturer?.Email)</span>
+                                    <span class="meta-value">@(!string.IsNullOrEmpty(topic.Lecturer?.FullName) ? topic.Lecturer.FullName : topic.Lecturer?.Email ?? "Chờ admin phân công")</span>
                                 </div>
                             </div>
                         </div>
@@ -105,6 +109,30 @@
                         </div>
                     }
 
+                    <div class="d-flex justify-content-end align-items-center gap-3 mt-4">
+                        <a asp-controller="Topic"
+                           asp-action="Details"
+                           asp-route-id="@topic.Id"
+                           class="btn-action-link">
+                            Chi tiết đề xuất
+                        </a>
+
+                        @if (proposalStatus == KLTN_Registration_System.Models.Entities.TopicStatus.Pending)
+                        {
+                            <form asp-action="CancelProposal"
+                                  asp-route-id="@topic.Id"
+                                  asp-route-returnTo="myregistration"
+                                  method="post"
+                                  class="cancel-registration-form"
+                                  data-topic-title="@topic.Title">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn-cancel">
+                                    <i class="fa-solid fa-xmark"></i> Hủy đề xuất
+                                </button>
+                            </form>
+                        }
+                    </div>
+
                 </div>
             }
 
@@ -121,11 +149,22 @@
         {
             <div class="empty-state">
                 <i class="fa-solid fa-folder-open"></i>
-                <p>Bạn chưa đăng ký đề tài nào từ danh sách chung.</p>
-                <a asp-controller="Topic" asp-action="Index"
-                   class="btn-chat btn-discover">
-                    Khám phá đề tài
-                </a>
+                @if (hasCompletedThesis)
+                {
+                    <p>Bạn đã hoàn thành KLTN. Không còn đăng ký mới ở các đợt sau.</p>
+                }
+                else if (!canParticipate)
+                {
+                    <p>Bạn chưa thuộc danh sách sinh viên đủ điều kiện của đợt hiện tại.</p>
+                }
+                else
+                {
+                    <p>Bạn chưa đăng ký đề tài nào từ danh sách chung.</p>
+                    <a asp-controller="Topic" asp-action="Index"
+                       class="btn-chat btn-discover">
+                        Khám phá đề tài
+                    </a>
+                }
             </div>
         }
 
@@ -198,7 +237,8 @@
                         <form asp-action="CancelRegistration"
                               asp-route-id="@item.Id"
                               method="post"
-                              class="cancel-registration-form">
+                              class="cancel-registration-form"
+                              data-topic-title="@(item.Topic?.Title ?? "đề tài này")">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn-cancel">
                                 <i class="fa-solid fa-xmark"></i> Hủy đăng ký
@@ -221,11 +261,11 @@
 
             <div class="row g-0 text-center mb-4">
                 <div class="col-6 stats-divider">
-                    <div class="stats-number">@registrations.Count(r => string.Equals(r.Status, "Pending", StringComparison.OrdinalIgnoreCase)).ToString("D2")</div>
+                    <div class="stats-number">@((pendingRegistrationCount + pendingProposalCount).ToString("D2"))</div>
                     <div class="stats-label">Đang chờ</div>
                 </div>
                 <div class="col-6">
-                    <div class="stats-number">@registrations.Count(r => string.Equals(r.Status, "Rejected", StringComparison.OrdinalIgnoreCase)).ToString("D2")</div>
+                    <div class="stats-number">@((rejectedRegistrationCount + rejectedProposalCount).ToString("D2"))</div>
                     <div class="stats-label">Từ chối</div>
                 </div>
             </div>
@@ -234,12 +274,12 @@
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="success-rate-label">Tỷ lệ thành công</span>
                     <span class="success-rate-value">
-                        @(registrations.Any() ? (registrations.Count(r => string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase)) * 100 / registrations.Count) : 0)%
+                        @successRate%
                     </span>
                 </div>
                 <div class="progress-track">
                     <div class="progress-fill"
-                         data-progress="@(registrations.Any() ? (registrations.Count(r => string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase)) * 100 / registrations.Count) : 0)">
+                         data-progress="@successRate">
                     </div>
                 </div>
             </div>
@@ -259,8 +299,34 @@
                 <span class="note-num">02.</span>
                 <p class="note-text">Tính năng <strong>Hủy đăng ký</strong> chỉ khả dụng khi giảng viên chưa bắt đầu quá trình phê duyệt.</p>
             </div>
+            @if (hasCompletedThesis)
+            {
+                <div class="note-item">
+                    <span class="note-num">03.</span>
+                    <p class="note-text">Bạn đã <strong>hoàn thành KLTN</strong>, nên chỉ có thể xem lại lịch sử và không thể tham gia đăng ký kỳ mới.</p>
+                </div>
+            }
         </div>
 
+    </div>
+</div>
+
+<div id="cancelConfirmModal" class="cancel-confirm-overlay" aria-hidden="true">
+    <div class="cancel-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="cancelConfirmTitle">
+        <div class="cancel-confirm-head">
+            <div class="cancel-confirm-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 id="cancelConfirmTitle">Xác nhận hủy đăng ký</h3>
+                <p>Bạn có chắc chắn muốn hủy đăng ký đề tài này?</p>
+                <div id="cancelConfirmTopic" class="cancel-confirm-topic"></div>
+            </div>
+        </div>
+        <div class="cancel-confirm-actions">
+            <button type="button" class="cancel-confirm-btn secondary" id="cancelConfirmClose">Không hủy</button>
+            <button type="button" class="cancel-confirm-btn danger" id="cancelConfirmSubmit">Xác nhận hủy</button>
+        </div>
     </div>
 </div>
 

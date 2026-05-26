@@ -7,6 +7,12 @@
     Layout = "_LayoutStudent";
     ViewData["Title"] = "Danh sách đề tài KLTN";
     var fullTopicIds = ViewBag.FullTopicIds as List<int> ?? new List<int>();
+    bool canParticipate = ViewBag.CanParticipateInCurrentPeriod != false;
+    bool hasCompletedThesis = ViewBag.StudentHasCompletedThesis == true;
+    bool hasRegistered = ViewBag.HasRegistered == true;
+    bool hasPendingProposal = ViewBag.HasPendingProposal == true;
+    int registeredTopicId = ViewBag.RegisteredTopicId is int topicId ? topicId : 0;
+    string participationMessage = ViewBag.StudentParticipationMessage as string ?? "";
 }
 
 <style>
@@ -303,6 +309,114 @@
         white-space: nowrap;
     }
 
+    .confirm-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1200;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        background: rgba(15, 23, 42, .42);
+        backdrop-filter: blur(3px);
+    }
+
+    .confirm-overlay.open {
+        display: flex;
+    }
+
+    .confirm-box {
+        width: min(420px, 100%);
+        background: #fff;
+        border: 1px solid #e8edf4;
+        border-radius: 14px;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, .22);
+        padding: 20px;
+    }
+
+    .confirm-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .confirm-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eef2ff;
+        color: #2b4eff;
+        flex-shrink: 0;
+    }
+
+    .confirm-title {
+        margin: 0 0 4px;
+        font-size: 16px;
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .confirm-message {
+        margin: 0;
+        font-size: 13.5px;
+        line-height: 1.55;
+        color: #64748b;
+    }
+
+    .confirm-topic {
+        margin-top: 8px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e8edf4;
+        color: #1e293b;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .confirm-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .confirm-btn {
+        flex: 1;
+        height: 40px;
+        border-radius: 10px;
+        border: 1.5px solid #e2e8f0;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all .15s;
+    }
+
+    .confirm-btn.cancel {
+        background: #f8fafc;
+        color: #64748b;
+    }
+
+    .confirm-btn.cancel:hover {
+        background: #f1f5f9;
+        color: #1e293b;
+    }
+
+    .confirm-btn.submit {
+        background: #2b4eff;
+        border-color: #2b4eff;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(43, 78, 255, .22);
+    }
+
+    .confirm-btn.submit:hover {
+        background: #1a3bd1;
+        border-color: #1a3bd1;
+    }
+
     /* =========================
        BTN PROPOSE
     ========================== */
@@ -336,6 +450,14 @@
     .btn-propose:hover {
         background-color: #1a3bd1;
         color: #fff;
+    }
+
+    .btn-propose.disabled {
+        background: #e2e8f0;
+        box-shadow: none;
+        color: #64748b;
+        cursor: not-allowed;
+        pointer-events: none;
     }
 
     /* =========================
@@ -500,6 +622,55 @@
     color: #1e293b;
 }
 
+.topic-guard-alert {
+    align-items: flex-start;
+    background: #ffffff;
+    border: 1px solid #dbeafe;
+    border-left: 4px solid #2b4eff;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.03);
+    color: #475569;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+}
+
+.topic-guard-alert i {
+    align-items: center;
+    background: #eef2ff;
+    border-radius: 10px;
+    color: #2b4eff;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+}
+
+.topic-guard-alert strong {
+    color: #0f172a;
+    display: block;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.topic-guard-alert span {
+    display: block;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.topic-guard-alert a {
+    color: #2b4eff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.topic-guard-alert a:hover {
+    text-decoration: underline;
+}
+
 .topic-empty-state {
     align-items: center;
     background: #ffffff;
@@ -571,21 +742,6 @@
             <span style="font-size: 13.5px; color: #64748b; font-weight: 500;">đề tài đang khả dụng cho học kỳ này</span>
         </div>
     </div>
-
-    @if (User.IsInRole("Student"))
-    {
-        <a href="@Url.Action("Propose", "Topic")" class="btn-propose">
-            <i class="fa-solid fa-plus"></i>
-            <span>Đề xuất đề tài mới</span>
-        </a>
-    }
-    else if (User.IsInRole("Admin") || User.IsInRole("Lecturer"))
-    {
-        <button class="btn-propose">
-            <i class="fa-solid fa-plus"></i>
-            <span>Đề xuất đề tài mới</span>
-        </button>
-    }
 </div>
 
 <!-- ALERTS -->
@@ -599,6 +755,38 @@
 {
     <div class="alert alert-danger border-0 shadow-sm mb-3" style="font-size: 13.5px; border-radius: 12px;">
         <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["Error"]
+    </div>
+}
+
+@if (User.IsInRole("Student") && (!canParticipate || hasRegistered || hasPendingProposal))
+{
+    <div class="topic-guard-alert">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+            @if (!canParticipate)
+            {
+                <strong>@(hasCompletedThesis ? "Bạn đã hoàn thành khóa luận" : "Bạn chưa thể đăng ký trong đợt này")</strong>
+                <span>@(!string.IsNullOrWhiteSpace(participationMessage) ? participationMessage : "Vui lòng liên hệ quản trị viên nếu thông tin đủ điều kiện của bạn chưa chính xác.")</span>
+            }
+            else if (hasRegistered)
+            {
+                <strong>Bạn đã có đăng ký đề tài trong đợt hiện tại</strong>
+                <span>
+                    Mỗi sinh viên chỉ được có một đề tài đang chờ duyệt hoặc đã duyệt.
+                    <a asp-controller="Student" asp-action="MyRegistration">Xem đăng ký của tôi</a>
+                    @if (registeredTopicId > 0)
+                    {
+                        <text> hoặc </text><a asp-action="Details" asp-route-id="@registeredTopicId">xem chi tiết đề tài</a>
+                    }
+                    .
+                </span>
+            }
+            else if (hasPendingProposal)
+            {
+                <strong>Bạn đang có đề xuất đề tài chờ xử lý</strong>
+                <span>Hãy chờ giảng viên/admin xử lý hoặc hủy đề xuất trước khi đăng ký đề tài từ danh sách chung. <a asp-controller="Student" asp-action="MyRegistration">Theo dõi tại Đăng ký của tôi</a>.</span>
+            }
+        </div>
     </div>
 }
 
@@ -722,7 +910,9 @@
             <i class="fa-regular fa-folder-open"></i>
             <div>
                 <h5>Không tìm thấy đề tài phù hợp</h5>
-                <p>Hãy kiểm tra lại bộ lọc hoặc liên hệ quản trị viên nếu khoa/chuyên ngành của bạn chưa được gán đúng.</p>
+                <p>@(!canParticipate && !string.IsNullOrWhiteSpace(participationMessage)
+                    ? participationMessage
+                    : "Hãy kiểm tra lại bộ lọc hoặc liên hệ quản trị viên nếu khoa/chuyên ngành của bạn chưa được gán đúng.")</p>
             </div>
         </div>
     }
@@ -733,10 +923,13 @@
             var current = item.Registrations?.Count(r => r.Status == "Approved") ?? 0;
             var pending = item.Registrations?.Count(r => r.Status == "Pending") ?? 0;
             var reserved = current + pending;
+            var remainingSlots = Math.Max(0, item.MaxStudents - reserved);
             var isFull = fullTopicIds.Contains(item.Id) || reserved >= item.MaxStudents;
             var isNotOpen = !item.IsRegistrationOpen;
             var isExpired = DateTime.Now > item.Deadline;
             var isClosed = isExpired;
+            var isGroupTopic = item.MaxStudents > 1;
+            var hasEnoughSlotsForGroup = !isGroupTopic || remainingSlots >= 2;
 
             string levelText = "Cơ bản";
             string levelColorClass = "tag-basic";
@@ -759,7 +952,7 @@
                         ● @(string.IsNullOrEmpty(item.DepartmentName) ? item.Major?.Name?.ToUpper() : item.DepartmentName.ToUpper())
                     </span>
                     <span class="badge-category @levelColorClass">@levelText.ToUpper()</span>
-                    @if (item.MaxStudents > 1)
+                    @if (isGroupTopic)
                     {
                         <span class="badge-type tag-group">Đồ án Nhóm</span>
                     }
@@ -792,9 +985,13 @@
                             {
                                 <span class="text-muted small ms-1">(Chưa mở đăng ký)</span>
                             }
-                            @if (item.MaxStudents > 1)
+                            @if (isGroupTopic)
                             {
                                 <small class="text-muted ms-1">(Tối đa @item.MaxStudents)</small>
+                            }
+                            @if (isGroupTopic && !hasEnoughSlotsForGroup)
+                            {
+                                <span class="text-warning small ms-1">(không đủ chỗ cho nhóm mới)</span>
                             }
                             @if (pending > 0)
                             {
@@ -830,17 +1027,29 @@
                     }
                     else if (ViewBag.HasRegistered == true)
                     {
-                        <button class="btn-full" disabled title="Bạn đã đăng ký một đề tài khác">Đã đăng ký</button>
+                        <button class="btn-full" disabled title="Bạn đã có đăng ký trong đợt hiện tại">Đã đăng ký</button>
                     }
-                    else if (ViewBag.HasPendingProposal == true)
+                    else if (hasPendingProposal)
                     {
                         <button class="btn-full" disabled title="Bạn đang có đề xuất đề tài chờ duyệt">
                             <i class="fa-solid fa-lightbulb me-1"></i> Đang đề xuất
                         </button>
                     }
+                    else if (!canParticipate)
+                    {
+                        <button class="btn-full" disabled title="@participationMessage">
+                            <i class="fa-solid fa-lock me-1"></i> @(hasCompletedThesis ? "Đã hoàn thành" : "Chưa đủ điều kiện")
+                        </button>
+                    }
+                    else if (isGroupTopic && !hasEnoughSlotsForGroup)
+                    {
+                        <button class="btn-full" disabled title="Đề tài nhóm cần tối thiểu 2 sinh viên nhưng hiện chỉ còn @remainingSlots chỗ">
+                            <i class="fa-solid fa-users-slash me-1"></i> Không đủ chỗ nhóm
+                        </button>
+                    }
                     else
                     {
-                        if (item.MaxStudents > 1)
+                        if (isGroupTopic)
                         {
                             <a asp-action="RegisterGroup" asp-route-id="@item.Id"
                                class="btn-register btn-group-type">
@@ -849,11 +1058,11 @@
                         }
                         else
                         {
-                            <form asp-action="Register" method="post" class="d-inline">
+                            <form asp-action="Register" method="post" class="d-inline topic-register-form"
+                                  data-topic-title="@item.Title">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="topicId" value="@item.Id" />
-                                <button type="submit" class="btn-register"
-                                        onclick="return confirm('Đăng ký đề tài này?')">
+                                <button type="submit" class="btn-register">
                                     Đăng ký
                                 </button>
                             </form>
@@ -889,8 +1098,76 @@
     </div>
 }
 
+<div id="registerConfirm" class="confirm-overlay" aria-hidden="true">
+    <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="registerConfirmTitle">
+        <div class="confirm-head">
+            <div class="confirm-icon">
+                <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <div>
+                <h3 id="registerConfirmTitle" class="confirm-title">Xác nhận đăng ký đề tài</h3>
+                <p class="confirm-message">Bạn có chắc muốn gửi yêu cầu đăng ký đề tài này không?</p>
+                <div id="registerConfirmTopic" class="confirm-topic"></div>
+            </div>
+        </div>
+        <div class="confirm-actions">
+            <button type="button" class="confirm-btn cancel" id="cancelRegisterConfirm">Hủy</button>
+            <button type="button" class="confirm-btn submit" id="submitRegisterConfirm">Xác nhận đăng ký</button>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
+        let pendingRegisterForm = null;
+
+        function openRegisterConfirm(form) {
+            pendingRegisterForm = form;
+            const modal = document.getElementById('registerConfirm');
+            const topicBox = document.getElementById('registerConfirmTopic');
+            topicBox.textContent = form.dataset.topicTitle || 'Đề tài đã chọn';
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeRegisterConfirm() {
+            const modal = document.getElementById('registerConfirm');
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+            pendingRegisterForm = null;
+        }
+
+        document.querySelectorAll('.topic-register-form').forEach(form => {
+            form.addEventListener('submit', event => {
+                if (form.dataset.confirmed === 'true') {
+                    return;
+                }
+
+                event.preventDefault();
+                openRegisterConfirm(form);
+            });
+        });
+
+        document.getElementById('cancelRegisterConfirm')?.addEventListener('click', closeRegisterConfirm);
+
+        document.getElementById('submitRegisterConfirm')?.addEventListener('click', () => {
+            if (!pendingRegisterForm) return;
+            pendingRegisterForm.dataset.confirmed = 'true';
+            pendingRegisterForm.submit();
+        });
+
+        document.getElementById('registerConfirm')?.addEventListener('click', event => {
+            if (event.target.id === 'registerConfirm') {
+                closeRegisterConfirm();
+            }
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                closeRegisterConfirm();
+            }
+        });
+
         function submitLevel(val) {
             const input = document.getElementById('levelInput');
             input.value = (input.value === val) ? "" : val;

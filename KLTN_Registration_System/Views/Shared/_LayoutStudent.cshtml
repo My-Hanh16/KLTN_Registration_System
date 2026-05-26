@@ -29,6 +29,9 @@
         var action = ViewContext.RouteData.Values["action"]?.ToString();
         var currentUser = await UserManager.GetUserAsync(User);
         var unread = (int)(ViewBag.UnreadCount ?? 0);
+        var studentCode = !string.IsNullOrWhiteSpace(currentUser?.UserCode)
+            ? currentUser.UserCode
+            : "STUDENT";
 
         string initials = "SV";
         if (!string.IsNullOrEmpty(currentUser?.FullName))
@@ -43,6 +46,8 @@
             initials = currentUser.Email[0].ToString().ToUpper();
         }
     }
+
+    <div class="sidebar-backdrop" data-close-sidebar></div>
 
     <!-- ═══════════════ SIDEBAR ═══════════════ -->
     <nav class="sidebar">
@@ -82,11 +87,21 @@
                 <span>Timeline</span>
             </a>
 
-            <a asp-controller="Student" asp-action="ProposeTopic"
-               class="menu-item @(action == "ProposeTopic" ? "active" : "")">
-                <i class="fa-regular fa-lightbulb"></i>
-                <span>Đề xuất đề tài</span>
-            </a>
+            @if (currentUser?.HasCompletedThesis == true)
+            {
+                <span class="menu-item" title="Bạn đã hoàn thành KLTN nên không thể đề xuất ở đợt sau.">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Đề xuất đề tài</span>
+                </span>
+            }
+            else
+            {
+                <a asp-controller="Student" asp-action="ProposeTopic"
+                   class="menu-item @(action == "ProposeTopic" ? "active" : "")">
+                    <i class="fa-regular fa-lightbulb"></i>
+                    <span>Đề xuất đề tài</span>
+                </a>
+            }
 
             @{
                 var activeTopicId = ViewBag.ActiveTopicId as int?;
@@ -135,6 +150,9 @@
 
         <!-- TOPBAR -->
         <header class="topbar">
+            <button type="button" class="mobile-menu-btn" id="studentMenuBtn" aria-label="Mở menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
 
             <div class="search-wrap">
                 <form asp-controller="Topic" asp-action="Index" method="get">
@@ -163,7 +181,7 @@
                         <div class="u-name">
                             @(currentUser?.FullName ?? currentUser?.UserName ?? "Student")
                         </div>
-                        <div class="u-role">IT2024 • STUDENT</div>
+                        <div class="u-role">@studentCode • STUDENT</div>
                     </div>
                 </a>
 
@@ -213,7 +231,10 @@
     <script src="~/js/student/student-layout.js" asp-append-version="true"></script>
 
     @RenderSection("Scripts", required: false)
-    <partial name="_NotificationSignalR" />
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <partial name="_NotificationSignalR" />
+    }
 
 </body>
 </html>

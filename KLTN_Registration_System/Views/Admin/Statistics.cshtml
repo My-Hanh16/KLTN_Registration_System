@@ -4,7 +4,7 @@
 
     // Fix: null-safe ViewBag defaults để tránh JS lỗi
     var monthLabels  = ViewBag.MonthLabels  as IEnumerable<string>  ?? Enumerable.Empty<string>();
-    var monthCounts  = ViewBag.MonthCounts  as IEnumerable<int>     ?? Enumerable.Empty<int>();
+    var monthCounts  = ViewBag.MonthCounts  as IEnumerable<int?>    ?? Enumerable.Empty<int?>();
     var majorLabels  = ViewBag.MajorLabels  as IEnumerable<string>  ?? Enumerable.Empty<string>();
     var majorCounts  = ViewBag.MajorCounts  as IEnumerable<int>     ?? Enumerable.Empty<int>();
 
@@ -15,13 +15,16 @@
     int approvedTopics    = ViewBag.ApprovedTopics ?? 0;
     int pendingTopics     = ViewBag.PendingTopics  ?? 0;
     int registeredStudents = ViewBag.RegisteredStudents ?? 0;
+    int approvedStudents = ViewBag.ApprovedStudents ?? 0;
     int unregisteredStudents = ViewBag.UnregisteredStudents ?? Math.Max(0, totalStudents - registeredStudents);
     int totalRegistrations = ViewBag.TotalRegistrations ?? 0;
-    double regRate        = ViewBag.RegistrationRate ?? 0.0;
+    double regRate        = Math.Min(100, Math.Max(0, ViewBag.RegistrationRate ?? 0.0));
     var yearOptions       = ViewBag.YearOptions as IEnumerable<string> ?? new[] { "2025-2026" };
+    var semesterOptions   = ViewBag.SemesterOptions as IEnumerable<string> ?? new[] { "HK1", "HK2" };
 
     string curSemester = ViewBag.SelectedSemester as string ?? "HK2";
     string curYear     = ViewBag.SelectedYear as string ?? yearOptions.FirstOrDefault() ?? "2025-2026";
+    string selectedPeriodName = ViewBag.SelectedPeriodName as string ?? $"{curSemester}-{curYear}";
 }
 
 @section Styles {
@@ -162,6 +165,21 @@
         transition: width .6s ease;
     }
 
+    .chart-empty {
+        height: 100%;
+        min-height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 13px;
+        font-weight: 700;
+        border: 1px dashed #cbd5e1;
+        border-radius: 14px;
+        background: #f8fafc;
+    }
+
     /* ══════════════════════════════════════
        CHART GRID
     ══════════════════════════════════════ */
@@ -242,9 +260,55 @@
 
     /* Chart canvas wrapper */
     .canvas-wrap { position: relative; }
-    .canvas-wrap-line { height: 280px; }
+    .canvas-wrap-line {
+        height: 300px;
+        padding: 14px 12px 6px;
+        border-radius: 16px;
+        background:
+            linear-gradient(180deg, rgba(79,70,229,0.045), rgba(255,255,255,0) 58%),
+            repeating-linear-gradient(
+                to right,
+                rgba(148,163,184,0.06) 0,
+                rgba(148,163,184,0.06) 1px,
+                transparent 1px,
+                transparent 56px
+            );
+    }
     .canvas-wrap-pie  { height: 220px; display: flex; align-items: center; justify-content: center; }
     .canvas-wrap-bar  { height: 300px; }
+
+    .line-chart-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: -4px 0 14px;
+    }
+
+    .line-chart-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f8fafc;
+        border: 1px solid #edf2f7;
+        color: #64748b;
+        font-size: 11.5px;
+        font-weight: 700;
+    }
+
+    .line-chart-pill strong {
+        color: #1e293b;
+        font-size: 12px;
+    }
+
+    .line-chart-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #4f46e5;
+        box-shadow: 0 0 0 4px rgba(79,70,229,0.12);
+    }
 
     /* Pie legend */
     .pie-legend {
@@ -342,8 +406,12 @@
               id="filterForm" class="d-flex gap-2">
             <select name="semester" class="filter-select-inline"
                     onchange="document.getElementById('filterForm').submit()">
-                <option value="HK1" selected="@(curSemester == "HK1")">Học kỳ I</option>
-                <option value="HK2" selected="@(curSemester == "HK2")">Học kỳ II</option>
+                @foreach (var option in semesterOptions)
+                {
+                    <option value="@option" selected="@(curSemester == option)">
+                        @(option == "HK1" ? "Học kỳ I" : option == "HK2" ? "Học kỳ II" : option)
+                    </option>
+                }
             </select>
             <select name="year" class="filter-select-inline"
                     onchange="document.getElementById('filterForm').submit()">
@@ -372,7 +440,7 @@
         <div class="stat-number">@totalStudents</div>
         <div class="stat-meta blue">
             <i class="fa-solid fa-arrow-trend-up"></i>
-            Dữ liệu toàn hệ thống
+            Dữ liệu đợt @selectedPeriodName
         </div>
     </div>
 
@@ -397,6 +465,10 @@
     <div class="stat-card">
         <div class="stat-label">Tỷ lệ đăng ký</div>
         <div class="stat-number">@regRate%</div>
+        <div class="stat-meta green">
+            <i class="fa-solid fa-user-check"></i>
+            @approvedStudents sinh viên đã được duyệt
+        </div>
         <div class="stat-progress">
             <div class="stat-progress-fill" style="width: @regRate%"></div>
         </div>
@@ -412,9 +484,21 @@
         <div class="chart-head">
             <div>
                 <div class="chart-title">Tiến độ đăng ký</div>
-                <div class="chart-sub">Số lượng sinh viên đăng ký theo thời gian</div>
+                <div class="chart-sub">Số sinh viên đã đăng ký lũy kế theo ngày</div>
             </div>
             <span class="badge-realtime">Realtime</span>
+        </div>
+        <div class="line-chart-summary">
+            <span class="line-chart-pill">
+                <span class="line-chart-dot"></span>
+                Đã đăng ký <strong>@registeredStudents/@totalStudents</strong>
+            </span>
+            <span class="line-chart-pill">
+                Tỷ lệ <strong>@regRate%</strong>
+            </span>
+            <span class="line-chart-pill">
+                Tổng đơn <strong>@totalRegistrations</strong>
+            </span>
         </div>
         <div class="canvas-wrap canvas-wrap-line">
             <canvas id="lineChart"></canvas>
@@ -465,7 +549,7 @@
         <div>
             <div class="stat-label">Tổng giảng viên</div>
             <div class="lecturer-number">@totalLecturers</div>
-            <div class="lecturer-sub">Đang tham gia hướng dẫn khóa luận trong hệ thống.</div>
+            <div class="lecturer-sub">Đang tham gia hướng dẫn trong đợt @selectedPeriodName.</div>
         </div>
         <div class="lecturer-icon">
             <i class="fa-solid fa-users"></i>
@@ -476,7 +560,11 @@
 
 @section Scripts {
 <script>
-    // Fix: không load Chart.js ở đây vì layout cha đã load
+    if (typeof Chart === 'undefined') {
+        document.querySelectorAll('.canvas-wrap').forEach(el => {
+            el.innerHTML = '<div class="chart-empty">Không tải được thư viện biểu đồ. Vui lòng tải lại trang.</div>';
+        });
+    } else {
     // Dùng biến Razor đã null-safe từ đầu file
 
     const CHART_PRIMARY = '#4f46e5';
@@ -485,10 +573,11 @@
 
     const tooltipDefaults = {
         backgroundColor: '#1e293b',
-        padding: 10,
+        padding: 12,
         titleFont: { size: 13, family: 'Inter' },
         bodyFont:  { size: 12, family: 'Inter' },
-        cornerRadius: 8,
+        cornerRadius: 10,
+        displayColors: false,
     };
 
     // ── PIE CHART ──
@@ -514,33 +603,84 @@
     });
 
     // ── LINE CHART ──
-    new Chart(document.getElementById('lineChart'), {
+    const lineCanvas = document.getElementById('lineChart');
+    const lineCtx = lineCanvas.getContext('2d');
+    const lineGradient = lineCtx.createLinearGradient(0, 0, 0, 300);
+    lineGradient.addColorStop(0, 'rgba(79,70,229,0.28)');
+    lineGradient.addColorStop(0.45, 'rgba(99,102,241,0.10)');
+    lineGradient.addColorStop(1, 'rgba(255,255,255,0)');
+    const lineData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthCounts));
+
+    new Chart(lineCanvas, {
         type: 'line',
         data: {
             labels:   @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthLabels)),
             datasets: [{
-                label: 'Đăng ký mới',
-                data:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthCounts)),
+                label: 'Sinh viên đã đăng ký',
+                data:  lineData,
                 borderColor:     CHART_PRIMARY,
-                backgroundColor: CHART_LIGHT,
+                backgroundColor: lineGradient,
                 fill: true,
-                tension: 0.4,
-                pointBackgroundColor: CHART_PRIMARY,
+                tension: 0.38,
+                cubicInterpolationMode: 'monotone',
+                spanGaps: false,
+                borderWidth: 3,
+                pointBackgroundColor: '#fff',
                 pointBorderColor:     '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7
+                pointHoverBackgroundColor: CHART_PRIMARY,
+                pointHoverBorderColor: '#fff',
+                pointBorderWidth: 0,
+                pointHoverBorderWidth: 3,
+                pointRadius: (ctx) => ctx.raw == null ? 0 : 3,
+                pointHoverRadius: 6
             }]
         },
         options: {
             maintainAspectRatio: false,
+            animation: { duration: 900, easing: 'easeOutQuart' },
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 legend:  { display: false },
-                tooltip: { ...tooltipDefaults }
+                tooltip: {
+                    ...tooltipDefaults,
+                    callbacks: {
+                        title: (items) => `Ngày ${items[0].label}`,
+                        label: (item) => item.raw == null
+                            ? 'Chưa tới ngày này'
+                            : `${item.raw} sinh viên đã đăng ký`
+                    }
+                }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
-                x: { grid: { display: false } }
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: Math.max(1, ...lineData.filter(v => v !== null)) + 1,
+                    border: { display: false },
+                    ticks: {
+                        precision: 0,
+                        color: '#94a3b8',
+                        font: { size: 11, weight: 700 },
+                        padding: 8
+                    },
+                    grid: {
+                        color: 'rgba(148,163,184,0.14)',
+                        drawTicks: false
+                    }
+                },
+                x: {
+                    border: { display: false },
+                    ticks: {
+                        color: '#64748b',
+                        font: { size: 11, weight: 700 },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 8
+                    },
+                    grid: { display: false }
+                }
             }
         }
     });
@@ -577,5 +717,6 @@
             }
         }
     });
+    }
 </script>
 }

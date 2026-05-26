@@ -19,6 +19,7 @@ namespace KLTN_Registration_System.Controllers.Admin
     [Route("Admin/[controller]/[action]")]
     public class BroadcastController : Controller
     {
+        private const string AdminSelectedPeriodSessionKey = "AdminSelectedPeriodName";
         private readonly AppDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IHubContext<NotificationHub> _hubContext;
@@ -35,11 +36,21 @@ namespace KLTN_Registration_System.Controllers.Admin
 
         // GET /Admin/Broadcast
         [HttpGet]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? semester = null, string? year = null)
         {
-            ViewBag.TotalStudents = (await _userManager.GetUsersInRoleAsync("Student")).Count;
+            var selectedPeriod = await GetSelectedPeriodAsync(semester, year);
+            var studentIds = await GetEligibleStudentIdsAsync(selectedPeriod);
+            var lecturerIds = (await _userManager.GetUsersInRoleAsync("Lecturer"))
+                .Select(u => u.Id)
+                .ToList();
+            var adminIds = (await _userManager.GetUsersInRoleAsync("Admin"))
+                .Select(u => u.Id)
+                .ToList();
+
+            ViewBag.TotalStudents = studentIds.Count;
             ViewBag.TotalLecturers = (await _userManager.GetUsersInRoleAsync("Lecturer")).Count;
-            ViewBag.TotalUsers = await _userManager.Users.CountAsync();
+            ViewBag.TotalUsers = studentIds.Concat(lecturerIds).Concat(adminIds).Distinct().Count();
+            ViewBag.SelectedPeriodName = selectedPeriod?.Name ?? GetSelectedPeriodName();
 
             var today = DateTime.Today;
             var tomorrow = today.AddDays(1);
@@ -120,8 +131,8 @@ namespace KLTN_Registration_System.Controllers.Admin
             List<string> userIds;
             if (target == "student")
             {
-                var students = await _userManager.GetUsersInRoleAsync("Student");
-                userIds = students.Select(u => u.Id).ToList();
+                var selectedPeriod = await GetSelectedPeriodAsync();
+                userIds = await GetEligibleStudentIdsAsync(selectedPeriod);
             }
             else if (target == "lecturer")
             {
@@ -130,7 +141,18 @@ namespace KLTN_Registration_System.Controllers.Admin
             }
             else // "all"
             {
-                userIds = await _userManager.Users.Select(u => u.Id).ToListAsync();
+                var selectedPeriod = await GetSelectedPeriodAsync();
+                var studentIds = await GetEligibleStudentIdsAsync(selectedPeriod);
+                var lecturerIds = (await _userManager.GetUsersInRoleAsync("Lecturer"))
+                    .Select(u => u.Id);
+                var adminIds = (await _userManager.GetUsersInRoleAsync("Admin"))
+                    .Select(u => u.Id);
+
+                userIds = studentIds
+                    .Concat(lecturerIds)
+                    .Concat(adminIds)
+                    .Distinct()
+                    .ToList();
             }
 
             if (!userIds.Any())
@@ -177,6 +199,65 @@ namespace KLTN_Registration_System.Controllers.Admin
 
             TempData["Success"] = $"Đã gửi thông báo đến {userIds.Count} người dùng thành công!";
             return RedirectToAction(nameof(Index));
+        }
+
+        private async Task<RegistrationPeriod?> GetSelectedPeriodAsync(string? semester = null, string? year = null)
+        {
+            if (!string.IsNullOrWhiteSpace(semester) && !string.IsNullOrWhiteSpace(year))
+            {
+                var periodName = $"{semester.Trim()}-{year.Trim()}";
+                HttpContext.Session.SetString(AdminSelectedPeriodSessionKey, periodName);
+                SetPeriodViewBag(periodName);
+            }
+
+            var selectedPeriodName = GetSelectedPeriodName();
+            if (string.IsNullOrWhiteSpace(selectedPeriodName))
+            {
+                return await _context.RegistrationPeriods
+                    .FirstOrDefaultAsync(p => p.IsActive);
+            }
+
+            return await _context.RegistrationPeriods
+                .FirstOrDefaultAsync(p => p.Name == selectedPeriodName);
+        }
+
+        private string? GetSelectedPeriodName()
+        {
+            var selectedPeriodName = HttpContext.Session.GetString(AdminSelectedPeriodSessionKey);
+            if (!string.IsNullOrWhiteSpace(selectedPeriodName))
+            {
+                SetPeriodViewBag(selectedPeriodName);
+            }
+
+            return selectedPeriodName;
+        }
+
+        private void SetPeriodViewBag(string periodName)
+        {
+            ViewBag.AdminSelectedPeriodName = periodName;
+            var parts = periodName.Split('-', 2);
+            if (parts.Length == 2)
+            {
+                ViewBag.AdminSelectedSemester = parts[0];
+                ViewBag.AdminSelectedYear = parts[1];
+            }
+        }
+
+        private async Task<List<string>> GetEligibleStudentIdsAsync(RegistrationPeriod? selectedPeriod)
+        {
+            if (selectedPeriod == null)
+            {
+                return new List<string>();
+            }
+
+            return await _context.PeriodStudents
+                .Where(ps =>
+                    ps.RegistrationPeriodId == selectedPeriod.Id &&
+                    ps.IsEligible &&
+                    !ps.Student.HasCompletedThesis)
+                .Select(ps => ps.StudentId)
+                .Distinct()
+                .ToListAsync();
         }
 
         // POST /Admin/Broadcast/DeleteAll  — Xóa thông báo hệ thống cũ

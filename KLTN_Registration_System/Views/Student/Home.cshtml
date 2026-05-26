@@ -9,6 +9,11 @@
     var notifications = pageModel.Notifications ?? new List<NotificationVM>();
     bool isOpening = ViewBag.IsOpening == true;
     bool isPortalOpen = ViewBag.TopicRegistrationPortalOpen == true;
+    bool hasCompletedThesis = ViewBag.StudentHasCompletedThesis == true;
+    bool canParticipate = ViewBag.CanParticipateInCurrentPeriod == true;
+    string participationMessage = ViewBag.StudentParticipationMessage as string ?? "";
+    bool hasRegistered = ViewBag.HasRegistered == true;
+    int registeredTopicId = ViewBag.RegisteredTopicId is int topicId ? topicId : 0;
 }
 
 @section Styles {
@@ -32,7 +37,21 @@
             </h1>
 
             @* --- LOGIC KIỂM TRA THỜI GIAN ĐĂNG KÝ --- *@
-            @if (isOpening)
+            @if (hasCompletedThesis)
+            {
+                <p class="mb-0 opacity-90">
+                    <i class="fa-solid fa-circle-check me-1"></i>
+                    Bạn đã hoàn thành KLTN. Các chức năng đăng ký và đề xuất ở đợt sau đã được khóa.
+                </p>
+            }
+            else if (!canParticipate && !string.IsNullOrWhiteSpace(participationMessage))
+            {
+                <p class="mb-0 opacity-90">
+                    <i class="fa-solid fa-lock me-1"></i>
+                    @participationMessage
+                </p>
+            }
+            else if (isOpening)
             {
                 @* TRƯỜNG HỢP 1: ĐANG MỞ *@
                 <p class="mb-0 opacity-75">
@@ -119,6 +138,30 @@
                     @statusVietnamese
                 </span>
             </div>
+
+            @if (hasRegistered && registeredTopicId > 0)
+            {
+                <div class="status-actions">
+                    <a asp-controller="Topic"
+                       asp-action="Details"
+                       asp-route-id="@registeredTopicId"
+                       class="status-action-link">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Chi tiết đề tài
+                    </a>
+
+                    @if (string.Equals(pageModel.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <a asp-controller="Chat"
+                           asp-action="Topic"
+                           asp-route-topicId="@registeredTopicId"
+                           class="status-action-link primary">
+                            <i class="fa-regular fa-comments"></i>
+                            Trao đổi GVHD
+                        </a>
+                    }
+                </div>
+            }
         </div>
 
         <div>
@@ -129,9 +172,18 @@
                         Dựa trên kết quả học tập và định hướng của bạn
                     </p>
                 </div>
-                <a asp-controller="Topic" asp-action="Index" class="text-primary text-decoration-none small fw-bold">
-                    Xem tất cả <i class="fa-solid fa-arrow-right ms-1"></i>
-                </a>
+                @if (canParticipate)
+                {
+                    <a asp-controller="Topic" asp-action="Index" class="text-primary text-decoration-none small fw-bold">
+                        Xem tất cả <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                }
+                else
+                {
+                    <a asp-controller="Student" asp-action="MyRegistration" class="text-primary text-decoration-none small fw-bold">
+                        Xem lịch sử <i class="fa-solid fa-arrow-right ms-1"></i>
+                    </a>
+                }
             </div>
 
             <div class="row g-4">
@@ -191,8 +243,21 @@
                         <div class="empty-topic-suggestions">
                             <i class="fa-regular fa-folder-open"></i>
                             <div>
-                                <h6>Chưa có đề tài phù hợp</h6>
-                                <p>Hiện chưa có đề tài phù hợp theo khoa/chuyên ngành của bạn.</p>
+                                @if (hasCompletedThesis)
+                                {
+                                    <h6>Bạn đã hoàn thành khóa luận</h6>
+                                    <p>Danh sách gợi ý đã được ẩn vì bạn không cần đăng ký ở các kỳ sau.</p>
+                                }
+                                else if (!canParticipate)
+                                {
+                                    <h6>Chưa đủ điều kiện tham gia đợt này</h6>
+                                    <p>@(!string.IsNullOrWhiteSpace(participationMessage) ? participationMessage : "Bạn chưa thuộc danh sách sinh viên đủ điều kiện của đợt hiện tại.")</p>
+                                }
+                                else
+                                {
+                                    <h6>Chưa có đề tài phù hợp</h6>
+                                    <p>Hiện chưa có đề tài phù hợp theo khoa/chuyên ngành của bạn.</p>
+                                }
                             </div>
                         </div>
                     </div>
@@ -272,7 +337,7 @@
                 <h6 class="fw-bold mb-0">Thư viện tài liệu</h6>
             </div>
             <p class="small mb-3">Tham khảo đề tài các khóa trước để có thêm ý tưởng và kinh nghiệm thực hiện.</p>
-            <a href="#" class="btn btn-sm btn-light text-primary fw-bold px-3 rounded-3">Khám phá ngay</a>
+            <a asp-controller="Topic" asp-action="Index" class="btn btn-sm btn-light text-primary fw-bold px-3 rounded-3">Khám phá ngay</a>
         </div>
     </div>
 </div>

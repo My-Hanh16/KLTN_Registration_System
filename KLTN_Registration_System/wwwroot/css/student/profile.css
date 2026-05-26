@@ -167,6 +167,34 @@
         color: #dc2626 !important;
     }
 
+    .stat-success {
+        color: #16a34a !important;
+    }
+
+    .profile-alert {
+        align-items: center;
+        border: 1px solid transparent;
+        border-radius: 14px;
+        display: flex;
+        font-size: 13px;
+        font-weight: 700;
+        gap: 10px;
+        margin-bottom: 18px;
+        padding: 12px 16px;
+    }
+
+    .profile-alert.success {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #15803d;
+    }
+
+    .profile-alert.error {
+        background: #fff5f5;
+        border-color: #fecaca;
+        color: #dc2626;
+    }
+
     /* =========================================================
            FORM
         ========================================================= */
@@ -310,6 +338,48 @@
         font-size: 13px;
         color: #64748b;
         font-weight: 500;
+        margin-top: 5px;
+    }
+
+    .profile-topic-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .profile-topic-link {
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #dbe4f0;
+        border-radius: 999px;
+        color: #475569;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 800;
+        gap: 7px;
+        padding: 8px 12px;
+        text-decoration: none;
+        transition: background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+    }
+
+    .profile-topic-link:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #1e293b;
+        transform: translateY(-1px);
+    }
+
+    .profile-topic-link.primary {
+        background: #2b4eff;
+        border-color: #2b4eff;
+        color: #ffffff;
+    }
+
+    .profile-topic-link.primary:hover {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+        color: #ffffff;
     }
 
     /* =========================================================

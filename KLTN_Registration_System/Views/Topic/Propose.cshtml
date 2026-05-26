@@ -1,59 +1,381 @@
-﻿@model KLTN_Registration_System.Models.Entities.Topic
+@model KLTN_Registration_System.Models.Entities.Topic
+
 @{
     Layout = "_LayoutStudent";
+    ViewData["Title"] = "Tự đề xuất đề tài";
+
     var primaryMajor = ViewBag.PrimaryMajor as KLTN_Registration_System.Models.Entities.Major;
+    var lecturers = ViewBag.Lecturers as IEnumerable<KLTN_Registration_System.Models.Entities.ApplicationUser>
+        ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.ApplicationUser>();
+    var activePeriodName = ViewBag.ActivePeriodName as string ?? "Đợt hiện tại";
+    var pendingProposalCount = ViewBag.PendingProposalCount is int count ? count : 0;
+    var canSubmit = primaryMajor != null && pendingProposalCount < 3;
 }
 
-<div class="container mt-4">
-    <div class="card shadow-sm border-0 p-4" style="border-radius: 20px; background: #fff;">
-        <h3 class="fw-bold text-primary mb-4">
-            <i class="fa-solid fa-lightbulb me-2"></i>Tự đề xuất đề tài
-        </h3>
+<style>
+    .proposal-shell {
+        max-width: 980px;
+        margin: 0 auto;
+    }
 
-        <form asp-action="Propose" method="post">
-            @Html.AntiForgeryToken()
-            <div class="mb-4">
-                <label class="form-label fw-bold">Tên đề tài <span class="text-danger">*</span></label>
-                <input asp-for="Title" class="form-control" style="border-radius: 10px; padding: 12px;" placeholder="Nhập tên đề tài mong muốn..." required />
-            </div>
+    .proposal-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-start;
+        margin-bottom: 22px;
+    }
 
-            <div class="mb-4">
-                <label class="form-label fw-bold">Mô tả ngắn gọn</label>
-                <textarea asp-for="Description" class="form-control" style="border-radius: 10px;" rows="4" placeholder="Mục tiêu, công nghệ sử dụng..."></textarea>
-            </div>
+    .proposal-title {
+        color: #0f172a;
+        font-size: 24px;
+        font-weight: 800;
+        margin: 0;
+    }
 
-            <div class="mb-3">
-                <label class="form-label fw-bold">Bộ môn / Chuyên ngành</label>
-                <div class="form-control bg-light" style="border-radius: 10px; padding: 10px;">
-                    @(primaryMajor?.Name ?? "Chưa được gán chuyên ngành")
-                    @if (!string.IsNullOrWhiteSpace(primaryMajor?.FacultyName))
-                    {
-                        <span class="text-muted"> · @primaryMajor.FacultyName</span>
-                    }
+    .proposal-subtitle {
+        color: #64748b;
+        font-size: 14px;
+        margin: 8px 0 0;
+    }
+
+    .period-pill {
+        background: #eef2ff;
+        border: 1px solid #dbeafe;
+        border-radius: 999px;
+        color: #4f46e5;
+        font-size: 13px;
+        font-weight: 800;
+        padding: 9px 14px;
+        white-space: nowrap;
+    }
+
+    .proposal-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 18px;
+    }
+
+    .proposal-card,
+    .side-card {
+        background: #fff;
+        border: 1px solid #e8edf4;
+        border-radius: 18px;
+        box-shadow: 0 8px 28px rgba(15, 23, 42, .05);
+    }
+
+    .proposal-card {
+        padding: 24px;
+    }
+
+    .side-card {
+        padding: 20px;
+    }
+
+    .form-block {
+        margin-bottom: 18px;
+    }
+
+    .form-label {
+        color: #334155;
+        display: block;
+        font-size: 13px;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .form-control,
+    .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        color: #0f172a;
+        font-size: 14px;
+        min-height: 46px;
+        padding: 11px 13px;
+        width: 100%;
+    }
+
+    textarea.form-control {
+        min-height: 140px;
+        resize: vertical;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, .12);
+        outline: none;
+    }
+
+    .field-validation-error {
+        color: #dc2626;
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        margin-top: 6px;
+    }
+
+    .info-box {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        display: flex;
+        gap: 12px;
+        padding: 13px;
+    }
+
+    .info-box i {
+        align-items: center;
+        background: #eef2ff;
+        border-radius: 11px;
+        color: #4f46e5;
+        display: inline-flex;
+        flex-shrink: 0;
+        height: 38px;
+        justify-content: center;
+        width: 38px;
+    }
+
+    .info-title {
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .info-sub {
+        color: #64748b;
+        font-size: 12.5px;
+        margin-top: 2px;
+    }
+
+    .alert-soft {
+        align-items: center;
+        border-radius: 14px;
+        display: flex;
+        font-size: 13.5px;
+        font-weight: 700;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding: 12px 14px;
+    }
+
+    .alert-soft.error {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .alert-soft.success {
+        background: #ecfdf5;
+        color: #047857;
+    }
+
+    .actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 22px;
+    }
+
+    .btn-main,
+    .btn-ghost {
+        align-items: center;
+        border: 0;
+        border-radius: 12px;
+        display: inline-flex;
+        font-size: 14px;
+        font-weight: 800;
+        gap: 8px;
+        justify-content: center;
+        min-height: 44px;
+        padding: 10px 18px;
+        text-decoration: none;
+    }
+
+    .btn-main {
+        background: #2b4eff;
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(43, 78, 255, .22);
+    }
+
+    .btn-main:disabled {
+        background: #cbd5e1;
+        box-shadow: none;
+        cursor: not-allowed;
+    }
+
+    .btn-ghost {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+    }
+
+    .side-title {
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 800;
+        margin-bottom: 14px;
+    }
+
+    .note-list {
+        color: #64748b;
+        display: grid;
+        font-size: 13px;
+        gap: 12px;
+        line-height: 1.5;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .note-list li {
+        display: flex;
+        gap: 10px;
+    }
+
+    .note-list i {
+        color: #4f46e5;
+        margin-top: 3px;
+    }
+
+    @@media (max-width: 900px) {
+        .proposal-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .proposal-header,
+        .actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .period-pill,
+        .btn-main,
+        .btn-ghost {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="proposal-shell">
+    <div class="proposal-header">
+        <div>
+            <h1 class="proposal-title">Tự đề xuất đề tài</h1>
+            <p class="proposal-subtitle">Gửi ý tưởng khóa luận để giảng viên hoặc admin xem xét trong đợt hiện tại.</p>
+        </div>
+        <div class="period-pill">
+            <i class="fa-regular fa-calendar me-1"></i>@activePeriodName
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert-soft success">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>@TempData["Success"]</span>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert-soft error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    @if (!canSubmit && TempData["Error"] == null)
+    {
+        <div class="alert-soft error">
+            <i class="fa-solid fa-lock"></i>
+            <span>
+                @(primaryMajor == null
+                    ? "Tài khoản của bạn chưa được gán chuyên ngành nên chưa thể đề xuất đề tài."
+                    : "Bạn đã có 3 đề xuất đang chờ duyệt, vui lòng chờ xử lý hoặc hủy bớt đề xuất.")
+            </span>
+        </div>
+    }
+
+    <div class="proposal-grid">
+        <div class="proposal-card">
+            <form asp-action="Propose" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="form-block">
+                    <label asp-for="Title" class="form-label">Tên đề tài <span class="text-danger">*</span></label>
+                    <input asp-for="Title" class="form-control" maxlength="200" placeholder="VD: Ứng dụng AI hỗ trợ sinh viên chọn đề tài khóa luận" disabled="@(!canSubmit)" />
+                    <span asp-validation-for="Title"></span>
                 </div>
-            </div>
 
-            <div class="mb-3">
-                <label class="form-label fw-bold">Giảng viên hướng dẫn mong muốn</label>
-                <select asp-for="LecturerId" class="form-select" style="border-radius: 10px; padding: 10px;">
-                    <option value="">-- Chọn giảng viên --</option>
-                    @if (ViewBag.Lecturers != null)
-                    {
-                        foreach (var gv in ViewBag.Lecturers)
+                <div class="form-block">
+                    <label asp-for="Description" class="form-label">Mô tả đề tài <span class="text-danger">*</span></label>
+                    <textarea asp-for="Description" class="form-control" maxlength="1200" placeholder="Nêu vấn đề cần giải quyết, mục tiêu, dữ liệu/công nghệ dự kiến và kết quả mong muốn..." disabled="@(!canSubmit)"></textarea>
+                    <span asp-validation-for="Description"></span>
+                </div>
+
+                <div class="form-block">
+                    <label class="form-label">Chuyên ngành của bạn</label>
+                    <div class="info-box">
+                        <i class="fa-solid fa-book"></i>
+                        <div>
+                            <div class="info-title">@(primaryMajor?.Name ?? "Chưa được gán chuyên ngành")</div>
+                            <div class="info-sub">@(primaryMajor?.FacultyName ?? "Liên hệ admin để cập nhật chuyên ngành trước khi đề xuất.")</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-block">
+                    <label asp-for="LecturerId" class="form-label">Giảng viên hướng dẫn mong muốn</label>
+                    <select asp-for="LecturerId" class="form-select" disabled="@(!canSubmit)">
+                        <option value="">Để admin phân công phù hợp</option>
+                        @foreach (var lecturer in lecturers)
                         {
-                            <option value="@gv.Id">@gv.FullName</option>
+                            <option value="@lecturer.Id">@(lecturer.FullName ?? lecturer.Email)</option>
                         }
-                    }
-                </select>
-            </div>
+                    </select>
+                    <span asp-validation-for="LecturerId"></span>
+                </div>
 
-            <div class="mt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-primary px-4 py-2 fw-bold"
-                        style="border-radius: 12px; background-color: #2b4eff; border: none; box-shadow: 0 4px 15px rgba(43, 78, 255, 0.2);">
-                    Gửi đề xuất
-                </button>
-                <a asp-action="Index" class="btn btn-light px-4 py-2 fw-bold" style="border-radius: 12px; border: 1px solid #eee;">Hủy</a>
-            </div>
-        </form>
+                <div class="actions">
+                    <a asp-controller="Student" asp-action="ProposeTopic" class="btn-ghost">
+                        <i class="fa-regular fa-folder-open"></i>
+                        Xem đề xuất của tôi
+                    </a>
+                    <button type="submit" class="btn-main" disabled="@(!canSubmit)">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        Gửi đề xuất
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <aside class="side-card">
+            <div class="side-title">Lưu ý khi đề xuất</div>
+            <ul class="note-list">
+                <li>
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Đề xuất sẽ được giảng viên mong muốn xem xét trước nếu bạn có chọn giảng viên.</span>
+                </li>
+                <li>
+                    <i class="fa-solid fa-user-check"></i>
+                    <span>Nếu giảng viên từ chối hoặc bạn không chọn giảng viên, admin sẽ phân công người hướng dẫn phù hợp.</span>
+                </li>
+                <li>
+                    <i class="fa-solid fa-clock"></i>
+                    <span>Bạn có thể có tối đa 3 đề xuất đang chờ duyệt trong một đợt đăng ký.</span>
+                </li>
+                <li>
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Khi đã có đề tài đang chờ duyệt hoặc đã được duyệt, bạn không thể gửi đề xuất mới.</span>
+                </li>
+            </ul>
+        </aside>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

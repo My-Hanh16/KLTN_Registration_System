@@ -7,6 +7,23 @@
     ViewData["Title"] = "Timeline";
     var submissions = ViewBag.Submissions as List<TimelineSubmission>
         ?? new List<TimelineSubmission>();
+    bool hasApprovedTopic = ViewBag.HasApprovedTopic == true;
+    int requiredTimelineCount = ViewBag.RequiredTimelineCount ?? 0;
+    int approvedRequiredCount = ViewBag.ApprovedRequiredTimelineCount ?? 0;
+    int pendingRequiredCount = ViewBag.PendingRequiredTimelineCount ?? 0;
+    int rejectedRequiredCount = ViewBag.RejectedRequiredTimelineCount ?? 0;
+    int missingRequiredCount = ViewBag.MissingRequiredTimelineCount ?? 0;
+    bool isDefenseEligible = ViewBag.IsDefenseEligible == true;
+    bool isDefenseWindowClosed = ViewBag.IsDefenseWindowClosed == true;
+    bool isDefenseBlockedByDeadline = ViewBag.IsDefenseBlockedByDeadline == true;
+    bool hasCompletedThesis = ViewBag.HasCompletedThesis == true;
+    DateTime? thesisCompletedAt = ViewBag.ThesisCompletedAt as DateTime?;
+    var blockingRequiredTimelineNames = ViewBag.BlockingRequiredTimelineNames as List<string>
+        ?? new List<string>();
+    int? activeTopicId = ViewBag.ActiveTopicId is int topicId ? topicId : null;
+    int defenseProgress = requiredTimelineCount > 0
+        ? Math.Min(100, approvedRequiredCount * 100 / requiredTimelineCount)
+        : 0;
 }
 
 @section Styles {
@@ -46,6 +63,107 @@
         </div>
     }
 
+    <div class="defense-card @(hasCompletedThesis ? "is-completed" : isDefenseEligible ? "is-eligible" : isDefenseBlockedByDeadline ? "is-deadline-blocked" : "is-blocked")">
+        <div class="defense-main">
+            <div class="defense-icon">
+                <i class="bi @(hasCompletedThesis ? "bi-award-fill" : isDefenseEligible ? "bi-patch-check-fill" : isDefenseBlockedByDeadline ? "bi-x-octagon-fill" : "bi-shield-lock-fill")"></i>
+            </div>
+            <div>
+                <div class="defense-label">Điều kiện báo cáo khóa luận</div>
+                <h3>
+                    @(hasCompletedThesis
+                        ? "Hoàn thành khóa luận"
+                        : isDefenseEligible
+                        ? "Đủ điều kiện báo cáo"
+                        : isDefenseBlockedByDeadline
+                            ? "Không đủ điều kiện báo cáo"
+                            : "Chưa đủ điều kiện báo cáo")
+                </h3>
+                <p>
+                    @if (hasCompletedThesis)
+                    {
+                        <span>
+                            Bạn đã được admin ghi nhận hoàn thành khóa luận
+                            @(thesisCompletedAt.HasValue ? $" vào ngày {thesisCompletedAt.Value:dd/MM/yyyy}" : "").
+                            Bạn không cần đăng ký khóa luận ở các kỳ sau.
+                        </span>
+                    }
+                    else if (!hasApprovedTopic)
+                    {
+                        <span>Bạn cần có đề tài được duyệt trước khi xét điều kiện báo cáo.</span>
+                    }
+                    else if (requiredTimelineCount == 0)
+                    {
+                        <span>Hiện chưa có mốc timeline bắt buộc nộp bài.</span>
+                    }
+                    else if (isDefenseEligible)
+                    {
+                        <span>Tất cả mốc bắt buộc đã được giảng viên duyệt. Bạn đã được phép tham gia bước báo cáo khóa luận và đang chờ kết quả từ admin.</span>
+                    }
+                    else if (isDefenseBlockedByDeadline)
+                    {
+                        <span>Timeline bắt buộc đã hết hạn nhưng bạn chưa hoàn tất đủ mốc được duyệt. Tài khoản vẫn hoạt động, nhưng quyền báo cáo khóa luận sẽ bị khóa.</span>
+                    }
+                    else
+                    {
+                        <span>Cần hoàn tất và được duyệt đủ các mốc timeline bắt buộc.</span>
+                    }
+                </p>
+                @if (isDefenseBlockedByDeadline && blockingRequiredTimelineNames.Any())
+                {
+                    <div class="defense-missing">
+                        <span>Còn vướng:</span>
+                        @foreach (var name in blockingRequiredTimelineNames.Take(3))
+                        {
+                            <strong>@name</strong>
+                        }
+                        @if (blockingRequiredTimelineNames.Count > 3)
+                        {
+                            <em>+@(blockingRequiredTimelineNames.Count - 3) mốc khác</em>
+                        }
+                    </div>
+                }
+                @if (isDefenseEligible && !hasCompletedThesis)
+                {
+                    <div class="defense-next">
+                        <div class="defense-next-title">Bước tiếp theo</div>
+                        <div class="defense-actions">
+                            <a asp-controller="Student" asp-action="Notifications" class="defense-action">
+                                <i class="bi bi-bell"></i>
+                                Theo dõi lịch báo cáo
+                            </a>
+                            @if (activeTopicId.HasValue)
+                            {
+                                <a asp-controller="Chat" asp-action="Topic" asp-route-topicId="@activeTopicId.Value" class="defense-action">
+                                    <i class="bi bi-chat-dots"></i>
+                                    Trao đổi GVHD
+                                </a>
+                            }
+                            <a asp-controller="Student" asp-action="MyRegistration" class="defense-action">
+                                <i class="bi bi-journal-check"></i>
+                                Kiểm tra đề tài
+                            </a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="defense-side">
+            <div class="defense-count">
+                <strong>@approvedRequiredCount</strong>/<span>@requiredTimelineCount</span>
+            </div>
+            <div class="defense-progress">
+                <div style="width:@defenseProgress%"></div>
+            </div>
+            <div class="defense-breakdown">
+                <span>Chờ duyệt: @pendingRequiredCount</span>
+                <span>Từ chối: @rejectedRequiredCount</span>
+                <span>Chưa nộp: @missingRequiredCount</span>
+            </div>
+        </div>
+    </div>
+
     <!-- TIMELINE -->
     <div class="timeline-container">
 
@@ -73,7 +191,10 @@
 
             var now = DateTime.Now;
             bool isExpired = item.SubmissionDeadline.HasValue && item.SubmissionDeadline.Value < now;
-            bool canSubmit = item.AllowSubmission && !isExpired;
+            bool isNotOpenYet = item.AllowSubmission && item.Date > now;
+            bool latestRejected = latestSub?.Status == SubmissionStatus.Rejected;
+            bool canSubmit = hasApprovedTopic && !hasCompletedThesis && !isDefenseBlockedByDeadline && item.AllowSubmission && (!isNotOpenYet || latestRejected) && (!isExpired || latestRejected);
+            bool isLateResubmission = item.AllowSubmission && isExpired && latestRejected;
             var allowedTypes = string.IsNullOrWhiteSpace(item.SubmissionType)
                 ? "pdf, doc, docx, ppt, pptx, zip, rar, txt"
                 : item.SubmissionType;
@@ -110,6 +231,16 @@
                 statusText = "Quá hạn";
             }
             else if (!item.AllowSubmission)
+            {
+                statusClass = "status-default";
+                statusText = "Không yêu cầu nộp";
+            }
+            else if (!hasApprovedTopic)
+            {
+                statusClass = "status-default";
+                statusText = "Chưa có đề tài";
+            }
+            else if (isNotOpenYet)
             {
                 statusClass = "status-default";
                 statusText = "Chưa mở nộp";
@@ -166,7 +297,28 @@
                     <hr class="tl-divider" />
 
                     <!-- FORM -->
-                    @if (canSubmit && (latestSub == null || latestSub.Status == SubmissionStatus.Rejected))
+                    @if (item.AllowSubmission && !hasApprovedTopic)
+                    {
+                        <div class="expired-alert">
+                            <i class="bi bi-lock"></i>
+                            Bạn cần có đề tài đã được duyệt trước khi nộp timeline.
+                        </div>
+                    }
+                    else if (item.AllowSubmission && hasCompletedThesis)
+                    {
+                        <div class="expired-alert success-alert">
+                            <i class="bi bi-award"></i>
+                            Bạn đã hoàn thành khóa luận. Timeline chỉ còn dùng để xem lại lịch sử nộp bài.
+                        </div>
+                    }
+                    else if (item.AllowSubmission && isDefenseBlockedByDeadline)
+                    {
+                        <div class="expired-alert">
+                            <i class="bi bi-x-octagon"></i>
+                            Timeline bắt buộc đã hết hạn và bạn chưa đủ điều kiện báo cáo. Vui lòng liên hệ GVHD hoặc admin nếu cần xem xét ngoại lệ.
+                        </div>
+                    }
+                    else if (canSubmit && (latestSub == null || latestSub.Status == SubmissionStatus.Rejected))
                     {
                         <div class="resubmit-box">
 
@@ -177,6 +329,14 @@
                                                         ? "Tải file báo cáo lần đầu"
                                                         : "Nộp lại báo cáo chỉnh sửa")
                                                                                   </div>
+
+                            @if (isLateResubmission)
+                            {
+                                <div class="alert alert-warning timeline-alert mb-3">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                    <span>Bài nộp đã bị từ chối. Bạn cần nộp bản mới để giảng viên xem xét lại.</span>
+                                </div>
+                            }
 
                             <form asp-action="SubmitTimeline"
                                   asp-controller="Student"

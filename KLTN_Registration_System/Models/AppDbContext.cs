@@ -21,9 +21,22 @@ namespace KLTN_Registration_System.Models
         public DbSet<TopicComment> TopicComments { get; set; }
         public DbSet<TimelineSubmissionVersion> TimelineSubmissionVersions { get; set; }
         public DbSet<UserMajor> UserMajors { get; set; }
+        public DbSet<RegistrationPeriod> RegistrationPeriods { get; set; }
+        public DbSet<PeriodStudent> PeriodStudents { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<RegistrationPeriod>(e =>
+            {
+                e.Property(p => p.Name).HasMaxLength(80);
+                e.Property(p => p.AcademicYear).HasMaxLength(20);
+                e.Property(p => p.SemesterCode).HasMaxLength(20);
+                e.Property(p => p.IsActive).HasDefaultValue(false);
+                e.Property(p => p.CreatedAt).HasDefaultValueSql("GETDATE()");
+                e.HasIndex(p => p.Name).IsUnique();
+                e.HasIndex(p => p.IsActive);
+            });
 
             builder.Entity<TopicComment>(e =>
             {
@@ -55,6 +68,11 @@ namespace KLTN_Registration_System.Models
                  .WithMany(t => t.Registrations)
                  .HasForeignKey(r => r.TopicId)
                  .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(r => r.RegistrationPeriod)
+                 .WithMany(p => p.Registrations)
+                 .HasForeignKey(r => r.RegistrationPeriodId)
+                 .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ── Topic ─────────────────────────────────────────────────
@@ -80,6 +98,11 @@ namespace KLTN_Registration_System.Models
                 e.HasOne(t => t.Major)
                  .WithMany(m => m.Topics)
                  .HasForeignKey(t => t.MajorId)
+                 .OnDelete(DeleteBehavior.SetNull);
+
+                e.HasOne(t => t.RegistrationPeriod)
+                 .WithMany(p => p.Topics)
+                 .HasForeignKey(t => t.RegistrationPeriodId)
                  .OnDelete(DeleteBehavior.SetNull);
 
                 // EF lưu enum TopicStatus và TopicLevel dưới dạng string
@@ -136,6 +159,26 @@ namespace KLTN_Registration_System.Models
                  .HasForeignKey(um => um.MajorId)
                  .OnDelete(DeleteBehavior.Cascade);
             });
+
+            builder.Entity<PeriodStudent>(e =>
+            {
+                e.HasKey(ps => new { ps.RegistrationPeriodId, ps.StudentId });
+                e.Property(ps => ps.IsEligible).HasDefaultValue(true);
+                e.Property(ps => ps.ImportedAt).HasDefaultValueSql("GETDATE()");
+
+                e.HasOne(ps => ps.RegistrationPeriod)
+                 .WithMany(p => p.PeriodStudents)
+                 .HasForeignKey(ps => ps.RegistrationPeriodId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(ps => ps.Student)
+                 .WithMany(u => u.PeriodStudents)
+                 .HasForeignKey(ps => ps.StudentId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasIndex(ps => ps.StudentId);
+                e.HasIndex(ps => ps.IsEligible);
+            });
             builder.Entity<TimelineSubmission>(e =>
             {
                 e.HasOne(ts => ts.Timeline)
@@ -160,6 +203,14 @@ namespace KLTN_Registration_System.Models
                  .WithMany(s => s.Versions)
                  .HasForeignKey(v => v.TimelineSubmissionId)
                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Timeline>(e =>
+            {
+                e.HasOne(t => t.RegistrationPeriod)
+                 .WithMany(p => p.Timelines)
+                 .HasForeignKey(t => t.RegistrationPeriodId)
+                 .OnDelete(DeleteBehavior.SetNull);
             });
         }
     }

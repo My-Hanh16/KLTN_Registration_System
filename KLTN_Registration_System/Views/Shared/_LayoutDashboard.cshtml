@@ -1,6 +1,10 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @using KLTN_Registration_System.Models.Entities
 @inject UserManager<ApplicationUser> UserManager
+@{
+    string? adminSelectedSemester = ViewBag.AdminSelectedSemester as string;
+    string? adminSelectedYear = ViewBag.AdminSelectedYear as string;
+}
 
 <!DOCTYPE html>
 <html lang="vi">
@@ -569,6 +573,87 @@
         .dashboard-banner {
             background: linear-gradient(135deg, #4f46e5 0%, #6366f1 60%, #818cf8 100%);
         }
+
+        .mobile-menu-btn,
+        .sidebar-backdrop {
+            display: none;
+        }
+
+        @@media (max-width: 992px) {
+            :root {
+                --sidebar-w: 280px;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform .24s ease;
+                width: var(--sidebar-w);
+                z-index: 1100;
+            }
+
+            body.sidebar-open .sidebar {
+                transform: translateX(0);
+            }
+
+            .sidebar-backdrop {
+                background: rgba(15, 23, 42, .42);
+                display: none;
+                inset: 0;
+                position: fixed;
+                z-index: 1050;
+            }
+
+            body.sidebar-open .sidebar-backdrop {
+                display: block;
+            }
+
+            .main-wrapper {
+                margin-left: 0;
+            }
+
+            .topbar {
+                padding: 0 16px;
+            }
+
+            .mobile-menu-btn {
+                align-items: center;
+                background: #f8fafc;
+                border: 1.5px solid var(--border-color);
+                border-radius: 10px;
+                color: #64748b;
+                display: inline-flex;
+                flex-shrink: 0;
+                height: 40px;
+                justify-content: center;
+                width: 40px;
+            }
+
+            .search-wrap {
+                max-width: none;
+            }
+        }
+
+        @@media (max-width: 640px) {
+            .topbar {
+                gap: 10px;
+            }
+
+            .search-wrap {
+                display: none;
+            }
+
+            .user-info-text {
+                display: none;
+            }
+
+            .topbar-divider {
+                display: none;
+            }
+
+            .page-content {
+                padding: 18px 14px;
+            }
+        }
     </style>
 
     @RenderSection("Styles", required: false)
@@ -612,6 +697,8 @@
         ? "menu-item active" : "menu-item";
     }
 
+    <div class="sidebar-backdrop" data-close-sidebar></div>
+
     <!-- SIDEBAR -->
     <nav class="sidebar">
 
@@ -627,6 +714,8 @@
                 <div class="menu-section">Tổng quan</div>
 
                 <a asp-controller="Admin" asp-action="Statistics"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
                    class="@IsActive("Admin", "Statistics")">
                     <i class="fa-solid fa-chart-pie"></i>
                     <span>Thống kê hệ thống</span>
@@ -635,6 +724,8 @@
                 <div class="menu-section">Quản lý</div>
 
                 <a asp-controller="Admin" asp-action="StudentManagement"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
                    class="@IsActive("Admin", "StudentManagement")">
                     <i class="fa-solid fa-user-graduate"></i>
                     <span>Sinh viên</span>
@@ -647,12 +738,22 @@
                 </a>
 
                 <a asp-controller="Admin" asp-action="ManageTopics"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
                    class="@IsActive("Admin", "ManageTopics")">
                     <i class="fa-regular fa-file-lines"></i>
                     <span>Đề tài</span>
                 </a>
 
+                <a asp-controller="Admin" asp-action="StudentProposals"
+                   class="@IsActive("Admin", "StudentProposals")">
+                    <i class="fa-regular fa-lightbulb"></i>
+                    <span>Đề xuất từ sinh viên</span>
+                </a>
+
                 <a asp-controller="Admin" asp-action="Approval"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
                    class="@IsActive("Admin", "Approval")">
                     <i class="fa-regular fa-square-check"></i>
                     <span>Duyệt đăng ký</span>
@@ -661,26 +762,50 @@
                 <div class="menu-section">Tiến độ</div>
 
                 <a asp-controller="Timeline" asp-action="Index"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
                    class="@IsActive("Timeline", "Index")">
                     <span class="material-symbols-outlined">calendar_month</span>
                     <span>Timeline</span>
                 </a>
 
                 <a asp-controller="Timeline" asp-action="ApprovedSubmissions"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
                    class="@IsActive("Timeline", "ApprovedSubmissions")">
                     <span class="material-symbols-outlined">task_alt</span>
                     <span>Bài đã duyệt</span>
                 </a>
 
                 <a asp-controller="Timeline" asp-action="PendingAfterDeadline"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
                    class="@IsActive("Timeline", "PendingAfterDeadline")">
                     <span class="material-symbols-outlined">running_with_errors</span>
                     <span>Quá hạn duyệt</span>
                 </a>
 
+                <a asp-controller="Timeline" asp-action="DefenseEligibility"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
+                   class="@IsActive("Timeline", "DefenseEligibility")">
+                    <span class="material-symbols-outlined">verified</span>
+                    <span>Điều kiện báo cáo</span>
+                </a>
+
+                <a asp-controller="Timeline" asp-action="DefenseResults"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
+                   class="@IsActive("Timeline", "DefenseResults")">
+                    <span class="material-symbols-outlined">workspace_premium</span>
+                    <span>Kết quả báo cáo</span>
+                </a>
+
                 <div class="menu-section">Hệ thống</div>
 
                 <a asp-controller="Broadcast" asp-action="Index"
+                   asp-route-semester="@adminSelectedSemester"
+                   asp-route-year="@adminSelectedYear"
                    class="@IsActive("Broadcast", "Index")">
                     <i class="fa-solid fa-bullhorn"></i>
                     <span>Gửi thông báo</span>
@@ -714,6 +839,12 @@
                    class="@IsActive("Lecturer", "ThesisManagement")">
                     <i class="fa-regular fa-file-lines"></i>
                     <span>Quản lý đề tài</span>
+                </a>
+
+                <a asp-controller="Lecturer" asp-action="GuidedTopics"
+                   class="@IsActive("Lecturer", "GuidedTopics")">
+                    <i class="fa-solid fa-user-graduate"></i>
+                    <span>Đề tài hướng dẫn</span>
                 </a>
 
                 <a asp-controller="Chat" asp-action="Index"
@@ -764,6 +895,9 @@
 
         <!-- TOPBAR -->
         <header class="topbar">
+            <button type="button" class="mobile-menu-btn" id="dashboardMenuBtn" aria-label="Mở menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
 
             <div class="search-wrap">
                 <form method="get"
@@ -901,10 +1035,30 @@
             requestAnimationFrame(() => el?.classList.add('show'));
             setTimeout(() => removeToast(id), 4000);
         }
+
+        const dashboardMenuBtn = document.getElementById('dashboardMenuBtn');
+        const closeSidebarEls = document.querySelectorAll('[data-close-sidebar]');
+
+        dashboardMenuBtn?.addEventListener('click', () => {
+            document.body.classList.toggle('sidebar-open');
+        });
+
+        closeSidebarEls.forEach((el) => {
+            el.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                document.body.classList.remove('sidebar-open');
+            }
+        });
     </script>
 
     @RenderSection("Scripts", required: false)
-    <partial name="_NotificationSignalR" />
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <partial name="_NotificationSignalR" />
+    }
 
 </body>
 </html>

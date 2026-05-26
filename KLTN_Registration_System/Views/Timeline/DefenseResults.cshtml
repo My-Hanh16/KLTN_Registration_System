@@ -1,0 +1,604 @@
+@model IEnumerable<KLTN_Registration_System.Controllers.TimelineController.DefenseEligibilityVM>
+
+@{
+    Layout = "_LayoutDashboard";
+    ViewData["Title"] = "Kết quả báo cáo";
+
+    var rows = Model?.ToList() ?? new List<KLTN_Registration_System.Controllers.TimelineController.DefenseEligibilityVM>();
+    string status             = ViewBag.SelectedStatus as string ?? "waiting";
+    string keyword            = ViewBag.Keyword as string ?? "";
+    string selectedPeriodName = ViewBag.SelectedPeriodName as string ?? "";
+    int totalReportable       = ViewBag.TotalReportable ?? rows.Count;
+    int totalWaiting          = ViewBag.TotalWaiting    ?? rows.Count(x => x.IsEligible && !x.HasCompletedThesis);
+    int totalCompleted        = ViewBag.TotalCompleted  ?? rows.Count(x => x.HasCompletedThesis);
+
+    double completedRate = totalReportable > 0
+        ? Math.Round((double)totalCompleted / totalReportable * 100, 1) : 0;
+}
+
+@section Styles {
+<style>
+    /* ══════════════════════════════════════
+       PAGE HEADER
+    ══════════════════════════════════════ */
+    .page-title { font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
+    .page-sub   { font-size: 13.5px; color: #94a3b8; margin: 0; }
+
+    /* ══════════════════════════════════════
+       ALERTS
+    ══════════════════════════════════════ */
+    .alert-bar {
+        display: flex; align-items: center; gap: 10px;
+        padding: 12px 16px; border-radius: 12px;
+        font-size: 13px; font-weight: 500; margin-bottom: 20px;
+    }
+    .alert-bar.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+    .alert-bar.error   { background: #fff5f5; border: 1px solid #fecaca; color: #dc2626; }
+
+    /* ══════════════════════════════════════
+       STATS ROW
+    ══════════════════════════════════════ */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: #fff;
+        border: 1px solid #e8edf4;
+        border-radius: 14px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+
+    .stat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+    .stat-icon {
+        width: 42px; height: 42px; border-radius: 11px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; flex-shrink: 0;
+    }
+
+    .stat-icon.blue   { background: #eff6ff; color: #2563eb; }
+    .stat-icon.amber  { background: #fffbeb; color: #d97706; }
+    .stat-icon.green  { background: #f0fdf4; color: #16a34a; }
+
+    .stat-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+    .stat-badge.blue  { background: #eff6ff; color: #2563eb; }
+    .stat-badge.amber { background: #fffbeb; color: #d97706; }
+    .stat-badge.green { background: #f0fdf4; color: #16a34a; }
+
+    .stat-label  { font-size: 12px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
+    .stat-number { font-size: 26px; font-weight: 800; color: #1e293b; line-height: 1.1; }
+
+    .stat-progress {
+        height: 4px; border-radius: 99px;
+        background: #f1f5f9; overflow: hidden; margin-top: 8px;
+    }
+
+    .stat-progress-fill { height: 100%; border-radius: 99px; background: #16a34a; }
+
+    /* ══════════════════════════════════════
+       FILTER TABS
+    ══════════════════════════════════════ */
+    .filter-tabs {
+        display: flex; gap: 4px;
+        background: #f1f5f9; padding: 4px;
+        border-radius: 12px; width: fit-content;
+        margin-bottom: 16px;
+    }
+
+    .ftab {
+        display: inline-flex; align-items: center; gap: 7px;
+        font-size: 13px; font-weight: 600;
+        padding: 7px 16px; border-radius: 9px;
+        border: none; background: transparent; color: #64748b;
+        cursor: pointer; text-decoration: none; transition: all .15s; white-space: nowrap;
+    }
+
+    .ftab:hover { background: #fff; color: #1e293b; }
+    .ftab.active { background: #fff; color: #1e293b; box-shadow: 0 1px 4px rgba(0,0,0,.08); font-weight: 700; }
+    .ftab.active.amber-tab { color: #d97706; }
+    .ftab.active.green-tab { color: #16a34a; }
+
+    .tab-count {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 20px; height: 18px; padding: 0 6px;
+        border-radius: 99px; font-size: 10px; font-weight: 800;
+    }
+
+    .tab-count.blue  { background: #dbeafe; color: #1d4ed8; }
+    .tab-count.amber { background: #fef3c7; color: #d97706; }
+    .tab-count.green { background: #dcfce7; color: #15803d; }
+
+    /* ══════════════════════════════════════
+       FILTER CARD
+    ══════════════════════════════════════ */
+    .filter-card {
+        background: #fff; border: 1px solid #e8edf4;
+        border-radius: 14px; padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.03);
+        margin-bottom: 20px;
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+
+    .search-wrap { position: relative; flex: 1; min-width: 220px; }
+
+    .search-ico {
+        position: absolute; left: 12px; top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8; font-size: 13px; pointer-events: none;
+    }
+
+    .search-input {
+        width: 100%; height: 38px;
+        border: 1.5px solid #e2e8f0; border-radius: 10px;
+        padding: 0 14px 0 36px; font-size: 13.5px; font-family: inherit;
+        color: #1e293b; background: #fff; outline: none;
+        transition: border-color .15s, box-shadow .15s;
+    }
+
+    .search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
+    .search-input::placeholder { color: #cbd5e1; }
+
+    .f-select {
+        height: 38px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+        padding: 0 32px 0 12px; font-size: 13.5px; font-family: inherit;
+        color: #1e293b; background: #fff; outline: none; cursor: pointer; min-width: 180px;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 10px center;
+        transition: border-color .15s, box-shadow .15s;
+    }
+
+    .f-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
+
+    /* ══════════════════════════════════════
+       BUTTONS
+    ══════════════════════════════════════ */
+    .btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        height: 38px; padding: 0 16px; border-radius: 10px;
+        font-size: 13px; font-weight: 700; font-family: inherit;
+        cursor: pointer; border: none; text-decoration: none;
+        white-space: nowrap; transition: all .15s;
+    }
+
+    .btn-primary { background: #2563eb; color: #fff; box-shadow: 0 3px 10px rgba(37,99,235,.25); }
+    .btn-primary:hover { background: #1d4ed8; color: #fff; }
+
+    .btn-export {
+        height: 38px; padding: 0 14px; border-radius: 10px;
+        font-size: 12.5px; font-weight: 700; font-family: inherit;
+        cursor: pointer; text-decoration: none; white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 6px;
+        transition: all .15s; border: 1.5px solid;
+    }
+
+    .btn-export.all     { background: #eef2ff; color: #4f46e5; border-color: #c7d2fe; }
+    .btn-export.all:hover { background: #4f46e5; color: #fff; }
+
+    .btn-export.waiting { background: #fffbeb; color: #d97706; border-color: #fde68a; }
+    .btn-export.waiting:hover { background: #d97706; color: #fff; }
+
+    .btn-export.done   { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+    .btn-export.done:hover { background: #16a34a; color: #fff; }
+
+    /* Action buttons in table */
+    .act-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 9px; border: none;
+        font-size: 12.5px; font-weight: 700; font-family: inherit;
+        cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+
+    .act-btn.complete {
+        background: #f0fdf4; color: #16a34a; border: 1.5px solid #bbf7d0;
+    }
+    .act-btn.complete:hover { background: #16a34a; color: #fff; box-shadow: 0 3px 10px rgba(22,163,74,.25); }
+
+    .act-btn.reopen {
+        background: #fffbeb; color: #d97706; border: 1.5px solid #fde68a;
+    }
+    .act-btn.reopen:hover { background: #d97706; color: #fff; }
+
+    /* ══════════════════════════════════════
+       TABLE CARD
+    ══════════════════════════════════════ */
+    .main-card {
+        background: #fff; border: 1px solid #e8edf4;
+        border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.03);
+        overflow: hidden;
+    }
+
+    .card-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 20px; border-bottom: 1px solid #f1f5f9;
+        flex-wrap: wrap; gap: 10px;
+    }
+
+    .card-head-title { font-size: 14px; font-weight: 700; color: #1e293b; }
+    .row-count { font-size: 12.5px; color: #94a3b8; }
+    .row-count b { color: #1e293b; }
+
+    /* TABLE */
+    .data-table { width: 100%; border-collapse: collapse; min-width: 860px; }
+
+    .data-table thead tr { background: #f8fafc; }
+
+    .data-table th {
+        padding: 11px 18px; text-align: left;
+        font-size: 10.5px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .7px;
+        color: #94a3b8; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+    }
+
+    .data-table td {
+        padding: 14px 18px; border-bottom: 1px solid #f8fafc;
+        vertical-align: middle; font-size: 13.5px;
+    }
+
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover { background: #fafbff; }
+
+    /* Student cell */
+    .stu-name { font-size: 13.5px; font-weight: 700; color: #1e293b; margin-bottom: 2px; }
+    .stu-code {
+        font-size: 11px; font-weight: 700; font-family: 'Courier New', monospace;
+        background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe;
+        border-radius: 5px; padding: 1px 7px; display: inline-block;
+    }
+
+    /* Topic */
+    .topic-title {
+        font-size: 13px; font-weight: 600; color: #334155;
+        display: -webkit-box; -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical; overflow: hidden; max-width: 220px;
+    }
+
+    /* Lecturer */
+    .lec-name { font-size: 13px; color: #475569; }
+
+    /* Progress cell */
+    .prog-text { font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px; }
+
+    .progress-bar {
+        height: 5px; border-radius: 99px;
+        background: #e2e8f0; overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%; border-radius: 99px;
+        background: linear-gradient(90deg, #4f46e5, #16a34a);
+    }
+
+    /* Status badge */
+    .s-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 11px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .4px; padding: 4px 12px; border-radius: 99px;
+    }
+
+    .s-badge.waiting   { background: #fffbeb; color: #d97706; }
+    .s-badge.completed { background: #dcfce7; color: #15803d; }
+
+    .completed-date { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+
+    /* Empty */
+    .empty-state { text-align: center; padding: 56px 24px; color: #94a3b8; }
+    .empty-state i { font-size: 32px; display: block; margin-bottom: 12px; opacity: .3; }
+    .empty-state p { font-size: 13.5px; margin: 0; }
+</style>
+}
+
+<!-- ════════════════════════════════
+     ALERTS
+════════════════════════════════ -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert-bar success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>@TempData["Success"]</span>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert-bar error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>@TempData["Error"]</span>
+    </div>
+}
+
+<!-- ════════════════════════════════
+     PAGE HEADER
+════════════════════════════════ -->
+<div class="d-flex justify-content-between align-items-start mb-4 gap-3" style="flex-wrap:wrap;">
+    <div>
+        <h2 class="page-title">Kết quả báo cáo khóa luận</h2>
+        <p class="page-sub">
+            Quản lý sinh viên đủ điều kiện, chờ và đã hoàn thành báo cáo
+            @if (!string.IsNullOrEmpty(selectedPeriodName))
+            {
+                <span>— đợt <strong style="color:#1e293b;">@selectedPeriodName</strong></span>
+            }
+        </p>
+    </div>
+
+    <!-- Export buttons -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+        <a asp-controller="Timeline" asp-action="ExportDefenseResults"
+           asp-route-status="all" asp-route-keyword="@keyword"
+           asp-route-semester="@ViewBag.Semester" asp-route-year="@ViewBag.Year"
+           class="btn-export all">
+            <i class="fa-solid fa-file-excel"></i> Xuất tất cả
+        </a>
+        <a asp-controller="Timeline" asp-action="ExportDefenseResults"
+           asp-route-status="waiting" asp-route-keyword="@keyword"
+           asp-route-semester="@ViewBag.Semester" asp-route-year="@ViewBag.Year"
+           class="btn-export waiting">
+            <i class="fa-solid fa-clock"></i> Xuất chờ kết quả
+        </a>
+        <a asp-controller="Timeline" asp-action="ExportDefenseResults"
+           asp-route-status="completed" asp-route-keyword="@keyword"
+           asp-route-semester="@ViewBag.Semester" asp-route-year="@ViewBag.Year"
+           class="btn-export done">
+            <i class="fa-solid fa-circle-check"></i> Xuất hoàn thành
+        </a>
+    </div>
+</div>
+
+<!-- ════════════════════════════════
+     STATS ROW
+════════════════════════════════ -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-top">
+            <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
+            <span class="stat-badge blue">Tổng</span>
+        </div>
+        <div class="stat-label">Được phép báo cáo</div>
+        <div class="stat-number">@totalReportable</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">
+            <div class="stat-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
+            <span class="stat-badge amber">Chờ</span>
+        </div>
+        <div class="stat-label">Đang chờ kết quả</div>
+        <div class="stat-number">@totalWaiting</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-top">
+            <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+            <span class="stat-badge green">@completedRate%</span>
+        </div>
+        <div class="stat-label">Đã hoàn thành</div>
+        <div class="stat-number">@totalCompleted</div>
+        <div class="stat-progress">
+            <div class="stat-progress-fill" style="width:@completedRate%;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════
+     FILTER TABS
+════════════════════════════════ -->
+<div class="filter-tabs">
+    <a asp-controller="Timeline" asp-action="DefenseResults"
+       asp-route-status="all" asp-route-keyword="@keyword"
+       asp-route-semester="@ViewBag.Semester" asp-route-year="@ViewBag.Year"
+       class="ftab @(status == "all" ? "active" : "")">
+        Tất cả <span class="tab-count blue">@totalReportable</span>
+    </a>
+    <a asp-controller="Timeline" asp-action="DefenseResults"
+       asp-route-status="waiting" asp-route-keyword="@keyword"
+       asp-route-semester="@ViewBag.Semester" asp-route-year="@ViewBag.Year"
+       class="ftab amber-tab @(status == "waiting" ? "active" : "")">
+        Chờ kết quả <span class="tab-count amber">@totalWaiting</span>
+    </a>
+    <a asp-controller="Timeline" asp-action="DefenseResults"
+       asp-route-status="completed" asp-route-keyword="@keyword"
+       asp-route-semester="@ViewBag.Semester" asp-route-year="@ViewBag.Year"
+       class="ftab green-tab @(status == "completed" ? "active" : "")">
+        Hoàn thành <span class="tab-count green">@totalCompleted</span>
+    </a>
+</div>
+
+<!-- ════════════════════════════════
+     FILTER CARD
+════════════════════════════════ -->
+<form method="get" class="filter-card">
+    <input type="hidden" name="semester" value="@ViewBag.Semester" />
+    <input type="hidden" name="year"     value="@ViewBag.Year" />
+
+    <div class="search-wrap">
+        <i class="fa-solid fa-magnifying-glass search-ico"></i>
+        <input type="text" name="keyword" value="@keyword" class="search-input"
+               placeholder="Tìm sinh viên, MSSV, đề tài, giảng viên..." />
+    </div>
+
+    <select name="status" class="f-select">
+        @if (status == "all")
+        {
+            <option value="all" selected>Tất cả</option>
+        }
+        else
+        {
+            <option value="all">Tất cả</option>
+        }
+
+        @if (status == "waiting")
+        {
+            <option value="waiting" selected>Chờ kết quả</option>
+        }
+        else
+        {
+            <option value="waiting">Chờ kết quả</option>
+        }
+
+        @if (status == "completed")
+        {
+            <option value="completed" selected>Hoàn thành</option>
+        }
+        else
+        {
+            <option value="completed">Hoàn thành</option>
+        }
+    </select>
+
+    <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-magnifying-glass"></i> Lọc
+    </button>
+</form>
+
+<!-- ════════════════════════════════
+     TABLE CARD
+════════════════════════════════ -->
+<div class="main-card">
+    <div class="card-head">
+        <div class="card-head-title">
+            <i class="fa-solid fa-table-list" style="color:#94a3b8;font-size:13px;margin-right:7px;"></i>
+            Danh sách kết quả báo cáo
+        </div>
+        <span class="row-count">Hiển thị <b>@rows.Count</b> sinh viên</span>
+    </div>
+
+    @if (!rows.Any())
+    {
+        <div class="empty-state">
+            <i class="fa-regular fa-folder-open"></i>
+            <p>Không có sinh viên phù hợp với bộ lọc hiện tại.</p>
+        </div>
+    }
+    else
+    {
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:44px;text-align:center;">#</th>
+                        <th>Sinh viên</th>
+                        <th>Đề tài</th>
+                        <th>Giảng viên HD</th>
+                        <th>Tiến độ</th>
+                        <th style="text-align:center;">Trạng thái</th>
+                        <th style="text-align:right;padding-right:20px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        int idx = 1;
+                        @foreach (var item in rows)
+                        {
+                            int prog = item.RequiredCount > 0
+                                ? Math.Min(100, item.ApprovedCount * 100 / item.RequiredCount) : 0;
+
+                            <tr>
+                                <!-- STT -->
+                                <td style="text-align:center;font-size:12px;font-weight:700;color:#cbd5e1;">
+                                    @(idx.ToString("D2"))
+                                </td>
+
+                                <!-- Sinh viên -->
+                                <td>
+                                    <div class="stu-name">@item.StudentName</div>
+                                    <span class="stu-code">@item.StudentCode</span>
+                                </td>
+
+                                <!-- Đề tài -->
+                                <td>
+                                    <div class="topic-title" title="@item.TopicTitle">@item.TopicTitle</div>
+                                </td>
+
+                                <!-- GV -->
+                                <td>
+                                    <div class="lec-name">@item.LecturerName</div>
+                                </td>
+
+                                <!-- Tiến độ -->
+                                <td style="min-width:160px;">
+                                    <div class="prog-text">@item.ApprovedCount / @item.RequiredCount mốc đã duyệt</div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width:@prog%;"></div>
+                                    </div>
+                                </td>
+
+                                <!-- Trạng thái -->
+                                <td style="text-align:center;">
+                                    @if (item.HasCompletedThesis)
+                                    {
+                                        <div>
+                                            <span class="s-badge completed">
+                                                <i class="fa-solid fa-check" style="font-size:9px;"></i>
+                                                Hoàn thành
+                                            </span>
+                                            @if (item.ThesisCompletedAt.HasValue)
+                                            {
+                                                <div class="completed-date">
+                                                    @item.ThesisCompletedAt.Value.ToString("dd/MM/yyyy")
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="s-badge waiting">
+                                            <i class="fa-solid fa-hourglass-half" style="font-size:9px;"></i>
+                                            Chờ kết quả
+                                        </span>
+                                    }
+                                </td>
+
+                                <!-- Thao tác -->
+                                <td style="text-align:right;padding-right:16px;">
+                                    @if (item.HasCompletedThesis)
+                                    {
+                                        <form method="post" asp-controller="Timeline" asp-action="UpdateDefenseResult"
+                                              onsubmit="return confirm('Hủy trạng thái hoàn thành của sinh viên này?');"
+                                              style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="studentId" value="@item.StudentId" />
+                                            <input type="hidden" name="completed"  value="false" />
+                                            <input type="hidden" name="status"     value="@status" />
+                                            <input type="hidden" name="keyword"    value="@keyword" />
+                                            <input type="hidden" name="semester"   value="@ViewBag.Semester" />
+                                            <input type="hidden" name="year"       value="@ViewBag.Year" />
+                                            <button type="submit" class="act-btn reopen">
+                                                <i class="fa-solid fa-rotate-left" style="font-size:11px;"></i>
+                                                Mở lại
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-controller="Timeline" asp-action="UpdateDefenseResult"
+                                              onsubmit="return confirm('Đánh dấu sinh viên này đã hoàn thành khóa luận?');"
+                                              style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="studentId" value="@item.StudentId" />
+                                            <input type="hidden" name="completed"  value="true" />
+                                            <input type="hidden" name="status"     value="@status" />
+                                            <input type="hidden" name="keyword"    value="@keyword" />
+                                            <input type="hidden" name="semester"   value="@ViewBag.Semester" />
+                                            <input type="hidden" name="year"       value="@ViewBag.Year" />
+                                            <button type="submit" class="act-btn complete">
+                                                <i class="fa-solid fa-circle-check" style="font-size:11px;"></i>
+                                                Đánh dấu hoàn thành
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                            idx++;
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

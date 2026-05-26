@@ -10,8 +10,8 @@
     string createUrl = isAdmin ? "/Admin/Create" : "/Lecturer/Create";
     int totalTopics = ViewBag.TotalTopics ?? Model.Count();
     int openTopics = ViewBag.OpenTopics ?? Model.Count(t => t.IsApproved && t.IsRegistrationOpen);
-    int fullTopics = ViewBag.FullTopics ?? Model.Count(t => t.Status == TopicStatus.Full);
-    int closedTopics = ViewBag.ClosedTopics ?? Model.Count(t => t.Status == TopicStatus.Closed);
+    int fullTopics = ViewBag.FullTopics ?? Model.Count(t => t.Status == TopicStatus.Full || (t.IsApproved && !t.IsRegistrationOpen && !string.IsNullOrWhiteSpace(t.CreatedByStudentId)));
+    int closedTopics = ViewBag.ClosedTopics ?? Model.Count(t => t.Status == TopicStatus.Closed && string.IsNullOrWhiteSpace(t.CreatedByStudentId));
     int readyTopics = ViewBag.ReadyTopics ?? Model.Count(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
 }
 
@@ -741,13 +741,19 @@
     @foreach (var item in Model)
     {
         // Resolve status
-        string sClass = item.Status == TopicStatus.Available && item.IsRegistrationOpen ? "s-available"
+        bool isPrivateApprovedProposal = item.IsApproved
+            && !item.IsRegistrationOpen
+            && !string.IsNullOrWhiteSpace(item.CreatedByStudentId);
+
+        string sClass = isPrivateApprovedProposal ? "s-full"
+                      : item.Status == TopicStatus.Available && item.IsRegistrationOpen ? "s-available"
                       : item.Status == TopicStatus.Available && !item.IsRegistrationOpen ? "s-pending"
                       : item.Status == TopicStatus.Pending   ? "s-pending"
                       : item.Status == TopicStatus.Full      ? "s-full"
                       : "s-closed";
 
-        string sText  = item.Status == TopicStatus.Available && item.IsRegistrationOpen ? "Đang tuyển"
+        string sText  = isPrivateApprovedProposal ? "Đã đủ SV"
+                      : item.Status == TopicStatus.Available && item.IsRegistrationOpen ? "Đang tuyển"
                       : item.Status == TopicStatus.Available && !item.IsRegistrationOpen ? "Sẵn sàng"
                       : item.Status == TopicStatus.Pending   ? "Chờ duyệt"
                       : item.Status == TopicStatus.Full      ? "Đã đủ SV"
@@ -800,7 +806,7 @@
                     <span class="registration-label">Đăng ký:</span>
                     <span class="registration-pill @(item.IsRegistrationOpen ? "open" : "locked")">
                         <i class="fa-solid @(item.IsRegistrationOpen ? "fa-unlock" : "fa-lock")"></i>
-                        @(item.IsRegistrationOpen ? "Đang mở" : "Chưa mở")
+                        @(item.IsRegistrationOpen ? "Đang mở" : isPrivateApprovedProposal || item.Status == TopicStatus.Closed ? "Đã đóng" : "Chưa mở")
                     </span>
                 </div>
             </div>

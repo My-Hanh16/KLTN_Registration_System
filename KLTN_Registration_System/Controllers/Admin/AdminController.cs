@@ -18,6 +18,9 @@ namespace KLTN_Registration_System.Controllers.Admin
     [Authorize(Roles = "Admin")]
     public class AdminController : BaseController
     {
+        private const string AdminSelectedPeriodSessionKey = "AdminSelectedPeriodName";
+        private const string LecturerApprovedProposalPrefix = "[LECTURER_APPROVED]";
+        private const string LecturerRejectedProposalPrefix = "[LECTURER_REJECTED]";
         private readonly AppDbContext _context;
         private readonly NotificationService _notificationService;
 
@@ -33,13 +36,26 @@ namespace KLTN_Registration_System.Controllers.Admin
         // ============================================================
         public async Task<IActionResult> Index()
         {
-            var totalTopics = await _context.Topics.CountAsync();
-            var pendingApprovals = await _context.Topics
-                .CountAsync(t => t.Status == TopicStatus.Pending && !t.IsApproved);
-            var totalLecturers = (await _userManager.GetUsersInRoleAsync("Lecturer")).Count;
-            var totalStudents = (await _userManager.GetUsersInRoleAsync("Student")).Count;
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            SetAdminSelectedPeriod(activePeriod.Name);
 
-            var approvedStudentIds = await _context.Registrations
+            var topicQuery = FilterTopicsByActivePeriod(_context.Topics.AsQueryable(), activePeriod);
+            var registrationQuery = FilterRegistrationsByActivePeriod(_context.Registrations.Include(r => r.Topic), activePeriod);
+
+            var totalTopics = await topicQuery.CountAsync();
+            var pendingApprovals = await topicQuery
+                .CountAsync(t => t.Status == TopicStatus.Pending && !t.IsApproved);
+            var totalLecturers = await topicQuery
+                .Where(t => !string.IsNullOrWhiteSpace(t.LecturerId))
+                .Select(t => t.LecturerId!)
+                .Distinct()
+                .CountAsync();
+            var totalStudents = await _context.PeriodStudents
+                .CountAsync(ps => ps.RegistrationPeriodId == activePeriod.Id
+                    && ps.IsEligible
+                    && !ps.Student.HasCompletedThesis);
+
+            var approvedStudentIds = await registrationQuery
                 .Where(r => r.Status == "Approved")
                 .Select(r => r.StudentId)
                 .Distinct()
@@ -50,7 +66,7 @@ namespace KLTN_Registration_System.Controllers.Admin
                 : 0;
 
             // Biểu đồ phân bổ theo Khoa
-            var departmentData = await _context.Topics
+            var departmentData = await topicQuery
                 .Include(t => t.Major)
                 .Where(t => t.Major != null)
                 .GroupBy(t => t.Major!.FacultyName ?? "Chưa phân khoa")
@@ -100,7 +116,7 @@ namespace KLTN_Registration_System.Controllers.Admin
                 .Select(offset => DateTime.Today.AddDays(offset - 6))
                 .ToList();
 
-            var recentRegistrationCounts = await _context.Registrations
+            var recentRegistrationCounts = await registrationQuery
                 .Where(r => r.CreatedAt.Date >= last7Days.First())
                 .GroupBy(r => r.CreatedAt.Date)
                 .Select(g => new { Date = g.Key, Count = g.Count() })
@@ -114,7 +130,7 @@ namespace KLTN_Registration_System.Controllers.Admin
                 .ToList();
 
             // Đề tài mới cần duyệt (top 5)
-            var newTopics = await _context.Topics
+            var newTopics = await topicQuery
                 .Include(t => t.Lecturer)
                 .Include(t => t.Major)
                 .Where(t => t.Status == TopicStatus.Pending && !t.IsApproved)
@@ -140,6 +156,7 @@ namespace KLTN_Registration_System.Controllers.Admin
                 NewTopics = newTopics
             };
 
+            ViewBag.ActivePeriod = activePeriod;
             return View(model);
         }
 
@@ -148,27 +165,51 @@ namespace KLTN_Registration_System.Controllers.Admin
         // ============================================================
         public async Task<IActionResult> Statistics(string? semester = null, string? year = null)
         {
-            var totalStudents = (await _userManager.GetUsersInRoleAsync("Student")).Count;
-            var totalLecturers = (await _userManager.GetUsersInRoleAsync("Lecturer")).Count;
-
-            semester = string.IsNullOrWhiteSpace(semester) ? "HK2" : semester.Trim();
-            year = string.IsNullOrWhiteSpace(year) ? GetCurrentAcademicYear() : year.Trim();
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            semester = string.IsNullOrWhiteSpace(semester) ? activePeriod.SemesterCode : semester.Trim();
+            year = string.IsNullOrWhiteSpace(year) ? activePeriod.AcademicYear : year.Trim();
             var semesterKey = $"{semester}-{year}";
+            SetAdminSelectedPeriod(semesterKey);
+            var selectedPeriod = await _context.RegistrationPeriods
+                .FirstOrDefaultAsync(p => p.Name == semesterKey);
 
             var topicQuery = _context.Topics.AsQueryable();
-            topicQuery = topicQuery.Where(t => t.Semester == semesterKey || t.Semester == null);
-
             var registrationQuery = _context.Registrations
                 .Include(r => r.Topic)
                 .AsQueryable();
-            registrationQuery = registrationQuery.Where(r =>
-                r.Topic != null && (r.Topic.Semester == semesterKey || r.Topic.Semester == null));
+
+            if (selectedPeriod == null)
+            {
+                topicQuery = topicQuery.Where(_ => false);
+                registrationQuery = registrationQuery.Where(_ => false);
+            }
+            else
+            {
+                topicQuery = topicQuery.Where(t =>
+                    t.RegistrationPeriodId == selectedPeriod.Id
+                    || (t.RegistrationPeriodId == null && t.Semester == selectedPeriod.Name));
+
+                registrationQuery = registrationQuery.Where(r =>
+                    r.RegistrationPeriodId == selectedPeriod.Id
+                    || (r.Topic != null && r.RegistrationPeriodId == null && r.Topic.Semester == selectedPeriod.Name));
+            }
 
             var totalTopics = await topicQuery.CountAsync();
             var approvedTopics = await topicQuery.CountAsync(t => t.IsApproved);
-            var pendingTopics = await topicQuery.CountAsync(t => t.Status == TopicStatus.Pending || !t.IsApproved);
+            var pendingTopics = await topicQuery.CountAsync(t => !t.IsApproved && t.Status == TopicStatus.Pending);
+            var totalLecturers = await topicQuery
+                .Where(t => t.LecturerId != null)
+                .Select(t => t.LecturerId!)
+                .Distinct()
+                .CountAsync();
 
             var registrations = await registrationQuery.ToListAsync();
+            var totalStudents = selectedPeriod == null
+                ? 0
+                : await _context.PeriodStudents.CountAsync(ps =>
+                    ps.RegistrationPeriodId == selectedPeriod.Id &&
+                    ps.IsEligible &&
+                    !ps.Student.HasCompletedThesis);
 
             var approvedRegs = registrations.Count(r => r.Status == "Approved");
             var pendingRegs = registrations.Count(r => r.Status == "Pending");
@@ -185,7 +226,7 @@ namespace KLTN_Registration_System.Controllers.Admin
                 .Count();
 
             double registrationRate = totalStudents > 0
-                ? Math.Round((double)registeredStudentIds / totalStudents * 100, 1)
+                ? Math.Min(100, Math.Round((double)registeredStudentIds / totalStudents * 100, 1))
                 : 0;
 
             // =========================
@@ -203,18 +244,39 @@ namespace KLTN_Registration_System.Controllers.Admin
                 .ToListAsync();
 
             // =========================
-            // BIỂU ĐỒ THEO THÁNG
+            // TIẾN ĐỘ ĐĂNG KÝ THEO NGÀY
             // =========================
-            var monthlyRegs = registrations
-                .GroupBy(r => new { r.CreatedAt.Year, r.CreatedAt.Month })
-                .Select(g => new
-                {
-                    g.Key.Year,
-                    g.Key.Month,
-                    Count = g.Count()
-                })
-                .OrderBy(x => x.Year)
-                .ThenBy(x => x.Month)
+            var progressStart = selectedPeriod?.RegistrationOpenAt.Date
+                ?? registrations.Select(r => r.CreatedAt.Date).DefaultIfEmpty(DateTime.Today).Min();
+            var progressEnd = selectedPeriod?.RegistrationCloseAt.Date ?? DateTime.Today;
+            var latestRegistrationDate = registrations.Select(r => r.CreatedAt.Date).DefaultIfEmpty(progressStart).Max();
+            progressEnd = new[] { progressEnd, latestRegistrationDate }.Max();
+
+            if (progressEnd < progressStart)
+            {
+                progressEnd = progressStart;
+            }
+
+            if ((progressEnd - progressStart).TotalDays > 45)
+            {
+                progressStart = progressEnd.AddDays(-45);
+            }
+
+            var activeRegistrations = registrations
+                .Where(r => r.Status == "Pending" || r.Status == "Approved")
+                .GroupBy(r => r.StudentId)
+                .Select(g => g.Min(r => r.CreatedAt.Date))
+                .ToList();
+
+            var progressDays = Enumerable.Range(0, (progressEnd - progressStart).Days + 1)
+                .Select(offset => progressStart.AddDays(offset))
+                .ToList();
+
+            var today = DateTime.Today;
+            var progressCounts = progressDays
+                .Select(day => day > today
+                    ? (int?)null
+                    : activeRegistrations.Count(d => d <= day))
                 .ToList();
 
             ViewBag.TotalStudents = totalStudents;
@@ -236,19 +298,20 @@ namespace KLTN_Registration_System.Controllers.Admin
             ViewBag.SelectedSemester = semester;
             ViewBag.SelectedYear = year;
             ViewBag.YearOptions = await GetAcademicYearOptions();
+            ViewBag.SemesterOptions = await GetSemesterOptions();
+            ViewBag.ActivePeriod = selectedPeriod;
+            ViewBag.SelectedPeriodName = selectedPeriod?.Name ?? semesterKey;
 
             // Major chart
             ViewBag.MajorLabels = majorStats.Select(x => x.Faculty).ToList();
             ViewBag.MajorCounts = majorStats.Select(x => x.Count).ToList();
 
-            // Monthly chart
-            ViewBag.MonthLabels = monthlyRegs
-                .Select(x => $"{x.Month:00}/{x.Year}")
+            // Registration progress chart
+            ViewBag.MonthLabels = progressDays
+                .Select(d => d.ToString("dd/MM"))
                 .ToList();
 
-            ViewBag.MonthCounts = monthlyRegs
-                .Select(x => x.Count)
-                .ToList();
+            ViewBag.MonthCounts = progressCounts;
 
             return View();
         }
@@ -256,26 +319,52 @@ namespace KLTN_Registration_System.Controllers.Admin
         [HttpGet]
         public async Task<IActionResult> ExportStatistics(string? semester = null, string? year = null)
         {
-            semester = string.IsNullOrWhiteSpace(semester) ? "HK2" : semester.Trim();
-            year = string.IsNullOrWhiteSpace(year) ? GetCurrentAcademicYear() : year.Trim();
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            semester = string.IsNullOrWhiteSpace(semester) ? activePeriod.SemesterCode : semester.Trim();
+            year = string.IsNullOrWhiteSpace(year) ? activePeriod.AcademicYear : year.Trim();
             var semesterKey = $"{semester}-{year}";
+            var selectedPeriod = await _context.RegistrationPeriods
+                .FirstOrDefaultAsync(p => p.Name == semesterKey);
 
-            var totalStudents = (await _userManager.GetUsersInRoleAsync("Student")).Count;
-            var totalLecturers = (await _userManager.GetUsersInRoleAsync("Lecturer")).Count;
-
-            var topics = await _context.Topics
+            var topicQuery = _context.Topics
                 .Include(t => t.Major)
-                .Where(t => t.Semester == semesterKey || t.Semester == null)
-                .ToListAsync();
-
-            var registrations = await _context.Registrations
+                .AsQueryable();
+            var registrationQuery = _context.Registrations
                 .Include(r => r.Topic)
-                .Where(r => r.Topic != null && (r.Topic.Semester == semesterKey || r.Topic.Semester == null))
-                .ToListAsync();
+                .AsQueryable();
+
+            if (selectedPeriod == null)
+            {
+                topicQuery = topicQuery.Where(_ => false);
+                registrationQuery = registrationQuery.Where(_ => false);
+            }
+            else
+            {
+                topicQuery = topicQuery.Where(t =>
+                    t.RegistrationPeriodId == selectedPeriod.Id
+                    || (t.RegistrationPeriodId == null && t.Semester == selectedPeriod.Name));
+                registrationQuery = registrationQuery.Where(r =>
+                    r.RegistrationPeriodId == selectedPeriod.Id
+                    || (r.Topic != null && r.RegistrationPeriodId == null && r.Topic.Semester == selectedPeriod.Name));
+            }
+
+            var topics = await topicQuery.ToListAsync();
+            var registrations = await registrationQuery.ToListAsync();
 
             var registeredStudents = registrations
                 .Where(r => r.Status == "Pending" || r.Status == "Approved")
                 .Select(r => r.StudentId)
+                .Distinct()
+                .Count();
+            var totalStudents = selectedPeriod == null
+                ? 0
+                : await _context.PeriodStudents.CountAsync(ps =>
+                    ps.RegistrationPeriodId == selectedPeriod.Id &&
+                    ps.IsEligible &&
+                    !ps.Student.HasCompletedThesis);
+            var totalLecturers = topics
+                .Where(t => !string.IsNullOrWhiteSpace(t.LecturerId))
+                .Select(t => t.LecturerId)
                 .Distinct()
                 .Count();
 
@@ -329,11 +418,21 @@ namespace KLTN_Registration_System.Controllers.Admin
         // ============================================================
         // DUYỆT ĐĂNG KÝ  →  /Admin/Approval
         // ============================================================
-        public async Task<IActionResult> Approval()
+        public async Task<IActionResult> Approval(string? status = null, string? semester = null, string? year = null)
         {
-            var registrations = await _context.Registrations
+            var selectedPeriod = await GetAdminSelectedPeriodAsync(semester, year);
+            var registrationQuery = _context.Registrations
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
+                .AsQueryable();
+
+            registrationQuery = selectedPeriod == null
+                ? registrationQuery.Where(_ => false)
+                : registrationQuery.Where(r =>
+                    r.RegistrationPeriodId == selectedPeriod.Id
+                    || (r.RegistrationPeriodId == null && r.Topic != null && r.Topic.Semester == selectedPeriod.Name));
+
+            var registrations = await registrationQuery
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
@@ -341,13 +440,14 @@ namespace KLTN_Registration_System.Controllers.Admin
             ViewBag.PendingCount = registrations.Count(r => r.Status == "Pending");
             ViewBag.RejectedCount = registrations.Count(r => r.Status == "Rejected");
             ViewBag.TotalRegistrations = registrations.Count;
+            ViewBag.SelectedPeriodName = selectedPeriod?.Name ?? GetAdminSelectedPeriodName();
 
             return View(registrations);
         }
 
         // POST: Duyệt 1 đăng ký — ĐÃ SỬA bug NullReference
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> ApproveRegistration(int id)
+        public async Task<IActionResult> ApproveRegistration(int id, string? semester = null, string? year = null, string? status = "Pending")
         {
             var reg = await _context.Registrations
                 .Include(r => r.Topic)
@@ -357,7 +457,7 @@ namespace KLTN_Registration_System.Controllers.Admin
             if (reg.Topic == null)
             {
                 TempData["Error"] = "Đăng ký này không còn đề tài hợp lệ.";
-                return RedirectToAction(nameof(Approval));
+                return RedirectToAction(nameof(Approval), new { status, semester, year });
             }
 
             // SV đã có đề tài approved chưa
@@ -370,7 +470,7 @@ namespace KLTN_Registration_System.Controllers.Admin
             if (alreadyApproved)
             {
                 TempData["Error"] = "Sinh viên đã có đề tài được duyệt!";
-                return RedirectToAction(nameof(Approval));
+                return RedirectToAction(nameof(Approval), new { status, semester, year });
             }
 
             var currentApprovedCount = await _context.Registrations
@@ -383,7 +483,7 @@ namespace KLTN_Registration_System.Controllers.Admin
                 await _context.SaveChangesAsync();
 
                 TempData["Error"] = "Đề tài đã đủ sinh viên, không thể duyệt thêm.";
-                return RedirectToAction(nameof(Approval));
+                return RedirectToAction(nameof(Approval), new { status, semester, year });
             }
 
             reg.UpdatedAt = DateTime.Now;
@@ -408,12 +508,96 @@ namespace KLTN_Registration_System.Controllers.Admin
 );
 
             TempData["Success"] = "Đã phê duyệt đăng ký thành công!";
-            return RedirectToAction(nameof(Approval));
+            return RedirectToAction(nameof(Approval), new { status = status ?? "Pending", semester, year });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveAllRegistrations(string? semester = null, string? year = null)
+        {
+            var selectedPeriod = await GetAdminSelectedPeriodAsync(semester, year);
+            if (selectedPeriod == null)
+            {
+                TempData["Error"] = "Không tìm thấy đợt đăng ký cần duyệt.";
+                return RedirectToAction(nameof(Approval), new { status = "Pending", semester, year });
+            }
+
+            var pendingRegs = await _context.Registrations
+                .Include(r => r.Topic)
+                .Where(r => r.Status == "Pending"
+                    && (r.RegistrationPeriodId == selectedPeriod.Id
+                        || (r.RegistrationPeriodId == null && r.Topic != null && r.Topic.Semester == selectedPeriod.Name)))
+                .OrderBy(r => r.CreatedAt)
+                .ToListAsync();
+
+            var existingApprovedStudentIds = await _context.Registrations
+                .Where(r => r.Status == "Approved")
+                .Select(r => r.StudentId)
+                .Distinct()
+                .ToListAsync();
+            var approvedStudents = existingApprovedStudentIds.ToHashSet();
+
+            var topicApprovedCounts = await _context.Registrations
+                .Where(r => r.Status == "Approved")
+                .GroupBy(r => r.TopicId)
+                .Select(g => new { TopicId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.TopicId, x => x.Count);
+
+            var approvedRegs = new List<Registration>();
+            int skipped = 0;
+
+            foreach (var reg in pendingRegs)
+            {
+                if (reg.Topic == null || approvedStudents.Contains(reg.StudentId))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var currentApprovedCount = topicApprovedCounts.TryGetValue(reg.TopicId, out var count)
+                    ? count
+                    : 0;
+
+                if (currentApprovedCount >= reg.Topic.MaxStudents)
+                {
+                    reg.Topic.Status = TopicStatus.Full;
+                    reg.Topic.IsRegistrationOpen = false;
+                    skipped++;
+                    continue;
+                }
+
+                reg.Status = "Approved";
+                reg.UpdatedAt = DateTime.Now;
+                reg.ApprovedBy = User.Identity?.Name;
+                approvedRegs.Add(reg);
+                approvedStudents.Add(reg.StudentId);
+                topicApprovedCounts[reg.TopicId] = currentApprovedCount + 1;
+
+                if (currentApprovedCount + 1 >= reg.Topic.MaxStudents)
+                {
+                    reg.Topic.Status = TopicStatus.Full;
+                    reg.Topic.IsRegistrationOpen = false;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            foreach (var reg in approvedRegs)
+            {
+                await _notificationService.SendDualNotification(
+                    reg.StudentId,
+                    "🔔 Đăng ký được duyệt",
+                    $"Yêu cầu đăng ký đề tài \"{reg.Topic?.Title}\" của bạn đã được Admin phê duyệt.",
+                    "TopicApproved",
+                    reg.TopicId);
+            }
+
+            TempData["Success"] = $"Đã duyệt {approvedRegs.Count} đăng ký. Bỏ qua {skipped} đăng ký không hợp lệ hoặc đề tài đã đủ sinh viên.";
+            return RedirectToAction(nameof(Approval), new { status = "Pending", semester, year });
         }
 
         // POST: Từ chối 1 đăng ký
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> RejectRegistration(int id)
+        public async Task<IActionResult> RejectRegistration(int id, string? semester = null, string? year = null, string? status = "Pending")
         {
             var reg = await _context.Registrations
                 .Include(r => r.Topic)
@@ -434,7 +618,7 @@ namespace KLTN_Registration_System.Controllers.Admin
         reg.TopicId);
 
             TempData["Error"] = "Đã từ chối yêu cầu đăng ký.";
-            return RedirectToAction(nameof(Approval)); // Thêm dòng này để fix lỗi CS0161
+            return RedirectToAction(nameof(Approval), new { status = status ?? "Pending", semester, year });
         } // Thêm dấu đóng ngoặc này để fix lỗi CS1513
 
         // ============================================================
@@ -442,15 +626,21 @@ namespace KLTN_Registration_System.Controllers.Admin
         // ============================================================
         public async Task<IActionResult> ThesisManagement(
             string? search = null, string? status = null,
-            int? majorId = null, int page = 1)
+            int? majorId = null, int page = 1,
+            string? semester = null, string? year = null)
         {
             int pageSize = 10;
+            var selectedPeriod = await GetAdminSelectedPeriodAsync(semester, year);
 
             var query = _context.Topics
                 .Include(t => t.Lecturer)
                 .Include(t => t.Major)
                 .Include(t => t.Registrations)
+                .Where(t => !t.IsStudentProposed)
                 .AsQueryable();
+            query = selectedPeriod == null
+                ? query.Where(_ => false)
+                : FilterTopicsByActivePeriod(query, selectedPeriod);
 
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(t =>
@@ -461,7 +651,19 @@ t.Lecturer.FullName.Contains(search)));
 
             if (!string.IsNullOrEmpty(status))
             {
-                if (Enum.TryParse<TopicStatus>(status, out var parsedStatus))
+                if (status == nameof(TopicStatus.Full))
+                {
+                    query = query.Where(t => t.Status == TopicStatus.Full
+                        || (t.IsApproved
+                            && !t.IsRegistrationOpen
+                            && !string.IsNullOrWhiteSpace(t.CreatedByStudentId)));
+                }
+                else if (status == nameof(TopicStatus.Closed))
+                {
+                    query = query.Where(t => t.Status == TopicStatus.Closed
+                        && string.IsNullOrWhiteSpace(t.CreatedByStudentId));
+                }
+                else if (Enum.TryParse<TopicStatus>(status, out var parsedStatus))
                 {
                     query = query.Where(t => t.Status == parsedStatus);
                 }
@@ -477,12 +679,21 @@ t.Lecturer.FullName.Contains(search)));
                 .Take(pageSize)
                 .ToListAsync();
 
-            ViewBag.TotalTopics = await _context.Topics.CountAsync();
-            ViewBag.OpenTopics = await _context.Topics.CountAsync(t => t.IsApproved && t.IsRegistrationOpen);
-            ViewBag.ReadyTopics = await _context.Topics.CountAsync(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
-            ViewBag.FullTopics = await _context.Topics.CountAsync(t => t.Status == TopicStatus.Full);
-            ViewBag.ClosedTopics = await _context.Topics.CountAsync(t => t.Status == TopicStatus.Closed);
-            ViewBag.PendingTopics = await _context.Topics.CountAsync(t => !t.IsApproved);
+            var periodTopics = selectedPeriod == null
+                ? _context.Topics.Where(_ => false)
+                : FilterTopicsByActivePeriod(_context.Topics.Where(t => !t.IsStudentProposed), selectedPeriod);
+            ViewBag.TotalTopics = await periodTopics.CountAsync();
+            ViewBag.OpenTopics = await periodTopics.CountAsync(t => t.IsApproved && t.IsRegistrationOpen);
+            ViewBag.ReadyTopics = await periodTopics.CountAsync(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
+            ViewBag.FullTopics = await periodTopics.CountAsync(t => t.Status == TopicStatus.Full
+                || (t.IsApproved
+                    && !t.IsRegistrationOpen
+                    && !string.IsNullOrWhiteSpace(t.CreatedByStudentId)));
+            ViewBag.ClosedTopics = await periodTopics.CountAsync(t => t.Status == TopicStatus.Closed
+                && string.IsNullOrWhiteSpace(t.CreatedByStudentId));
+            ViewBag.PendingTopics = await periodTopics.CountAsync(t => !t.IsApproved);
+            ViewBag.ActivePeriod = selectedPeriod;
+            ViewBag.SelectedPeriodName = selectedPeriod?.Name ?? GetAdminSelectedPeriodName();
             ViewBag.Majors = await _context.Majors.Where(m => m.IsActive).ToListAsync();
             ViewBag.TotalPages = (int)Math.Ceiling((double)totalItems / pageSize);
             ViewBag.CurrentPage = page;
@@ -497,8 +708,9 @@ t.Lecturer.FullName.Contains(search)));
         // Alias sidebar dùng route ManageTopics
         public Task<IActionResult> ManageTopics(
             string? search = null, string? status = null,
-            int? majorId = null, int page = 1)
-            => ThesisManagement(search, status, majorId, page);
+            int? majorId = null, int page = 1,
+            string? semester = null, string? year = null)
+            => ThesisManagement(search, status, majorId, page, semester, year);
 
         // Duyệt 1 đề tài
         [Authorize(Roles = "Admin")]
@@ -507,6 +719,11 @@ t.Lecturer.FullName.Contains(search)));
         {
             var topic = await _context.Topics.FindAsync(id);
             if (topic == null) return NotFound();
+            if (topic.IsStudentProposed)
+            {
+                TempData["Error"] = "Đề xuất sinh viên phải đi qua mục Đề xuất từ sinh viên, không duyệt trực tiếp trong kho đề tài.";
+                return RedirectToAction(nameof(ThesisManagement));
+            }
 
             topic.IsApproved = true;
             topic.IsRegistrationOpen = false;
@@ -709,13 +926,38 @@ t.Lecturer.FullName.Contains(search)));
         // QUẢN LÝ NGƯỜI DÙNG  →  /Admin/UserManagement
         // ============================================================
         public async Task<IActionResult> UserManagement(
-            string? search = null, string? role = null, int page = 1)
+            string? search = null, string? role = null, int page = 1,
+            string? semester = null, string? year = null,
+            string? faculty = null, int? majorId = null)
         {
             int pageSize = 10;
+            RegistrationPeriod? selectedStudentPeriod = null;
 
             IList<ApplicationUser> usersInRole = string.IsNullOrEmpty(role)
                 ? await _userManager.Users.ToListAsync()
                 : await _userManager.GetUsersInRoleAsync(role);
+
+            if (role == "Student")
+            {
+                selectedStudentPeriod = await GetAdminSelectedPeriodAsync(semester, year);
+                if (selectedStudentPeriod == null)
+                {
+                    usersInRole = new List<ApplicationUser>();
+                }
+                else
+                {
+                    var eligibleStudentIds = await _context.PeriodStudents
+                        .Where(ps =>
+                            ps.RegistrationPeriodId == selectedStudentPeriod.Id &&
+                            (ps.IsEligible || ps.Student.HasCompletedThesis))
+                        .Select(ps => ps.StudentId)
+                        .ToListAsync();
+                    var eligibleSet = eligibleStudentIds.ToHashSet();
+                    usersInRole = usersInRole
+                        .Where(u => eligibleSet.Contains(u.Id))
+                        .ToList();
+                }
+            }
 
             var query = usersInRole.AsQueryable();
 
@@ -725,8 +967,34 @@ t.Lecturer.FullName.Contains(search)));
                     (u.Email != null && u.Email.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                     (u.UserCode != null && u.UserCode.Contains(search, StringComparison.OrdinalIgnoreCase)));
 
-            var totalItems = query.Count();
-            var users = query
+            var filteredUsers = query.ToList();
+
+            if (!string.IsNullOrWhiteSpace(faculty) || majorId.HasValue)
+            {
+                var filteredUserIds = filteredUsers.Select(u => u.Id).ToList();
+                var userMajorRows = await _context.UserMajors
+                    .Include(um => um.Major)
+                    .Where(um => filteredUserIds.Contains(um.UserId))
+                    .ToListAsync();
+
+                var matchedUserIds = userMajorRows
+                    .Where(um =>
+                        (!majorId.HasValue || um.MajorId == majorId.Value) &&
+                        (string.IsNullOrWhiteSpace(faculty)
+                            || string.Equals(um.Major.FacultyName, faculty.Trim(), StringComparison.OrdinalIgnoreCase)))
+                    .Select(um => um.UserId)
+                    .ToHashSet();
+
+                filteredUsers = filteredUsers
+                    .Where(u => matchedUserIds.Contains(u.Id)
+                        || (!majorId.HasValue
+                            && !string.IsNullOrWhiteSpace(faculty)
+                            && string.Equals(u.Faculty, faculty.Trim(), StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+            }
+
+            var totalItems = filteredUsers.Count;
+            var users = filteredUsers
                 .OrderBy(u => u.FullName)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -745,18 +1013,42 @@ t.Lecturer.FullName.Contains(search)));
             ViewBag.TotalUsers = totalItems;
             ViewBag.Search = search;
             ViewBag.RoleFilter = role;
-            ViewBag.Majors = await _context.Majors
+            ViewBag.FacultyFilter = faculty;
+            ViewBag.MajorFilter = majorId;
+            ViewBag.SelectedPeriodName = selectedStudentPeriod?.Name ?? GetAdminSelectedPeriodName();
+            var majors = await _context.Majors
                 .Where(m => m.IsActive)
                 .OrderBy(m => m.FacultyName)
                 .ThenBy(m => m.Name)
                 .ToListAsync();
+            ViewBag.Majors = majors;
+            ViewBag.Faculties = majors
+                .Select(m => m.FacultyName)
+                .Where(f => !string.IsNullOrWhiteSpace(f))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(f => f)
+                .ToList();
 
-            // ✅ FIX: Set đủ 3 ViewBag cho thẻ thống kê cuối trang
-            var allUsers = await _userManager.Users.ToListAsync();
-            ViewBag.NewUsers = allUsers.Count(u => !u.EmailConfirmed);
+            var pageUserIds = users.Select(u => u.Id).ToList();
+            ViewBag.UserMajorNames = await _context.UserMajors
+                .Include(um => um.Major)
+                .Where(um => pageUserIds.Contains(um.UserId))
+                .GroupBy(um => um.UserId)
+                .ToDictionaryAsync(
+                    g => g.Key,
+                    g => string.Join(", ", g.Select(um => um.Major.Name).Distinct()));
+
+            // Thống kê theo đúng tập đang lọc để số liệu trên trang không lệch với bảng.
+            var statsUsers = filteredUsers.ToList();
+            ViewBag.NewUsers = statsUsers.Count(u => !u.EmailConfirmed);
             var lecturerList = await _userManager.GetUsersInRoleAsync("Lecturer");
-            ViewBag.VerifiedLecturers = lecturerList.Count(u => u.EmailConfirmed);
-            ViewBag.LockedAccounts = allUsers.Count(u =>
+            ViewBag.VerifiedLecturers = role == "Lecturer"
+                ? statsUsers.Count(u => u.EmailConfirmed)
+                : lecturerList.Count(u => u.EmailConfirmed);
+            ViewBag.CompletedStudents = role == "Student"
+                ? statsUsers.Count(u => u.HasCompletedThesis)
+                : 0;
+            ViewBag.LockedAccounts = statsUsers.Count(u =>
                 u.LockoutEnd != null && u.LockoutEnd > DateTimeOffset.Now);
 
             return View("UserManagement", users);
@@ -764,13 +1056,16 @@ t.Lecturer.FullName.Contains(search)));
 
         // Khóa / Mở khóa tài khoản
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> ToggleLockUser(string userId, string? role)
+        public async Task<IActionResult> ToggleLockUser(
+            string userId, string? role,
+            string? search = null, int page = 1,
+            string? faculty = null, int? majorId = null)
         {
             var currentUserId = _userManager.GetUserId(User);
             if (userId == currentUserId)
             {
                 TempData["Error"] = "Bạn không thể tự khóa tài khoản đang đăng nhập.";
-                return RedirectToAction(nameof(UserManagement), new { role });
+                return RedirectToAction(nameof(UserManagement), new { role, search, page, faculty, majorId });
             }
 
             var user = await _userManager.FindByIdAsync(userId);
@@ -778,7 +1073,7 @@ t.Lecturer.FullName.Contains(search)));
             if (user == null)
             {
                 TempData["Error"] = "Không tìm thấy người dùng!";
-                return RedirectToAction(nameof(UserManagement), new { role });
+                return RedirectToAction(nameof(UserManagement), new { role, search, page, faculty, majorId });
             }
 
             bool isLocked = await _userManager.IsLockedOutAsync(user);
@@ -798,7 +1093,53 @@ t.Lecturer.FullName.Contains(search)));
                     $"Đã khóa tài khoản {user.FullName}";
             }
 
-            return RedirectToAction(nameof(UserManagement), new { role });
+            return RedirectToAction(nameof(UserManagement), new { role, search, page, faculty, majorId });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleThesisCompletion(
+            string userId, string? role,
+            string? search = null, int page = 1,
+            string? faculty = null, int? majorId = null)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                TempData["Error"] = "Không tìm thấy sinh viên.";
+                return RedirectToAction(nameof(UserManagement), new { role = role ?? "Student", search, page, faculty, majorId });
+            }
+
+            if (!await _userManager.IsInRoleAsync(user, "Student"))
+            {
+                TempData["Error"] = "Chỉ sinh viên mới có trạng thái hoàn thành KLTN.";
+                return RedirectToAction(nameof(UserManagement), new { role, search, page, faculty, majorId });
+            }
+
+            user.HasCompletedThesis = !user.HasCompletedThesis;
+            user.ThesisCompletedAt = user.HasCompletedThesis ? DateTime.Now : null;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (result.Succeeded && user.HasCompletedThesis)
+            {
+                var periodStudents = await _context.PeriodStudents
+                    .Where(ps => ps.StudentId == user.Id && ps.IsEligible)
+                    .ToListAsync();
+
+                foreach (var periodStudent in periodStudents)
+                {
+                    periodStudent.IsEligible = false;
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            TempData[result.Succeeded ? "Success" : "Error"] = result.Succeeded
+                ? user.HasCompletedThesis
+                    ? $"Đã đánh dấu {user.FullName ?? user.UserName} hoàn thành KLTN. Sinh viên này đã bị loại khỏi danh sách đủ điều kiện và không được tham gia các đợt sau."
+                    : $"Đã mở lại quyền tham gia KLTN cho {user.FullName ?? user.UserName}."
+                : "Không thể cập nhật trạng thái hoàn thành KLTN.";
+
+            return RedirectToAction(nameof(UserManagement), new { role = role ?? "Student", search, page, faculty, majorId });
         }
 
         // Đổi Role người dùng
@@ -951,12 +1292,12 @@ t.Lecturer.FullName.Contains(search)));
         }
 
         // Quản lý Sinh viên
-        public async Task<IActionResult> StudentManagement(string? search, int page = 1)
-            => await UserManagement(search, "Student", page);
+        public async Task<IActionResult> StudentManagement(string? search, int page = 1, string? semester = null, string? year = null, string? faculty = null, int? majorId = null)
+            => await UserManagement(search, "Student", page, semester, year, faculty, majorId);
 
         // Quản lý Giảng viên
-        public async Task<IActionResult> LecturerManagement(string? search, int page = 1)
-            => await UserManagement(search, "Lecturer", page);
+        public async Task<IActionResult> LecturerManagement(string? search, int page = 1, string? semester = null, string? year = null, string? faculty = null, int? majorId = null)
+            => await UserManagement(search, "Lecturer", page, semester, year, faculty, majorId);
 
         // Tạo user thủ công
         [HttpPost, ValidateAntiForgeryToken]
@@ -989,6 +1330,17 @@ t.Lecturer.FullName.Contains(search)));
                 .Distinct()
                 .ToList();
 
+            RegistrationPeriod? targetStudentPeriod = null;
+            if (role == "Student")
+            {
+                targetStudentPeriod = await GetAdminSelectedPeriodAsync();
+                if (targetStudentPeriod == null)
+                {
+                    TempData["Error"] = "Chưa có đợt đăng ký tương ứng. Vui lòng tạo/chọn đợt ở mục Cài đặt trước khi thêm sinh viên.";
+                    return RedirectToAction(nameof(StudentManagement));
+                }
+            }
+
             var user = new ApplicationUser
             {
                 UserName = email,
@@ -1009,6 +1361,10 @@ t.Lecturer.FullName.Contains(search)));
             {
                 await _userManager.AddToRoleAsync(user, role);
                 await SyncUserMajorsAsync(user.Id, selectedMajorIds);
+                if (role == "Student")
+                {
+                    await AddStudentToPeriodAsync(user.Id, targetStudentPeriod!.Id);
+                }
                 TempData["Success"] = $"Đã tạo tài khoản {role} thành công!";
                 TempData["TempPassword"] = initialPassword;
             }
@@ -1035,6 +1391,13 @@ t.Lecturer.FullName.Contains(search)));
         [RequestSizeLimit(5 * 1024 * 1024)]
         public async Task<IActionResult> ImportTopics(IFormFile file)
         {
+            var selectedPeriod = await GetAdminSelectedPeriodAsync();
+            if (selectedPeriod == null)
+            {
+                TempData["Error"] = "Chưa có đợt đăng ký tương ứng. Vui lòng tạo/chọn đợt ở mục Cài đặt trước khi import đề tài.";
+                return RedirectToAction(nameof(ThesisManagement));
+            }
+
             if (!IsValidExcelUpload(file, out var topicImportError))
             {
                 TempData["Error"] = topicImportError;
@@ -1060,9 +1423,9 @@ t.Lecturer.FullName.Contains(search)));
 
                 var header = table.Rows[0];
                 int colCode = -1, colTitle = -1, colDesc = -1,
-                    colSemester = -1, colLecturerEmail = -1, colFaculty = -1,
+                    colLecturerEmail = -1, colFaculty = -1,
                     colMajorCode = -1, colMajorName = -1, colMaxStudents = -1,
-                    colLevel = -1, colCategory = -1, colDeadline = -1;
+                    colLevel = -1, colCategory = -1;
 
                 for (int j = 0; j < table.Columns.Count; j++)
                 {
@@ -1074,12 +1437,10 @@ t.Lecturer.FullName.Contains(search)));
                     else if (colName.Contains("topiccode") || colName.Contains("mã đề tài") || colName.Contains("ma de tai")) colCode = j;
                     else if (colName.Contains("title") || colName.Contains("tên đề tài") || colName.Contains("ten de tai")) colTitle = j;
                     else if (colName.Contains("description") || colName.Contains("mô")) colDesc = j;
-                    else if (colName.Contains("semester") || colName.Contains("kỳ")) colSemester = j;
                     else if (colName.Contains("email")) colLecturerEmail = j;
                     else if (colName.Contains("maxstudents") || colName.Contains("số sv") || colName.Contains("so sv")) colMaxStudents = j;
                     else if (colName.Contains("level") || colName.Contains("độ khó") || colName.Contains("do kho")) colLevel = j;
                     else if (colName.Contains("category") || colName.Contains("loại") || colName.Contains("loai")) colCategory = j;
-                    else if (colName.Contains("deadline") || colName.Contains("hạn") || colName.Contains("han")) colDeadline = j;
                     else if (colName.Contains("faculty") || colName.Contains("khoa")) colFaculty = j;
                 }
 
@@ -1099,14 +1460,12 @@ t.Lecturer.FullName.Contains(search)));
                         code = $"AUTO-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
                     var desc = colDesc != -1 ? row[colDesc]?.ToString()?.Trim() : "";
-                    var semester = colSemester != -1 ? row[colSemester]?.ToString()?.Trim() : "";
                     var lecturerEmail = colLecturerEmail != -1 ? row[colLecturerEmail]?.ToString()?.Trim() : "";
                     var faculty = colFaculty != -1 ? row[colFaculty]?.ToString()?.Trim() : "";
                     var majorCode = colMajorCode != -1 ? row[colMajorCode]?.ToString()?.Trim() : "";
                     var majorName = colMajorName != -1 ? row[colMajorName]?.ToString()?.Trim() : "";
                     var category = colCategory != -1 ? row[colCategory]?.ToString()?.Trim() : "";
                     var levelText = colLevel != -1 ? row[colLevel]?.ToString()?.Trim() : "";
-                    var deadlineText = colDeadline != -1 ? row[colDeadline]?.ToString()?.Trim() : "";
 
                     if (string.IsNullOrEmpty(title))
                     {
@@ -1192,28 +1551,19 @@ t.Lecturer.FullName.Contains(search)));
                         level = TopicLevel.Medium;
                     }
 
-                    var deadline = DateTime.Now.AddMonths(3);
-                    if (colDeadline != -1 && row[colDeadline] is DateTime deadlineValue)
-                    {
-                        deadline = deadlineValue;
-                    }
-                    else if (!string.IsNullOrWhiteSpace(deadlineText) && DateTime.TryParse(deadlineText, out var parsedDeadline))
-                    {
-                        deadline = parsedDeadline;
-                    }
-
                     var topic = new Topic
                     {
                         Title = title,
                         TopicCode = code,
                         Description = desc ?? "",
-                        Semester = string.IsNullOrWhiteSpace(semester) ? "HK2-2025-2026" : semester,
+                        Semester = selectedPeriod.Name,
+                        RegistrationPeriodId = selectedPeriod.Id,
                         Faculty = major.FacultyName ?? faculty,
                         MajorId = major.Id,
                         DepartmentName = major.Name,
                         Category = string.IsNullOrWhiteSpace(category) ? (maxStudents > 1 ? "Nhóm" : "Cá nhân") : category,
                         Level = level,
-                        Deadline = deadline,
+                        Deadline = selectedPeriod.RegistrationCloseAt,
                         CreatedAt = DateTime.Now,
                         IsApproved = true,
                         IsRegistrationOpen = false,
@@ -1263,6 +1613,7 @@ t.Lecturer.FullName.Contains(search)));
             }
 
             ViewBag.Role = role;
+            ViewBag.SelectedPeriodName = GetAdminSelectedPeriodName();
             return View();
         }
 
@@ -1275,6 +1626,17 @@ t.Lecturer.FullName.Contains(search)));
             {
                 TempData["Error"] = "Role import không hợp lệ.";
                 return RedirectToAction(nameof(UserManagement));
+            }
+
+            RegistrationPeriod? targetStudentPeriod = null;
+            if (role == "Student")
+            {
+                targetStudentPeriod = await GetAdminSelectedPeriodAsync();
+                if (targetStudentPeriod == null)
+                {
+                    TempData["Error"] = "Chưa có đợt đăng ký tương ứng. Vui lòng tạo/chọn đợt ở mục Cài đặt trước khi import sinh viên.";
+                    return RedirectToAction(nameof(StudentManagement));
+                }
             }
 
             if (!IsValidExcelUpload(file, out var userImportError))
@@ -1357,7 +1719,26 @@ t.Lecturer.FullName.Contains(search)));
                     }
 
                     var existingUser = await _userManager.FindByEmailAsync(email);
-                    if (existingUser != null) { skipped++; continue; }
+                    if (existingUser != null)
+                    {
+                        if (role == "Student" && await _userManager.IsInRoleAsync(existingUser, "Student"))
+                        {
+                            if (await AddStudentToPeriodAsync(existingUser.Id, targetStudentPeriod!.Id))
+                            {
+                                success++;
+                            }
+                            else
+                            {
+                                skipped++;
+                            }
+                        }
+                        else
+                        {
+                            skipped++;
+                        }
+
+                        continue;
+                    }
 
                     var majorIds = await ResolveImportMajorIdsAsync(majorCode, majorName, faculty);
 
@@ -1377,6 +1758,10 @@ t.Lecturer.FullName.Contains(search)));
                     {
                         await _userManager.AddToRoleAsync(user, role);
                         await SyncUserMajorsAsync(user.Id, majorIds);
+                        if (role == "Student")
+                        {
+                            await AddStudentToPeriodAsync(user.Id, targetStudentPeriod!.Id);
+                        }
                         success++;
                     }
                     else skipped++;
@@ -1397,6 +1782,27 @@ t.Lecturer.FullName.Contains(search)));
             IList<ApplicationUser> users = string.IsNullOrEmpty(role)
                 ? await _userManager.Users.ToListAsync()
                 : await _userManager.GetUsersInRoleAsync(role);
+
+            if (role == "Student")
+            {
+                var selectedPeriod = await GetAdminSelectedPeriodAsync();
+                if (selectedPeriod == null)
+                {
+                    users = new List<ApplicationUser>();
+                }
+                else
+                {
+                    var eligibleStudentIds = await _context.PeriodStudents
+                        .Where(ps =>
+                            ps.RegistrationPeriodId == selectedPeriod.Id &&
+                            ps.IsEligible &&
+                            !ps.Student.HasCompletedThesis)
+                        .Select(ps => ps.StudentId)
+                        .ToListAsync();
+                    var eligibleSet = eligibleStudentIds.ToHashSet();
+                    users = users.Where(u => eligibleSet.Contains(u.Id)).ToList();
+                }
+            }
 
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("Users");
@@ -1429,6 +1835,41 @@ t.Lecturer.FullName.Contains(search)));
             return File(stream.ToArray(),
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 $"DanhSach_{role ?? "TatCa"}_{DateTime.Now:yyyyMMdd}.xlsx");
+        }
+
+        private void SetAdminSelectedPeriod(string periodName)
+        {
+            HttpContext.Session.SetString(AdminSelectedPeriodSessionKey, periodName);
+            ViewBag.AdminSelectedPeriodName = periodName;
+
+            var parts = periodName.Split('-', 2);
+            if (parts.Length == 2)
+            {
+                ViewBag.AdminSelectedSemester = parts[0];
+                ViewBag.AdminSelectedYear = parts[1];
+            }
+        }
+
+        private string? GetAdminSelectedPeriodName()
+        {
+            return HttpContext.Session.GetString(AdminSelectedPeriodSessionKey);
+        }
+
+        private async Task<RegistrationPeriod?> GetAdminSelectedPeriodAsync(string? semester = null, string? year = null)
+        {
+            if (!string.IsNullOrWhiteSpace(semester) && !string.IsNullOrWhiteSpace(year))
+            {
+                SetAdminSelectedPeriod($"{semester.Trim()}-{year.Trim()}");
+            }
+
+            var selectedPeriodName = GetAdminSelectedPeriodName();
+            if (!string.IsNullOrWhiteSpace(selectedPeriodName))
+            {
+                return await _context.RegistrationPeriods
+                    .FirstOrDefaultAsync(p => p.Name == selectedPeriodName);
+            }
+
+            return await GetOrCreateActiveRegistrationPeriodAsync();
         }
 
         [HttpGet]
@@ -1574,6 +2015,12 @@ t.Lecturer.FullName.Contains(search)));
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([FromBody] Topic? topic)
         {
+            var selectedPeriod = await GetAdminSelectedPeriodAsync();
+            if (selectedPeriod == null)
+            {
+                return Json(new { success = false, message = "Chưa có đợt đăng ký tương ứng. Vui lòng tạo/chọn đợt ở mục Cài đặt trước khi tạo đề tài." });
+            }
+
             if (topic == null)
                 return Json(new { success = false, message = "Không nhận được dữ liệu." });
 
@@ -1595,7 +2042,8 @@ t.Lecturer.FullName.Contains(search)));
             topic.Deadline = topic.Deadline == default ? DateTime.Now.AddMonths(3) : topic.Deadline;
             topic.MaxStudents = Math.Clamp(topic.MaxStudents <= 0 ? 1 : topic.MaxStudents, 1, 10);
             topic.Category = topic.MaxStudents > 1 ? "Nhóm" : (topic.Category ?? "Ứng dụng");
-            topic.Semester = string.IsNullOrWhiteSpace(topic.Semester) ? "HK2-2025-2026" : topic.Semester.Trim();
+            topic.Semester = selectedPeriod.Name;
+            topic.RegistrationPeriodId = selectedPeriod.Id;
             topic.IsStudentProposed = false;
             topic.IsApproved = true;
             topic.IsRegistrationOpen = false;
@@ -1647,13 +2095,11 @@ t.Lecturer.FullName.Contains(search)));
 
         private async Task<List<string>> GetAcademicYearOptions()
         {
-            var years = await _context.Topics
-                .Where(t => t.Semester != null && t.Semester.Contains("-"))
-                .Select(t => t.Semester!)
+            var years = await _context.RegistrationPeriods
+                .Select(p => p.AcademicYear)
                 .ToListAsync();
 
             var parsedYears = years
-                .Select(ExtractAcademicYear)
                 .Where(y => !string.IsNullOrWhiteSpace(y))
                 .Distinct()
                 .OrderByDescending(y => y)
@@ -1668,7 +2114,24 @@ t.Lecturer.FullName.Contains(search)));
             return parsedYears;
         }
 
-        private static string GetCurrentAcademicYear()
+        private async Task<List<string>> GetSemesterOptions()
+        {
+            var semesters = await _context.RegistrationPeriods
+                .Select(p => p.SemesterCode)
+                .Distinct()
+                .OrderBy(s => s)
+                .ToListAsync();
+
+            if (!semesters.Contains("HK1")) semesters.Insert(0, "HK1");
+            if (!semesters.Contains("HK2")) semesters.Add("HK2");
+
+            return semesters
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Distinct()
+                .ToList();
+        }
+
+        private new static string GetCurrentAcademicYear()
         {
             var now = DateTime.Now;
             int startYear = now.Month >= 8 ? now.Year : now.Year - 1;
@@ -1725,19 +2188,186 @@ t.Lecturer.FullName.Contains(search)));
             "SystemAlert" => "bg-orange-100 text-orange-600",
             _ => "bg-slate-100 text-slate-600"
         };
+
+        private async Task DeactivateAllRegistrationPeriodsAsync()
+        {
+            var activePeriods = await _context.RegistrationPeriods
+                .Where(p => p.IsActive)
+                .ToListAsync();
+
+            foreach (var period in activePeriods)
+            {
+                period.IsActive = false;
+            }
+        }
+
+        private async Task SyncSettingsFromPeriodAsync(RegistrationPeriod period)
+        {
+            var values = new Dictionary<string, string>
+            {
+                ["Semester_Start"] = period.SemesterStart.ToString("yyyy-MM-dd"),
+                ["Semester_End"] = period.SemesterEnd.ToString("yyyy-MM-dd"),
+                ["Registration_Start"] = period.RegistrationOpenAt.ToString("yyyy-MM-ddTHH:mm"),
+                ["Registration_End"] = period.RegistrationCloseAt.ToString("yyyy-MM-ddTHH:mm")
+            };
+
+            foreach (var (name, value) in values)
+            {
+                var setting = await _context.Settings.FirstOrDefaultAsync(s => s.Name == name);
+                if (setting == null)
+                {
+                    _context.Settings.Add(new Setting { Name = name, Value = value });
+                }
+                else
+                {
+                    setting.Value = value;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task<bool> AddStudentToPeriodAsync(string studentId, int registrationPeriodId)
+        {
+            var student = await _context.Users.FirstOrDefaultAsync(u => u.Id == studentId);
+            if (student == null || student.HasCompletedThesis)
+            {
+                return false;
+            }
+
+            var existing = await _context.PeriodStudents.FirstOrDefaultAsync(ps =>
+                ps.StudentId == studentId &&
+                ps.RegistrationPeriodId == registrationPeriodId);
+
+            if (existing != null)
+            {
+                existing.IsEligible = true;
+                existing.ImportedAt = DateTime.Now;
+                await _context.SaveChangesAsync();
+                return true;
+            }
+
+            _context.PeriodStudents.Add(new PeriodStudent
+            {
+                StudentId = studentId,
+                RegistrationPeriodId = registrationPeriodId,
+                ImportedAt = DateTime.Now,
+                IsEligible = true
+            });
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Settings()
         {
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
             var settings = await _context.Settings.ToListAsync();
-            ViewBag.TopicTotal = await _context.Topics.CountAsync(t => t.IsApproved);
-            ViewBag.TopicRegistrationOpen = await _context.Topics.CountAsync(t => t.IsApproved && t.IsRegistrationOpen);
-            ViewBag.TopicRegistrationReady = await _context.Topics.CountAsync(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
+            var periodTopics = FilterTopicsByActivePeriod(_context.Topics.AsQueryable(), activePeriod);
+            ViewBag.ActivePeriod = activePeriod;
+            ViewBag.EligibleStudentCount = await _context.PeriodStudents
+                .CountAsync(ps => ps.RegistrationPeriodId == activePeriod.Id
+                    && ps.IsEligible
+                    && !ps.Student.HasCompletedThesis);
+            ViewBag.RegistrationPeriods = await _context.RegistrationPeriods
+                .OrderByDescending(p => p.AcademicYear)
+                .ThenByDescending(p => p.Id)
+                .ToListAsync();
+            ViewBag.TopicTotal = await periodTopics.CountAsync(t => t.IsApproved);
+            ViewBag.TopicRegistrationOpen = await periodTopics.CountAsync(t => t.IsApproved && t.IsRegistrationOpen);
+            ViewBag.TopicRegistrationReady = await periodTopics.CountAsync(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
             ViewBag.Majors = await _context.Majors
                 .OrderBy(m => m.FacultyName)
                 .ThenBy(m => m.Name)
                 .ToListAsync();
 
             return View(settings);
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateRegistrationPeriod(
+            string academicYear,
+            string semesterCode,
+            DateTime semesterStart,
+            DateTime semesterEnd,
+            DateTime registrationOpenAt,
+            DateTime registrationCloseAt,
+            bool setActive = true)
+        {
+            academicYear = academicYear?.Trim() ?? string.Empty;
+            semesterCode = string.IsNullOrWhiteSpace(semesterCode) ? "HK2" : semesterCode.Trim().ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(academicYear))
+            {
+                TempData["Error"] = "Năm học không được để trống.";
+                return RedirectToAction(nameof(Settings));
+            }
+
+            if (semesterStart > semesterEnd)
+            {
+                TempData["Error"] = "Ngày bắt đầu học kỳ không được sau ngày kết thúc học kỳ.";
+                return RedirectToAction(nameof(Settings));
+            }
+
+            if (registrationOpenAt > registrationCloseAt)
+            {
+                TempData["Error"] = "Thời gian mở đăng ký không được sau thời gian đóng đăng ký.";
+                return RedirectToAction(nameof(Settings));
+            }
+
+            var name = $"{semesterCode}-{academicYear}";
+            if (await _context.RegistrationPeriods.AnyAsync(p => p.Name == name))
+            {
+                TempData["Error"] = $"Đợt đăng ký {name} đã tồn tại.";
+                return RedirectToAction(nameof(Settings));
+            }
+
+            if (setActive)
+            {
+                await DeactivateAllRegistrationPeriodsAsync();
+            }
+
+            var period = new RegistrationPeriod
+            {
+                Name = name,
+                AcademicYear = academicYear,
+                SemesterCode = semesterCode,
+                SemesterStart = semesterStart,
+                SemesterEnd = semesterEnd,
+                RegistrationOpenAt = registrationOpenAt,
+                RegistrationCloseAt = registrationCloseAt,
+                IsActive = setActive
+            };
+
+            _context.RegistrationPeriods.Add(period);
+            await _context.SaveChangesAsync();
+
+            if (setActive)
+            {
+                await SyncSettingsFromPeriodAsync(period);
+                SetAdminSelectedPeriod(period.Name);
+            }
+
+            TempData["Success"] = $"Đã tạo đợt đăng ký {name}.";
+            return RedirectToAction(nameof(Settings));
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetActiveRegistrationPeriod(int id)
+        {
+            var period = await _context.RegistrationPeriods.FindAsync(id);
+            if (period == null) return NotFound();
+
+            await DeactivateAllRegistrationPeriodsAsync();
+            period.IsActive = true;
+            await _context.SaveChangesAsync();
+
+            await SyncSettingsFromPeriodAsync(period);
+            SetAdminSelectedPeriod(period.Name);
+
+            TempData["Success"] = $"Đã chuyển sang đợt đăng ký {period.Name}.";
+            return RedirectToAction(nameof(Settings));
         }
 
         [HttpPost, ValidateAntiForgeryToken]
@@ -2001,6 +2631,7 @@ t.Lecturer.FullName.Contains(search)));
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveSettings(List<string> names, IFormCollection form)
         {
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
             if (names == null || names.Count == 0)
             {
                 TempData["Error"] = "Không có cấu hình nào được gửi lên.";
@@ -2068,6 +2699,30 @@ t.Lecturer.FullName.Contains(search)));
                 }
             }
 
+            if (postedSettings.TryGetValue("Semester_Start", out semesterStartValue)
+                && DateTime.TryParse(semesterStartValue, out var parsedSemesterStart))
+            {
+                activePeriod.SemesterStart = parsedSemesterStart;
+            }
+
+            if (postedSettings.TryGetValue("Semester_End", out semesterEndValue)
+                && DateTime.TryParse(semesterEndValue, out var parsedSemesterEnd))
+            {
+                activePeriod.SemesterEnd = parsedSemesterEnd;
+            }
+
+            if (postedSettings.TryGetValue("Registration_Start", out registrationStartValue)
+                && DateTime.TryParse(registrationStartValue, out var parsedRegistrationStart))
+            {
+                activePeriod.RegistrationOpenAt = parsedRegistrationStart;
+            }
+
+            if (postedSettings.TryGetValue("Registration_End", out registrationEndValue)
+                && DateTime.TryParse(registrationEndValue, out var parsedRegistrationEnd))
+            {
+                activePeriod.RegistrationCloseAt = parsedRegistrationEnd;
+            }
+
             int? updatedTopicCount = null;
             if (postedSettings.TryGetValue("IsTopicRegistrationOpen", out var isTopicRegistrationOpenValue)
                 && bool.TryParse(isTopicRegistrationOpenValue, out var isTopicRegistrationOpen))
@@ -2075,7 +2730,7 @@ t.Lecturer.FullName.Contains(search)));
                 var previousTopicRegistrationOpen = bool.TryParse(oldTopicRegistrationValue, out var oldValue) && oldValue;
                 if (previousTopicRegistrationOpen != isTopicRegistrationOpen)
                 {
-                    updatedTopicCount = await ApplyTopicRegistrationStateAsync(isTopicRegistrationOpen);
+                    updatedTopicCount = await ApplyTopicRegistrationStateAsync(isTopicRegistrationOpen, activePeriod.Id);
                 }
             }
 
@@ -2086,11 +2741,13 @@ t.Lecturer.FullName.Contains(search)));
             return RedirectToAction(nameof(Settings));
         }
 
-        private async Task<int> ApplyTopicRegistrationStateAsync(bool isOpen)
+        private async Task<int> ApplyTopicRegistrationStateAsync(bool isOpen, int? registrationPeriodId = null)
         {
             var topics = await _context.Topics
                 .Include(t => t.Registrations)
-                .Where(t => t.IsApproved && t.Status != TopicStatus.Rejected)
+                .Where(t => t.IsApproved
+                    && t.Status != TopicStatus.Rejected
+                    && (!registrationPeriodId.HasValue || t.RegistrationPeriodId == registrationPeriodId.Value))
                 .ToListAsync();
 
             var updated = 0;
@@ -2152,16 +2809,28 @@ t.Lecturer.FullName.Contains(search)));
                 .Include(t => t.Student)
                 .Include(t => t.Major)
                 .Include(t => t.Lecturer)
-                .Where(t => t.IsStudentProposed)
+                .Where(t => (t.IsStudentProposed || t.CreatedByStudentId != null)
+                    && (t.IsApproved
+                        || t.Status == TopicStatus.Rejected
+                        || t.LecturerId == null
+                        || t.Note!.StartsWith(LecturerApprovedProposalPrefix)
+                        || t.Note!.StartsWith(LecturerRejectedProposalPrefix)))
                 .AsQueryable();
 
-            if (status == "pending") query = query.Where(t => t.Status == TopicStatus.Pending);
+            if (status == "pending") query = query.Where(t => t.Status == TopicStatus.Pending && !t.IsApproved);
             else if (status == "approved") query = query.Where(t => t.IsApproved);
+            else if (status == "rejected") query = query.Where(t => t.Status == TopicStatus.Rejected);
 
             var topics = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
 
-            ViewBag.PendingCount = await _context.Topics.CountAsync(t => t.IsStudentProposed && t.Status == TopicStatus.Pending);
-            ViewBag.ApprovedCount = await _context.Topics.CountAsync(t => t.IsStudentProposed && t.IsApproved);
+            ViewBag.PendingCount = await _context.Topics.CountAsync(t => (t.IsStudentProposed || t.CreatedByStudentId != null)
+                && t.Status == TopicStatus.Pending
+                && !t.IsApproved
+                && (t.LecturerId == null
+                    || t.Note!.StartsWith(LecturerApprovedProposalPrefix)
+                    || t.Note!.StartsWith(LecturerRejectedProposalPrefix)));
+            ViewBag.ApprovedCount = await _context.Topics.CountAsync(t => (t.IsStudentProposed || t.CreatedByStudentId != null) && t.IsApproved);
+            ViewBag.RejectedCount = await _context.Topics.CountAsync(t => (t.IsStudentProposed || t.CreatedByStudentId != null) && t.Status == TopicStatus.Rejected);
             ViewBag.StatusFilter = status;
 
             // Danh sách giảng viên để phân công
@@ -2173,17 +2842,22 @@ t.Lecturer.FullName.Contains(search)));
 
         // POST: Duyệt đề xuất sinh viên (và phân công GV)
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> ApproveStudentProposal(int topicId, string? assignLecturerId)
+        public async Task<IActionResult> ApproveStudentProposal(int topicId, string? assignLecturerId, string? status = null)
         {
             var topic = await _context.Topics
                 .Include(t => t.Student)
+                .Include(t => t.Registrations)
                 .FirstOrDefaultAsync(t => t.Id == topicId);
 
             if (topic == null) return NotFound();
 
-            topic.IsApproved = true;
-            topic.IsRegistrationOpen = false;
-            topic.Status = TopicStatus.Available;
+            bool lecturerApproved = !string.IsNullOrWhiteSpace(topic.Note)
+                && topic.Note.StartsWith(LecturerApprovedProposalPrefix);
+            if (!lecturerApproved)
+            {
+                TempData["Error"] = "Admin chỉ thêm vào hệ thống sau khi giảng viên đồng ý hướng dẫn. Nếu chưa có hoặc giảng viên từ chối, hãy phân công giảng viên khác.";
+                return RedirectToAction(nameof(StudentProposals), new { status });
+            }
 
             if (!string.IsNullOrEmpty(assignLecturerId))
             {
@@ -2191,10 +2865,42 @@ t.Lecturer.FullName.Contains(search)));
                 if (lecturer == null || !await _userManager.IsInRoleAsync(lecturer, "Lecturer"))
                 {
                     TempData["Error"] = "Giảng viên phân công không hợp lệ.";
-                    return RedirectToAction(nameof(StudentProposals));
+                    return RedirectToAction(nameof(StudentProposals), new { status });
                 }
 
                 topic.LecturerId = assignLecturerId;
+            }
+
+            if (string.IsNullOrWhiteSpace(topic.LecturerId))
+            {
+                TempData["Error"] = "Vui lòng phân công giảng viên trước khi thêm đề xuất vào hệ thống.";
+                return RedirectToAction(nameof(StudentProposals), new { status });
+            }
+
+            topic.IsApproved = true;
+            topic.IsRegistrationOpen = false;
+            topic.Status = TopicStatus.Full;
+            topic.IsStudentProposed = false;
+            topic.MaxStudents = 1;
+            topic.Note = "Admin đã thêm đề xuất vào hệ thống.";
+
+            if (!string.IsNullOrWhiteSpace(topic.CreatedByStudentId)
+                && !await _context.Registrations.AnyAsync(r =>
+                    r.TopicId == topic.Id &&
+                    r.StudentId == topic.CreatedByStudentId &&
+                    r.Status == "Approved"))
+            {
+                _context.Registrations.Add(new Registration
+                {
+                    StudentId = topic.CreatedByStudentId,
+                    TopicId = topic.Id,
+                    RegistrationPeriodId = topic.RegistrationPeriodId,
+                    Status = "Approved",
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                    Priority = 1,
+                    ApprovedBy = _userManager.GetUserId(User)
+                });
             }
 
             await _context.SaveChangesAsync();
@@ -2206,7 +2912,8 @@ t.Lecturer.FullName.Contains(search)));
                     "Đề xuất đề tài được duyệt! 🎉",
                     $"Đề tài \"{topic.Title}\" của bạn đã được Admin phê duyệt và công khai.",
                     "TopicApproved",
-                    topic.Id); // Truyền topic.Id vào tham số relatedId
+                    relatedId: topic.Id,
+                    redirectUrl: "/Student/MyRegistration");
 
             // Thông báo cho GV được phân công
             if (!string.IsNullOrEmpty(assignLecturerId))
@@ -2215,15 +2922,74 @@ t.Lecturer.FullName.Contains(search)));
                     "Được phân công hướng dẫn đề tài đề xuất",
                     $"Admin đã phân công bạn hướng dẫn đề tài đề xuất \"{topic.Title}\".",
                     "TopicApproved",
-                    topic.Id);
+                    relatedId: topic.Id,
+                    redirectUrl: "/Lecturer/Topics");
 
             TempData["Success"] = $"Đã duyệt đề xuất \"{topic.Title}\"!";
-            return RedirectToAction(nameof(StudentProposals));
+            return RedirectToAction(nameof(StudentProposals), new { status = "approved" });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReassignStudentProposal(int topicId, string assignLecturerId, string? status = null)
+        {
+            var topic = await _context.Topics
+                .Include(t => t.Student)
+                .FirstOrDefaultAsync(t => t.Id == topicId && t.IsStudentProposed);
+
+            if (topic == null) return NotFound();
+
+            if (string.IsNullOrWhiteSpace(assignLecturerId))
+            {
+                TempData["Error"] = "Vui lòng chọn giảng viên cần phân công.";
+                return RedirectToAction(nameof(StudentProposals), new { status });
+            }
+
+            if (topic.LecturerId == assignLecturerId)
+            {
+                TempData["Error"] = "Vui lòng chọn giảng viên khác với giảng viên hiện tại.";
+                return RedirectToAction(nameof(StudentProposals), new { status });
+            }
+
+            var lecturer = await _userManager.FindByIdAsync(assignLecturerId);
+            if (lecturer == null || !await _userManager.IsInRoleAsync(lecturer, "Lecturer"))
+            {
+                TempData["Error"] = "Giảng viên phân công không hợp lệ.";
+                return RedirectToAction(nameof(StudentProposals), new { status });
+            }
+
+            topic.LecturerId = assignLecturerId;
+            topic.Note = null;
+            topic.IsApproved = false;
+            topic.IsRegistrationOpen = false;
+            topic.Status = TopicStatus.Pending;
+            await _context.SaveChangesAsync();
+
+            await _notificationService.SendDualNotification(
+                assignLecturerId,
+                "Đề xuất cần bạn xem xét hướng dẫn",
+                $"Admin đã phân công bạn xem xét đề tài sinh viên đề xuất: \"{topic.Title}\".",
+                "NewTopic",
+                relatedId: topic.Id,
+                redirectUrl: "/Lecturer/Approval?tab=proposals");
+
+            if (!string.IsNullOrEmpty(topic.CreatedByStudentId))
+            {
+                await _notificationService.SendDualNotification(
+                    topic.CreatedByStudentId,
+                    "Admin đã phân công giảng viên khác",
+                    $"Đề tài \"{topic.Title}\" đã được chuyển cho giảng viên khác xem xét.",
+                    "NewTopic",
+                    relatedId: topic.Id,
+                    redirectUrl: "/Student/MyRegistration");
+            }
+
+            TempData["Success"] = $"Đã chuyển đề xuất \"{topic.Title}\" cho giảng viên mới xem xét.";
+            return RedirectToAction(nameof(StudentProposals), new { status = "pending" });
         }
 
         // POST: Từ chối đề xuất sinh viên
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> RejectStudentProposal(int topicId, string? reason)
+        public async Task<IActionResult> RejectStudentProposal(int topicId, string? reason, string? status = null)
         {
             var topic = await _context.Topics
                 .Include(t => t.Student)
@@ -2245,10 +3011,11 @@ t.Lecturer.FullName.Contains(search)));
                     "Đề xuất đề tài bị từ chối",
                     $"Đề tài \"{topic.Title}\" của bạn đã bị từ chối." + (string.IsNullOrEmpty(reason) ? "" : $" Lý do: {reason}"),
                     "TopicRejected",
-                    topic.Id);
+                    relatedId: topic.Id,
+                    redirectUrl: "/Student/ProposeTopic");
 
             TempData["Error"] = $"Đã từ chối đề xuất \"{topic.Title}\".";
-            return RedirectToAction(nameof(StudentProposals));
+            return RedirectToAction(nameof(StudentProposals), new { status = "rejected" });
         }
 
         // ============================================================
@@ -2259,6 +3026,7 @@ t.Lecturer.FullName.Contains(search)));
         {
             var topic = await _context.Topics
                 .Include(t => t.Major)
+                .Include(t => t.Registrations)
                 .FirstOrDefaultAsync(t => t.Id == id);
             if (topic == null) return NotFound();
 
@@ -2269,6 +3037,8 @@ t.Lecturer.FullName.Contains(search)));
             ViewBag.Majors = new SelectList(
                 await _context.Majors.Where(m => m.IsActive).ToListAsync(),
                 "Id", "Name", topic.MajorId);
+            ViewBag.ApprovedCount = topic.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+            ViewBag.PendingCount = topic.Registrations?.Count(r => r.Status == "Pending") ?? 0;
 
             return View(topic);
         }
@@ -2309,12 +3079,14 @@ t.Lecturer.FullName.Contains(search)));
                     "Name",
                     model.MajorId
                 );
+                ViewBag.ApprovedCount = await _context.Registrations.CountAsync(r => r.TopicId == model.Id && r.Status == "Approved");
+                ViewBag.PendingCount = await _context.Registrations.CountAsync(r => r.TopicId == model.Id && r.Status == "Pending");
 
                 return View(model);
             }
 
-            topic.Title = model.Title;
-            topic.Description = model.Description;
+            topic.Title = model.Title.Trim();
+            topic.Description = model.Description?.Trim() ?? "";
             topic.LecturerId = model.LecturerId;
             topic.MajorId = model.MajorId;
             topic.Level = model.Level;
@@ -2328,15 +3100,19 @@ t.Lecturer.FullName.Contains(search)));
                 var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
                 ViewBag.Lecturers = new SelectList(lecturers.OrderBy(l => l.FullName), "Id", "FullName", model.LecturerId);
                 ViewBag.Majors = new SelectList(await _context.Majors.Where(m => m.IsActive).ToListAsync(), "Id", "Name", model.MajorId);
+                ViewBag.ApprovedCount = await _context.Registrations.CountAsync(r => r.TopicId == model.Id && r.Status == "Approved");
+                ViewBag.PendingCount = await _context.Registrations.CountAsync(r => r.TopicId == model.Id && r.Status == "Pending");
                 return View(model);
             }
 
             topic.MaxStudents = Math.Clamp(model.MaxStudents, 1, 10);
             topic.IsApproved = model.IsApproved;
-            topic.Semester = model.Semester;
+            var selectedPeriod = await GetAdminSelectedPeriodAsync();
+            topic.Semester = selectedPeriod?.Name ?? topic.Semester;
+            topic.RegistrationPeriodId = selectedPeriod?.Id ?? topic.RegistrationPeriodId;
             topic.Deadline = model.Deadline;
-            topic.Category = model.Category;
-            topic.Note = model.Note;
+            topic.Category = model.Category?.Trim();
+            topic.Note = model.Note?.Trim();
 
             topic.IsRegistrationOpen = model.IsRegistrationOpen && topic.IsApproved && activeCount < topic.MaxStudents;
             topic.Status = activeCount >= topic.MaxStudents

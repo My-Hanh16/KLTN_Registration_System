@@ -1,13 +1,39 @@
 @model KLTN_Registration_System.Models.Entities.TimelineSubmission
+@using KLTN_Registration_System.Models.Entities
 
 @{
     Layout = "_LayoutDashboard";
-    ViewData["Title"] = "Chi tiet bai nop";
+    ViewData["Title"] = "Chi tiết bài nộp";
 
-    var versions = Model.Versions
+    var submission = Model ?? new TimelineSubmission();
+    var versions = (submission.Versions ?? new List<TimelineSubmissionVersion>())
         .OrderByDescending(v => v.VersionNumber)
         .ThenByDescending(v => v.UploadedAt)
         .ToList();
+
+    string studentName = string.IsNullOrWhiteSpace(submission.Student?.FullName)
+        ? "Chưa có tên"
+        : submission.Student.FullName.Trim();
+    string studentCode = string.IsNullOrWhiteSpace(submission.Student?.UserCode)
+        ? "Chưa có mã SV"
+        : submission.Student.UserCode.Trim();
+    string studentEmail = string.IsNullOrWhiteSpace(submission.Student?.Email)
+        ? "Chưa có"
+        : submission.Student.Email.Trim();
+    string timelineTitle = string.IsNullOrWhiteSpace(submission.Timeline?.Title)
+        ? "Chưa có timeline"
+        : submission.Timeline.Title.Trim();
+    string selectedSemester = ViewBag.Semester as string ?? Context.Request.Query["semester"].ToString();
+    string selectedYear = ViewBag.Year as string ?? Context.Request.Query["year"].ToString();
+    string selectedPeriodName = ViewBag.SelectedPeriodName as string ?? "";
+    string keyword = ViewBag.Keyword as string ?? Context.Request.Query["keyword"].ToString();
+    string timelineId = ViewBag.TimelineId as string ?? submission.TimelineId.ToString();
+    int page = ViewBag.Page is int pageValue ? pageValue : 1;
+    string progressDescription = string.IsNullOrWhiteSpace(submission.ProgressDescription)
+        ? "Không có"
+        : submission.ProgressDescription;
+    string reviewerName = submission.ReviewedBy?.FullName ?? submission.ReviewedBy?.Email ?? "Chưa ghi nhận";
+    string reviewComment = string.IsNullOrWhiteSpace(submission.Comment) ? "Không có" : submission.Comment;
 }
 
 @section Styles {
@@ -173,97 +199,109 @@
 <div class="page-wrapper">
     <div class="page-header">
         <div>
-            <h1 class="page-title">Chi ti&#7871;t b&#224;i n&#7897;p</h1>
-            <p class="page-desc">Th&#244;ng tin b&#224;i timeline &#273;&#227; &#273;&#432;&#7907;c gi&#7843;ng vi&#234;n duy&#7879;t.</p>
+            <h1 class="page-title">Chi tiết bài nộp</h1>
+        <p class="page-desc">Thông tin bài timeline đã được giảng viên duyệt trong đợt @selectedPeriodName.</p>
         </div>
 
-        <a href="@Url.Action("ApprovedSubmissions", "Timeline", new { timelineId = Model.TimelineId })" class="btn-soft">
+        <a href="@Url.Action("ApprovedSubmissions", "Timeline", new { keyword, timelineId, semester = selectedSemester, year = selectedYear, page })" class="btn-soft">
             <span class="material-symbols-outlined text-[17px]">arrow_back</span>
-            Quay l&#7841;i
+            Quay lại danh sách
         </a>
     </div>
 
     <div class="grid">
         <section class="panel">
-            <div class="panel-title">Th&#244;ng tin b&#224;i n&#7897;p</div>
+            <div class="panel-title">Thông tin bài nộp</div>
             <div class="info-list">
                 <div class="info-row">
-                    <div class="label">Sinh vi&#234;n</div>
-                    <div class="value">@($"{Model.Student?.FullName ?? "Chua co ten"} - {Model.Student?.UserCode ?? "Chua co ma SV"}")</div>
+                    <div class="label">Sinh viên</div>
+                    <div class="value">@studentName - @studentCode</div>
                 </div>
                 <div class="info-row">
                     <div class="label">Email</div>
-                    <div class="value">@(Model.Student?.Email ?? "Chua co")</div>
+                    <div class="value">@studentEmail</div>
                 </div>
                 <div class="info-row">
                     <div class="label">Timeline</div>
-                    <div class="value">@(Model.Timeline?.Title ?? "Chua co timeline")</div>
+                    <div class="value">@timelineTitle</div>
                 </div>
                 <div class="info-row">
-                    <div class="label">Ng&#224;y n&#7897;p</div>
-                    <div class="value">@Model.SubmittedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                    <div class="label">Ngày mở mốc</div>
+                    <div class="value">@(submission.Timeline?.Date.ToString("dd/MM/yyyy HH:mm") ?? "Chưa có")</div>
                 </div>
                 <div class="info-row">
-                    <div class="label">Tr&#7841;ng th&#225;i</div>
+                    <div class="label">Hạn sinh viên nộp</div>
+                    <div class="value">@(submission.Timeline?.SubmissionDeadline?.ToString("dd/MM/yyyy HH:mm") ?? "Không cấu hình")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Hạn giảng viên duyệt</div>
+                    <div class="value">@(submission.Timeline?.ReviewDeadline?.ToString("dd/MM/yyyy HH:mm") ?? "Không cấu hình")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Ngày nộp</div>
+                    <div class="value">@submission.SubmittedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                </div>
+                <div class="info-row">
+                    <div class="label">Trạng thái</div>
                     <div class="value">
                         <span class="badge-approved">
                             <span class="material-symbols-outlined text-[15px]">task_alt</span>
-                            &#272;&#227; duy&#7879;t
+                            Đã duyệt
                         </span>
                     </div>
                 </div>
                 <div class="info-row">
-                    <div class="label">File hi&#7879;n t&#7841;i</div>
+                    <div class="label">File hiện tại</div>
                     <div class="value">
-                        @if (!string.IsNullOrWhiteSpace(Model.FilePath))
+                        @if (!string.IsNullOrWhiteSpace(submission.FilePath))
                         {
-                            <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = Model.Id })" target="_blank" class="btn-soft">
+                            <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = submission.Id })" target="_blank" rel="noopener" class="btn-soft">
                                 <span class="material-symbols-outlined text-[17px]">visibility</span>
-                                @(Model.FileName ?? "Xem file")
+                                @(string.IsNullOrWhiteSpace(submission.FileName) ? "Xem file" : submission.FileName)
                             </a>
                         }
                         else
                         {
-                            <span>Kh&#244;ng c&#243; file</span>
+                            <span>Không có file</span>
                         }
                     </div>
                 </div>
                 <div class="info-row">
-                    <div class="label">M&#244; t&#7843; ti&#7871;n &#273;&#7897;</div>
-                    <div class="value">@(string.IsNullOrWhiteSpace(Model.ProgressDescription) ? "Khong co" : Model.ProgressDescription)</div>
+                    <div class="label">Mô tả tiến độ</div>
+                    <div class="value">@progressDescription</div>
                 </div>
             </div>
         </section>
 
         <section class="panel">
-            <div class="panel-title">K&#7871;t qu&#7843; duy&#7879;t</div>
+            <div class="panel-title">Kết quả duyệt</div>
             <div class="info-list">
                 <div class="info-row">
-                    <div class="label">Gi&#7843;ng vi&#234;n duy&#7879;t</div>
-                    <div class="value">@(Model.ReviewedBy?.FullName ?? Model.ReviewedBy?.Email ?? "Chua ghi nhan")</div>
+                    <div class="label">Giảng viên duyệt</div>
+                    <div class="value">@reviewerName</div>
                 </div>
                 <div class="info-row">
-                    <div class="label">Ng&#224;y duy&#7879;t</div>
-                    <div class="value">@(Model.ReviewedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chua co")</div>
+                    <div class="label">Ngày duyệt</div>
+                    <div class="value">@(submission.ReviewedAt?.ToString("dd/MM/yyyy HH:mm") ?? "Chưa có")</div>
                 </div>
                 <div class="info-row">
-                    <div class="label">&#272;i&#7875;m</div>
-                    <div class="value">@(Model.Score?.ToString("0.##") ?? "Chua cham")</div>
+                    <div class="label">Điểm</div>
+                    <div class="value">@(submission.Score?.ToString("0.##") ?? "Chưa chấm")</div>
                 </div>
                 <div class="info-row">
-                    <div class="label">Nh&#7853;n x&#233;t</div>
-                    <div class="value">@(string.IsNullOrWhiteSpace(Model.Comment) ? "Khong co" : Model.Comment)</div>
+                    <div class="label">Nhận xét</div>
+                    <div class="value">@reviewComment</div>
                 </div>
             </div>
         </section>
     </div>
 
     <section class="panel" style="margin-top:18px;">
-        <div class="panel-title">L&#7883;ch s&#7917; phi&#234;n b&#7843;n</div>
+        <div class="panel-title">Lịch sử phiên bản</div>
         <div class="version-list">
             @if (!versions.Any())
             {
-                <div class="version-meta">Ch&#432;a c&#243; phi&#234;n b&#7843;n &#273;&#432;&#7907;c l&#432;u.</div>
+                <div class="version-meta">Chưa có phiên bản được lưu.</div>
             }
             else
             {
@@ -271,7 +309,7 @@
                 {
                     <div class="version-item">
                         <div>
-                            <div class="version-name">Phi&#234;n b&#7843;n @version.VersionNumber</div>
+                            <div class="version-name">Phiên bản @version.VersionNumber</div>
                             <div class="version-meta">
                                 @version.UploadedAt.ToString("dd/MM/yyyy HH:mm")
                                 @if (!string.IsNullOrWhiteSpace(version.Note))
@@ -280,10 +318,17 @@
                                 }
                             </div>
                         </div>
-                        <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = version.TimelineSubmissionId, versionId = version.Id })" target="_blank" class="btn-soft">
-                            <span class="material-symbols-outlined text-[17px]">download</span>
-                            File
-                        </a>
+                        @if (!string.IsNullOrWhiteSpace(version.FilePath))
+                        {
+                            <a href="@Url.Action("DownloadSubmissionFile", "Timeline", new { submissionId = version.TimelineSubmissionId, versionId = version.Id })" target="_blank" rel="noopener" class="btn-soft">
+                                <span class="material-symbols-outlined text-[17px]">download</span>
+                                @(string.IsNullOrWhiteSpace(version.FileName) ? "File" : version.FileName)
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="version-meta">Không có file</span>
+                        }
                     </div>
                 }
             }

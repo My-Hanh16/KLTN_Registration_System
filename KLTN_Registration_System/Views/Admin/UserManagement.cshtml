@@ -5,11 +5,16 @@
     var roleFilter = ViewBag.RoleFilter?.ToString();
     var userRoles  = ViewBag.UserRoles as Dictionary<string, string>;
     var majors     = ViewBag.Majors as List<Major> ?? new List<Major>();
+    var faculties  = ViewBag.Faculties as List<string> ?? new List<string>();
+    var selectedFaculty = ViewBag.FacultyFilter?.ToString();
+    int? selectedMajorId = ViewBag.MajorFilter as int?;
+    var userMajorNames = ViewBag.UserMajorNames as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var selectedPeriodName = ViewBag.SelectedPeriodName?.ToString();
 
     string pageTitle = roleFilter == "Student"  ? "Quản lý Sinh viên"
                      : roleFilter == "Lecturer" ? "Quản lý Giảng viên"
                      : "Quản lý người dùng";
-    string pageSub   = roleFilter == "Student"  ? "Danh sách toàn bộ sinh viên trong hệ thống."
+    string pageSub   = roleFilter == "Student"  ? $"Danh sách sinh viên đủ điều kiện của đợt {selectedPeriodName ?? "đang chọn"}."
                      : roleFilter == "Lecturer" ? "Danh sách toàn bộ giảng viên trong hệ thống."
                      : "Quản lý tài khoản, vai trò và quyền truy cập toàn hệ thống.";
     string addLabel  = roleFilter == "Student"  ? "Thêm sinh viên"
@@ -32,7 +37,7 @@
     ══════════════════════════════════════ */
     .stats-row {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
         gap: 16px;
         margin-bottom: 22px;
     }
@@ -57,12 +62,14 @@
     .stat-icon.green  { background: #f0fdf4; color: #16a34a; }
     .stat-icon.amber  { background: #fffbeb; color: #d97706; }
     .stat-icon.red    { background: #fff5f5; color: #dc2626; }
+    .stat-icon.purple { background: #eef2ff; color: #4f46e5; }
 
     .stat-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
     .stat-badge.blue  { background: #eff6ff; color: #2563eb; }
     .stat-badge.green { background: #f0fdf4; color: #16a34a; }
     .stat-badge.amber { background: #fffbeb; color: #d97706; }
     .stat-badge.red   { background: #fff5f5; color: #dc2626; }
+    .stat-badge.purple { background: #eef2ff; color: #4f46e5; }
 
     .stat-label  { font-size: 12px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
     .stat-number { font-size: 26px; font-weight: 800; color: #1e293b; line-height: 1.1; }
@@ -283,9 +290,11 @@
     .s-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     .s-dot.active { background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.15); }
     .s-dot.locked { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+    .s-dot.done { background: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
     .s-txt { font-size: 12.5px; font-weight: 600; }
     .s-txt.active { color: #16a34a; }
     .s-txt.locked { color: #dc2626; }
+    .s-txt.done { color: #7c3aed; }
 
     /* Action group */
     .act-group {
@@ -305,6 +314,8 @@
     .act-btn.lock-btn:hover   { background: #fff5f5; color: #dc2626; }
     .act-btn.unlock-btn:hover { background: #f0fdf4; color: #16a34a; }
     .act-btn.reset-btn:hover  { background: #fffbeb; color: #d97706; }
+    .act-btn.done-btn { color: #7c3aed; }
+    .act-btn.done-btn:hover   { background: #f5f3ff; color: #7c3aed; }
     .act-btn.del-btn:hover    { background: #fff5f5; color: #dc2626; }
 
     /* ══════════════════════════════════════
@@ -537,7 +548,7 @@
             <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
             <span class="stat-badge blue">Tổng</span>
         </div>
-        <div class="stat-label">Tổng người dùng</div>
+        <div class="stat-label">@(roleFilter == "Student" ? "Sinh viên đủ điều kiện" : "Tổng người dùng")</div>
         <div class="stat-number">@(ViewBag.TotalUsers ?? 0)</div>
     </div>
     <div class="stat-card">
@@ -550,11 +561,15 @@
     </div>
     <div class="stat-card">
         <div class="stat-top">
-            <div class="stat-icon green"><i class="fa-solid fa-user-check"></i></div>
-            <span class="stat-badge green">Đã xác thực</span>
+            <div class="stat-icon @(roleFilter == "Student" ? "purple" : "green")">
+                <i class="fa-solid @(roleFilter == "Student" ? "fa-circle-check" : "fa-user-check")"></i>
+            </div>
+            <span class="stat-badge @(roleFilter == "Student" ? "purple" : "green")">
+                @(roleFilter == "Student" ? "Hoàn thành" : "Đã xác thực")
+            </span>
         </div>
-        <div class="stat-label">Giảng viên xác thực</div>
-        <div class="stat-number">@(ViewBag.VerifiedLecturers ?? 0)</div>
+        <div class="stat-label">@(roleFilter == "Student" ? "Đã hoàn thành KLTN" : roleFilter == "Lecturer" ? "Giảng viên xác thực" : "Giảng viên xác thực")</div>
+        <div class="stat-number">@(roleFilter == "Student" ? (ViewBag.CompletedStudents ?? 0) : (ViewBag.VerifiedLecturers ?? 0))</div>
     </div>
     <div class="stat-card">
         <div class="stat-top">
@@ -598,17 +613,32 @@
         else
         {
             <input type="hidden" name="role" value="@roleFilter" />
-            <div class="filter-group">
-                <span class="filter-label">Vai trò</span>
-                <select name="role" class="f-select">
-                    <option value="Student" selected="@(roleFilter == "Student")">Sinh viên</option>
-
-                    <option value="Lecturer" selected="@(roleFilter == "Lecturer")">Giảng viên</option>
-
-                    <option value="Admin" selected="@(roleFilter == "Admin")">Admin</option>
-                </select>
-            </div>
         }
+
+        <div class="filter-group">
+            <span class="filter-label">Khoa</span>
+            <select name="faculty" class="f-select" onchange="this.form.submit()">
+                <option value="">Tất cả khoa</option>
+                @foreach (var faculty in faculties)
+                {
+                    <option value="@faculty" selected="@(selectedFaculty == faculty)">@faculty</option>
+                }
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">Ngành / Bộ môn</span>
+            <select name="majorId" class="f-select" onchange="this.form.submit()">
+                <option value="">Tất cả ngành</option>
+                @foreach (var major in majors.Where(m => string.IsNullOrWhiteSpace(selectedFaculty)
+                    || string.Equals(m.FacultyName, selectedFaculty, StringComparison.OrdinalIgnoreCase)))
+                {
+                    <option value="@major.Id" selected="@(selectedMajorId == major.Id)">
+                        @major.Name
+                    </option>
+                }
+            </select>
+        </div>
 
         <div class="filter-group">
             <span class="filter-label" style="opacity:0;">—</span>
@@ -705,6 +735,10 @@
                             <!-- Khoa / Học vị -->
                             <td>
                                 <div class="dept-name">@(user.Faculty ?? "Chưa rõ")</div>
+                                @if (userMajorNames.TryGetValue(user.Id, out var majorNames) && !string.IsNullOrWhiteSpace(majorNames))
+                                {
+                                    <div class="dept-sub">@majorNames</div>
+                                }
                                 @if (role == "Lecturer")
                                 {
                                     <div class="dept-sub">
@@ -734,6 +768,13 @@
                                         @(isLocked ? "Đã khóa" : "Hoạt động")
                                     </span>
                                 </div>
+                                @if (role == "Student" && user.HasCompletedThesis)
+                                {
+                                    <div class="status-wrap" style="margin-top:7px;">
+                                        <span class="s-dot done"></span>
+                                        <span class="s-txt done">Đã hoàn thành KLTN</span>
+                                    </div>
+                                }
                             </td>
 
                             <!-- Thao tác -->
@@ -750,6 +791,10 @@
                                           asp-route-role="@roleFilter" method="post" style="display:inline;">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="userId" value="@user.Id" />
+                                        <input type="hidden" name="search" value="@ViewBag.Search" />
+                                        <input type="hidden" name="page" value="@ViewBag.CurrentPage" />
+                                        <input type="hidden" name="faculty" value="@ViewBag.FacultyFilter" />
+                                        <input type="hidden" name="majorId" value="@ViewBag.MajorFilter" />
                                         <button type="button" title="@(isLocked ? "Mở khóa" : "Khóa")"
                                                 class="act-btn @(isLocked ? "unlock-btn" : "lock-btn")"
                                                 onclick="openLockModal('lockForm-@user.Id', @System.Text.Json.JsonSerializer.Serialize(user.FullName ?? ""), '@isLocked')">
@@ -762,6 +807,24 @@
                                        class="act-btn reset-btn" title="Reset mật khẩu">
                                         <i class="fa-solid fa-key"></i>
                                     </a>
+
+                                    @if (role == "Student")
+                                    {
+                                        <form asp-action="ToggleThesisCompletion" asp-controller="Admin"
+                                              asp-route-role="@roleFilter" method="post" style="display:inline;"
+                                              onsubmit="return confirm('@(user.HasCompletedThesis ? "Mở lại quyền tham gia KLTN cho sinh viên này?" : "Đánh dấu sinh viên này đã hoàn thành KLTN và chặn tham gia đợt sau?")');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <input type="hidden" name="search" value="@ViewBag.Search" />
+                                            <input type="hidden" name="page" value="@ViewBag.CurrentPage" />
+                                            <input type="hidden" name="faculty" value="@ViewBag.FacultyFilter" />
+                                            <input type="hidden" name="majorId" value="@ViewBag.MajorFilter" />
+                                            <button type="submit" class="act-btn done-btn"
+                                                    title="@(user.HasCompletedThesis ? "Mở lại quyền KLTN" : "Đánh dấu hoàn thành KLTN")">
+                                                <i class="fa-solid @(user.HasCompletedThesis ? "fa-rotate-left" : "fa-circle-check")"></i>
+                                            </button>
+                                        </form>
+                                    }
 
                                     <!-- Xóa -->
                                     <form id="delForm-@user.Id" asp-action="DeleteUser" asp-controller="Admin"
@@ -793,7 +856,7 @@
             <div class="paging-btns">
                 @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
                 {
-                    <a href="@Url.Action("UserManagement", new { page = i, search = ViewBag.Search, role = ViewBag.RoleFilter })"
+                    <a href="@Url.Action("UserManagement", new { page = i, search = ViewBag.Search, role = ViewBag.RoleFilter, faculty = ViewBag.FacultyFilter, majorId = ViewBag.MajorFilter })"
                        class="pg-btn @((int)ViewBag.CurrentPage == i ? "active" : "")">@i</a>
                 }
             </div>

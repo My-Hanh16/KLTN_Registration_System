@@ -13,9 +13,17 @@
     int approvedCount = ViewBag.ApprovedCount ?? 0;
     int pendingCount = ViewBag.PendingCount ?? 0;
     int remaining = ViewBag.RemainingSlots ?? 0;
+    int reservedCount = ViewBag.ReservedCount ?? (approvedCount + pendingCount);
     bool hasRegisteredThisTopic = ViewBag.HasRegisteredThisTopic ?? false;
     bool hasActiveRegistration = ViewBag.HasActiveRegistration ?? false;
     bool hasPendingProposal = ViewBag.HasPendingProposal ?? false;
+    bool isStudentContext = ViewBag.IsStudentContext == true;
+    bool canParticipate = !isStudentContext || ViewBag.CanParticipateInCurrentPeriod == true;
+    bool hasCompletedThesis = ViewBag.StudentHasCompletedThesis == true;
+    string participationMessage = ViewBag.StudentParticipationMessage as string ?? "";
+    string activePeriodName = ViewBag.ActivePeriodName as string ?? Model.Semester ?? "";
+    bool isSystemTopic = !Model.IsStudentProposed && Model.CreatedByStudentId == null;
+    bool isTopicOpenForStudent = isSystemTopic && Model.IsApproved && Model.IsRegistrationOpen && DateTime.Now <= Model.Deadline && remaining > 0;
 
     string levelLabel = Model.Level.ToString() switch
     {
@@ -84,8 +92,14 @@
                             </span>
                         }
                         <span class="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
-                            @(Model.Semester ?? "Chưa xác định")
+                            @(!string.IsNullOrWhiteSpace(activePeriodName) ? activePeriodName : "Chưa xác định")
                         </span>
+                        @if (Model.IsStudentProposed)
+                        {
+                            <span class="bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1 rounded-full">
+                                Đề xuất từ sinh viên
+                            </span>
+                        }
                         <span class="@levelColor text-xs font-bold px-3 py-1 rounded-full">@levelLabel</span>
                         <span class="@statusColor text-xs font-bold px-3 py-1 rounded-full">@statusLabel</span>
                     </div>
@@ -210,12 +224,19 @@
                     <span class="text-slate-500">Còn lại</span>
                     <span class="font-bold @(remaining > 0 ? "text-green-600" : "text-red-500")">@remaining chỗ</span>
                 </div>
+                @if (Model.IsStudentProposed)
+                {
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-500">Nguồn đề tài</span>
+                        <span class="font-bold text-purple-600">Sinh viên đề xuất</span>
+                    </div>
+                }
 
                 @* Thanh tiến trình *@
                 <div class="mt-1">
                     <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
                         @{
-                            int pct = Model.MaxStudents > 0 ? (int)Math.Round((double)(approvedCount + pendingCount) / Model.MaxStudents * 100) : 0;
+                            int pct = Model.MaxStudents > 0 ? Math.Min(100, (int)Math.Round((double)reservedCount / Model.MaxStudents * 100)) : 0;
                         }
                         <div class="h-2 rounded-full transition-all @(pct >= 100 ? "bg-red-500" : "bg-blue-500")"
                              style="width: @pct%"></div>
@@ -287,7 +308,23 @@
                             Xem đề xuất của tôi
                         </a>
                     }
-                    else if (remaining > 0 && Model.IsRegistrationOpen && Model.IsApproved && DateTime.Now <= Model.Deadline)
+                    else if (!canParticipate)
+                    {
+                        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-700 font-medium">
+                            <span class="material-symbols-outlined text-slate-500 text-base">lock</span>
+                            @(hasCompletedThesis
+                                ? "Bạn đã hoàn thành KLTN nên không thể đăng ký ở các đợt sau."
+                                : (!string.IsNullOrWhiteSpace(participationMessage) ? participationMessage : "Bạn chưa đủ điều kiện đăng ký ở đợt hiện tại."))
+                        </div>
+                    }
+                    else if (!isSystemTopic)
+                    {
+                        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-700 font-medium">
+                            <span class="material-symbols-outlined text-slate-500 text-base">lock</span>
+                            Đề tài này được tạo từ đề xuất sinh viên, không mở đăng ký công khai.
+                        </div>
+                    }
+                    else if (isTopicOpenForStudent)
                     {
                         if (Model.MaxStudents > 1)
                         {

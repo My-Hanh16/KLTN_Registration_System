@@ -6,6 +6,9 @@ namespace KLTN_Registration_System.Models.Entities
     {
         public int Id { get; set; }
 
+        public int? RegistrationPeriodId { get; set; }
+        public RegistrationPeriod? RegistrationPeriod { get; set; }
+
         // Tiêu đề mốc tiến độ
         [Required]
         public string Title { get; set; } = string.Empty;

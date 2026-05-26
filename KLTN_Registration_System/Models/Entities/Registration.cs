@@ -11,6 +11,7 @@ namespace KLTN_Registration_System.Models.Entities
         public string StudentId { get; set; } = string.Empty;
 
         public int TopicId { get; set; }
+        public int? RegistrationPeriodId { get; set; }
 
         public string Status { get; set; } = "Pending"; // Ví dụ: "Pending", "Approved", "Rejected"
 
@@ -19,6 +20,7 @@ namespace KLTN_Registration_System.Models.Entities
         // 🔥 FIX: User → IdentityUser
         public virtual ApplicationUser Student { get; set; } = null!;
         public Topic Topic { get; set; } = null!;
+        public RegistrationPeriod? RegistrationPeriod { get; set; }
 
         // --- PHẦN BỔ SUNG MỚI ĐỂ KHỚP UI & QUẢN LÝ ---
 

@@ -4,6 +4,7 @@
     ViewData["Title"] = "Bảng điều khiển Quản trị";
     var registrationLineLabels = ViewBag.RegistrationLineLabels as IEnumerable<string> ?? Enumerable.Empty<string>();
     var registrationLineCounts = ViewBag.RegistrationLineCounts as IEnumerable<int> ?? Enumerable.Empty<int>();
+    var activePeriod = ViewBag.ActivePeriod as KLTN_Registration_System.Models.Entities.RegistrationPeriod;
 }
 
 <div class="space-y-8">
@@ -14,6 +15,10 @@
             <p class="text-lg opacity-90 leading-relaxed">
                 Hệ thống ghi nhận <span class="font-bold underline decoration-2 offset-4">@Model.PendingApprovals đề tài mới</span> đang chờ bạn phê duyệt.
             </p>
+            <div class="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20">
+                <span class="material-symbols-outlined">event</span>
+                Đợt hiện tại: @(activePeriod?.Name ?? "Chưa cấu hình")
+            </div>
             <div class="mt-8 flex gap-4">
                 <button class="bg-white text-primary px-8 py-3 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-lg active:scale-95">Duyệt nhanh đề tài</button>
                 <button class="bg-white/20 backdrop-blur-md text-white px-8 py-3 rounded-xl font-bold border border-white/30 hover:bg-white/30 transition-all">Xem báo cáo tháng</button>

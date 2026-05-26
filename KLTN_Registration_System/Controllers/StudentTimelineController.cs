@@ -30,24 +30,34 @@ namespace KLTN_Registration_System.Controllers
             var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(studentId)) return Unauthorized();
 
-            var timelines = await _context.Timelines
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var timelines = await FilterTimelinesByActivePeriod(_context.Timelines, activePeriod)
                 .Where(t => t.IsActive)
                 .OrderBy(t => t.Date)
                 .ToListAsync();
 
-            var hasApprovedTopic = await _context.Registrations.AnyAsync(r =>
-                r.StudentId == studentId &&
-                r.Status == "Approved");
+            var approvedRegistration = await FilterRegistrationsByActivePeriod(
+                    _context.Registrations.Include(r => r.Topic),
+                    activePeriod)
+                .FirstOrDefaultAsync(r =>
+                    r.StudentId == studentId &&
+                    r.Status == "Approved");
 
             // Submission của sinh viên hiện tại
+            var timelineIds = timelines.Select(t => t.Id).ToList();
             var submissions = await _context.TimelineSubmissions
                 .Include(x => x.Versions)
-                .Where(x => x.StudentId == studentId)
+                .Where(x => x.StudentId == studentId && timelineIds.Contains(x.TimelineId))
                 .ToListAsync();
+
+            var user = await _userManager.GetUserAsync(User);
 
             ViewBag.Submissions = submissions;
             ViewBag.StudentId = studentId;
-            ViewBag.HasApprovedTopic = hasApprovedTopic;
+            ViewBag.HasApprovedTopic = approvedRegistration != null;
+            ViewBag.ActiveTopicId = approvedRegistration?.TopicId;
+            ViewBag.ActivePeriod = activePeriod;
+            ViewBag.HasCompletedThesis = user?.HasCompletedThesis == true;
             await SetStudentLayoutData();
 
             return View(timelines);
@@ -68,11 +78,24 @@ namespace KLTN_Registration_System.Controllers
             if (string.IsNullOrEmpty(studentId)) return Unauthorized();
 
             await SetStudentLayoutData();
+            var user = await _userManager.GetUserAsync(User);
+            if (user?.HasCompletedThesis == true)
+            {
+                TempData["Error"] = "Bạn đã hoàn thành khóa luận nên không cần nộp timeline nữa.";
+                return RedirectToAction(nameof(Index));
+            }
 
             var timeline = await _context.Timelines.FindAsync(timelineId);
             if (timeline == null)
             {
                 TempData["Error"] = "Không tìm thấy mốc thời gian.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            if (timeline.RegistrationPeriodId.HasValue && timeline.RegistrationPeriodId.Value != activePeriod.Id)
+            {
+                TempData["Error"] = "Mốc thời gian này không thuộc đợt khóa luận hiện tại.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -82,15 +105,12 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (timeline.SubmissionDeadline.HasValue && now > timeline.SubmissionDeadline.Value)
-            {
-                TempData["Error"] = $"Đã quá hạn nộp ({timeline.SubmissionDeadline.Value:dd/MM/yyyy HH:mm}).";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var hasApprovedTopic = await _context.Registrations.AnyAsync(r =>
-                r.StudentId == studentId &&
-                r.Status == "Approved");
+            var hasApprovedTopic = await FilterRegistrationsByActivePeriod(
+                    _context.Registrations.Include(r => r.Topic),
+                    activePeriod)
+                .AnyAsync(r =>
+                    r.StudentId == studentId &&
+                    r.Status == "Approved");
 
             if (!hasApprovedTopic)
             {
@@ -101,9 +121,26 @@ namespace KLTN_Registration_System.Controllers
             // Tìm submission cũ
             var submission = await _context.TimelineSubmissions
                 .Include(x => x.Versions)
-                .FirstOrDefaultAsync(x =>
+                .Where(x =>
                     x.TimelineId == timelineId &&
-                    x.StudentId == studentId);
+                    x.StudentId == studentId)
+                .OrderByDescending(x => x.SubmittedAt)
+                .FirstOrDefaultAsync();
+
+            bool isRejectedResubmission = submission?.Status == SubmissionStatus.Rejected;
+            if (timeline.Date > now && !isRejectedResubmission)
+            {
+                TempData["Error"] = $"Mốc này chưa mở nộp. Thời gian mở: {timeline.Date:dd/MM/yyyy HH:mm}.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (timeline.SubmissionDeadline.HasValue
+                && now > timeline.SubmissionDeadline.Value
+                && !isRejectedResubmission)
+            {
+                TempData["Error"] = $"Đã quá hạn nộp ({timeline.SubmissionDeadline.Value:dd/MM/yyyy HH:mm}).";
+                return RedirectToAction(nameof(Index));
+            }
 
             if (submission != null && submission.Status != SubmissionStatus.Rejected)
             {

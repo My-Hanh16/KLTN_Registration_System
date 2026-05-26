@@ -336,6 +336,10 @@
         color: #94a3b8;
         margin: 0;
     }
+
+    .hidden-by-search {
+        display: none !important;
+    }
 </style>
 }
 
@@ -352,12 +356,12 @@
                 </span>
             }
         </h2>
-        <p class="page-sub">Quản lý hội thoại và trao đổi theo từng đề tài khóa luận.</p>
+        <p class="page-sub">Chỉ hiển thị các đề tài đã có sinh viên được duyệt trong đợt hiện tại.</p>
     </div>
 
     <div class="chat-search">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="searchBox" placeholder="Tìm kiếm đề tài..." />
+        <input type="text" id="searchBox" placeholder="Tìm đề tài, mã đề tài, sinh viên..." />
     </div>
 </div>
 
@@ -383,16 +387,8 @@
             string initial     = !string.IsNullOrWhiteSpace(studentName)
                 ? studentName[0].ToString().ToUpper() : "?";
 
-            // Fix: status badge phản ánh trạng thái thực của topic
-            string sClass = item.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Available ? "s-active"
-                          : item.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Pending   ? "s-pending"
-                          : item.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Full      ? "s-full"
-                          : "s-closed";
-
-            string sText  = item.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Available ? "Đang tuyển"
-                          : item.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Pending   ? "Chờ duyệt"
-                          : item.Status == KLTN_Registration_System.Models.Entities.TopicStatus.Full      ? "Đã đủ SV"
-                          : "Đã đóng";
+            string sClass = unread > 0 ? "s-pending" : "s-active";
+            string sText = unread > 0 ? "Có tin mới" : "Đang hướng dẫn";
 
             <div class="topic-card topic-item">
 
@@ -472,13 +468,18 @@
         }
 
     </div>
+    <div class="empty-state hidden-by-search" id="noSearchResult">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <h3>Không tìm thấy hội thoại phù hợp</h3>
+        <p>Thử tìm bằng tên đề tài, mã đề tài hoặc tên sinh viên.</p>
+    </div>
 }
 else
 {
     <div class="empty-state">
         <i class="fa-regular fa-comments"></i>
-        <h3>Chưa có đề tài nào</h3>
-        <p>Các đề tài hướng dẫn sẽ xuất hiện tại đây sau khi sinh viên đăng ký.</p>
+        <h3>Chưa có hội thoại hướng dẫn</h3>
+        <p>Đề tài sẽ xuất hiện khi sinh viên được duyệt chính thức vào đề tài của bạn.</p>
     </div>
 }
 
@@ -486,9 +487,15 @@ else
 <script>
     document.getElementById('searchBox')?.addEventListener('input', function () {
         const kw = this.value.toLowerCase().trim();
+        let visibleCount = 0;
+
         document.querySelectorAll('.topic-item').forEach(card => {
-            card.style.display = card.innerText.toLowerCase().includes(kw) ? '' : 'none';
+            const matched = card.innerText.toLowerCase().includes(kw);
+            card.classList.toggle('hidden-by-search', !matched);
+            if (matched) visibleCount++;
         });
+
+        document.getElementById('noSearchResult')?.classList.toggle('hidden-by-search', visibleCount > 0);
     });
 </script>
 }

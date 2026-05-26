@@ -2,6 +2,7 @@
     const newPasswordInput = document.getElementById("newPwd");
     const confirmPasswordInput = document.getElementById("confirmPwd");
     const matchMessage = document.getElementById("matchMsg");
+    const passwordForm = confirmPasswordInput?.closest("form");
 
     function checkPasswordMatch() {
         if (!newPasswordInput || !confirmPasswordInput || !matchMessage) {
@@ -47,4 +48,16 @@
     if (confirmPasswordInput) {
         confirmPasswordInput.addEventListener("input", checkPasswordMatch);
     }
+
+    passwordForm?.addEventListener("submit", (event) => {
+        if (!newPasswordInput || !confirmPasswordInput) {
+            return;
+        }
+
+        if (newPasswordInput.value !== confirmPasswordInput.value) {
+            event.preventDefault();
+            checkPasswordMatch();
+            confirmPasswordInput.focus();
+        }
+    });
 })();

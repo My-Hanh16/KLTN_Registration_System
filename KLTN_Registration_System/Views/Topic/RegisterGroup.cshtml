@@ -4,6 +4,9 @@
     Layout = "_LayoutStudent";
     ViewData["Title"] = "Đăng ký nhóm";
     var currentUserName = User.Identity?.Name ?? "Bạn";
+    int currentMembers = ViewBag.CurrentMembers ?? 0;
+    int remainingSlots = ViewBag.RemainingSlots ?? Model.MaxStudents;
+    int memberInputCount = Math.Max(1, Math.Min(Model.MaxStudents - 1, remainingSlots - 1));
 }
 
 <div class="max-w-4xl mx-auto py-8 px-4">
@@ -31,6 +34,19 @@
             @Html.AntiForgeryToken()
             <input type="hidden" name="topicId" value="@Model.Id" />
 
+            @if (TempData["Error"] != null)
+            {
+                <div class="mb-6 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+                    @TempData["Error"]
+                </div>
+            }
+            @if (TempData["Success"] != null)
+            {
+                <div class="mb-6 rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
+                    @TempData["Success"]
+                </div>
+            }
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 @* --- Cột trái: Thông tin quy định --- *@
                 <div class="md:col-span-1 space-y-6">
@@ -52,7 +68,18 @@
                                 </div>
                                 <div>
                                     <p class="text-xs font-bold text-slate-700">Số lượng tối đa</p>
-                                    <p class="text-[11px] text-slate-500">Đề tài này cho phép tối đa <b>@Model.MaxStudents</b> sinh viên.</p>
+                                    <p class="text-[11px] text-slate-500">Đề tài nhóm cần tối thiểu <b>2</b> sinh viên và tối đa <b>@Model.MaxStudents</b> sinh viên.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600 shrink-0">
+                                    <span class="material-symbols-outlined text-sm">event_seat</span>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-700">Chỗ còn lại</p>
+                                    <p class="text-[11px] text-slate-500">
+                                        Đã có <b>@currentMembers</b> sinh viên chờ/đã duyệt, còn <b>@remainingSlots</b> chỗ cho nhóm mới.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -80,7 +107,7 @@
                     </div>
 
                     @* Hiển thị các ô nhập thành viên dựa trên MaxStudents *@
-                    @for (int i = 1; i < Model.MaxStudents; i++)
+                    @for (int i = 1; i <= memberInputCount; i++)
                     {
                         <div class="relative group">
                             <label class="text-[11px] font-bold text-primary absolute -top-2 left-4 bg-white px-1 z-10">Thành viên @i</label>
@@ -90,10 +117,19 @@
                                 </div>
                                 <input type="text" name="memberEmails"
                                        placeholder="Nhập Email hoặc MSSV thành viên..."
-                                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3" />
+                                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3"
+                                       @(i == 1 ? "required" : "") />
                             </div>
+                            @if (i == 1)
+                            {
+                                <p class="mt-2 text-[11px] font-semibold text-red-500">Bắt buộc nhập ít nhất 1 thành viên để đủ 2 sinh viên.</p>
+                            }
                         </div>
                     }
+
+                    <div id="groupClientError" class="hidden rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+                        Đề tài nhóm bắt buộc phải nhập ít nhất 1 thành viên khác.
+                    </div>
 
                     <div class="pt-6 border-t border-slate-100 mt-8 flex justify-end gap-3">
                         <button type="button" onclick="history.back()" class="px-6 py-3 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-2xl transition-all">
@@ -109,3 +145,25 @@
         </form>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form[asp-action="SubmitGroupRegistration"], form[action*="SubmitGroupRegistration"]') || document.querySelector('form');
+        const errorBox = document.getElementById('groupClientError');
+        if (!form) return;
+
+        form.addEventListener('submit', function (event) {
+            const members = Array.from(form.querySelectorAll('input[name="memberEmails"]'))
+                .map(input => input.value.trim())
+                .filter(value => value.length > 0);
+
+            if (members.length < 1) {
+                event.preventDefault();
+                if (errorBox) errorBox.classList.remove('hidden');
+                return;
+            }
+
+            if (errorBox) errorBox.classList.add('hidden');
+        });
+    });
+</script>

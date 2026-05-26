@@ -1,4 +1,5 @@
 @{
+    Layout = "_LayoutDashboard";
     ViewData["Title"] = "Nhập đề tài từ Excel";
 }
 
@@ -7,12 +8,30 @@
 }
 
 <section class="import-topics">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" style="margin-bottom:16px;">
+            @TempData["Success"]
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" style="margin-bottom:16px;">
+            @TempData["Error"]
+        </div>
+    }
+
     <header class="import-topics__header">
         <h2>Tải lên danh sách đề tài</h2>
         <p>
             File cần có tối thiểu cột <strong>Title</strong> và thông tin chuyên ngành/khoa như
             <strong>MajorCode</strong>, <strong>MajorName</strong> hoặc <strong>Faculty</strong>.
             Nên dùng đúng mẫu để đề tài được gán khoa và lên thống kê chính xác.
+        </p>
+        <p>
+            KhÃ´ng cáº§n nháº­p ngÃ y má»Ÿ Ä‘Äƒng kÃ½ trong file. Há»‡ thá»‘ng sáº½ láº¥y thá»i gian má»Ÿ/Ä‘Ã³ng tá»« pháº§n
+            <strong>CÃ i Ä‘áº·t</strong> cá»§a Admin; Ä‘á» tÃ i import xong sáº½ sáºµn sÃ ng nhÆ°ng chÆ°a má»Ÿ Ä‘Äƒng kÃ½.
         </p>
     </header>
 

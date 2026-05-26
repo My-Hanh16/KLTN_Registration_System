@@ -27,6 +27,8 @@ namespace KLTN_Registration_System.Models.Entities
 
         public string? TopicCode { get; set; }
         public string? Semester { get; set; }
+        public int? RegistrationPeriodId { get; set; }
+        public RegistrationPeriod? RegistrationPeriod { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
 

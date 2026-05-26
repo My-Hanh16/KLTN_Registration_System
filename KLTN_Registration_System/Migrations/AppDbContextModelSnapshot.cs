@@ -50,6 +50,9 @@ namespace KLTN_Registration_System.Migrations
                     b.Property<string>("FullName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("HasCompletedThesis")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
 
@@ -81,6 +84,9 @@ namespace KLTN_Registration_System.Migrations
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ThesisCompletedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
@@ -193,6 +199,33 @@ namespace KLTN_Registration_System.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("KLTN_Registration_System.Models.Entities.PeriodStudent", b =>
+                {
+                    b.Property<int>("RegistrationPeriodId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StudentId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("ImportedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<bool>("IsEligible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.HasKey("RegistrationPeriodId", "StudentId");
+
+                    b.HasIndex("IsEligible");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("PeriodStudents");
+                });
+
             modelBuilder.Entity("KLTN_Registration_System.Models.Entities.Registration", b =>
                 {
                     b.Property<int>("Id")
@@ -215,6 +248,9 @@ namespace KLTN_Registration_System.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
+                    b.Property<int?>("RegistrationPeriodId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -233,11 +269,68 @@ namespace KLTN_Registration_System.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RegistrationPeriodId");
+
                     b.HasIndex("StudentId");
 
                     b.HasIndex("TopicId");
 
                     b.ToTable("Registrations");
+                });
+
+            modelBuilder.Entity("KLTN_Registration_System.Models.Entities.RegistrationPeriod", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AcademicYear")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETDATE()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<DateTime>("RegistrationCloseAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("RegistrationOpenAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SemesterCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("SemesterEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("SemesterStart")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("RegistrationPeriods");
                 });
 
             modelBuilder.Entity("KLTN_Registration_System.Models.Entities.Setting", b =>
@@ -281,6 +374,9 @@ namespace KLTN_Registration_System.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("RegistrationPeriodId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ReviewDeadline")
                         .HasColumnType("datetime2");
 
@@ -298,6 +394,8 @@ namespace KLTN_Registration_System.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RegistrationPeriodId");
 
                     b.ToTable("Timelines");
                 });
@@ -460,6 +558,9 @@ namespace KLTN_Registration_System.Migrations
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("RegistrationPeriodId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Semester")
                         .HasColumnType("nvarchar(max)");
 
@@ -481,6 +582,8 @@ namespace KLTN_Registration_System.Migrations
                     b.HasIndex("LecturerId");
 
                     b.HasIndex("MajorId");
+
+                    b.HasIndex("RegistrationPeriodId");
 
                     b.ToTable("Topics");
                 });
@@ -716,8 +819,32 @@ namespace KLTN_Registration_System.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("KLTN_Registration_System.Models.Entities.PeriodStudent", b =>
+                {
+                    b.HasOne("KLTN_Registration_System.Models.Entities.RegistrationPeriod", "RegistrationPeriod")
+                        .WithMany("PeriodStudents")
+                        .HasForeignKey("RegistrationPeriodId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("KLTN_Registration_System.Models.Entities.ApplicationUser", "Student")
+                        .WithMany("PeriodStudents")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RegistrationPeriod");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("KLTN_Registration_System.Models.Entities.Registration", b =>
                 {
+                    b.HasOne("KLTN_Registration_System.Models.Entities.RegistrationPeriod", "RegistrationPeriod")
+                        .WithMany("Registrations")
+                        .HasForeignKey("RegistrationPeriodId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("KLTN_Registration_System.Models.Entities.ApplicationUser", "Student")
                         .WithMany("Registrations")
                         .HasForeignKey("StudentId")
@@ -730,9 +857,21 @@ namespace KLTN_Registration_System.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("RegistrationPeriod");
+
                     b.Navigation("Student");
 
                     b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("KLTN_Registration_System.Models.Entities.Timeline", b =>
+                {
+                    b.HasOne("KLTN_Registration_System.Models.Entities.RegistrationPeriod", "RegistrationPeriod")
+                        .WithMany("Timelines")
+                        .HasForeignKey("RegistrationPeriodId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("RegistrationPeriod");
                 });
 
             modelBuilder.Entity("KLTN_Registration_System.Models.Entities.TimelineSubmission", b =>
@@ -788,9 +927,16 @@ namespace KLTN_Registration_System.Migrations
                         .HasForeignKey("MajorId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("KLTN_Registration_System.Models.Entities.RegistrationPeriod", "RegistrationPeriod")
+                        .WithMany("Topics")
+                        .HasForeignKey("RegistrationPeriodId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Lecturer");
 
                     b.Navigation("Major");
+
+                    b.Navigation("RegistrationPeriod");
 
                     b.Navigation("Student");
                 });
@@ -894,6 +1040,8 @@ namespace KLTN_Registration_System.Migrations
                 {
                     b.Navigation("Notifications");
 
+                    b.Navigation("PeriodStudents");
+
                     b.Navigation("Registrations");
 
                     b.Navigation("UserMajors");
@@ -906,6 +1054,17 @@ namespace KLTN_Registration_System.Migrations
                     b.Navigation("UserMajors");
 
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("KLTN_Registration_System.Models.Entities.RegistrationPeriod", b =>
+                {
+                    b.Navigation("PeriodStudents");
+
+                    b.Navigation("Registrations");
+
+                    b.Navigation("Timelines");
+
+                    b.Navigation("Topics");
                 });
 
             modelBuilder.Entity("KLTN_Registration_System.Models.Entities.Timeline", b =>

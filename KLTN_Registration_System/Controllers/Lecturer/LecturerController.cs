@@ -26,6 +26,8 @@ namespace KLTN_Registration_System.Controllers
     [Authorize(Roles = "Lecturer")]
     public class LecturerController : BaseController
     {
+        private const string LecturerApprovedProposalPrefix = "[LECTURER_APPROVED]";
+        private const string LecturerRejectedProposalPrefix = "[LECTURER_REJECTED]";
         private readonly AppDbContext _context;
 
         public LecturerController(AppDbContext context, UserManager<ApplicationUser> userManager)
@@ -40,40 +42,64 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Index()
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Id == lid);
 
-            var allData = await _context.Registrations
+            var allData = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
-                .Where(r => r.Topic != null && r.Topic.LecturerId == lid)
+                .Where(r => r.Topic != null
+                    && r.Topic.LecturerId == lid
+                    && r.Topic.IsStudentProposed)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            ViewBag.TotalPending =
-                allData.Count(r => r.Status == "Pending");
+            var pendingProposalCount = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                .CountAsync(t => t.IsStudentProposed
+                    && !t.IsApproved
+                    && t.Status == TopicStatus.Pending
+                    && t.LecturerId == lid
+                    && (t.Note == null
+                        || (!t.Note.StartsWith(LecturerApprovedProposalPrefix)
+                            && !t.Note.StartsWith(LecturerRejectedProposalPrefix))));
+
+            ViewBag.TotalPending = pendingProposalCount + allData.Count(r => r.Status == "Pending");
 
             ViewBag.TotalApproved =
                 allData.Count(r => r.Status == "Approved");
 
-            ViewBag.GuidingGroups =
-                allData.Where(r => r.Status == "Approved").ToList();
+            ViewBag.GuidingTopics = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                .Include(t => t.Major)
+                .Include(t => t.Registrations!)
+                    .ThenInclude(r => r.Student)
+                .Where(t => t.LecturerId == lid
+                    && t.IsApproved
+                    && t.Registrations!.Any(r => r.Status == "Approved"))
+                .OrderByDescending(t => t.Registrations!.Max(r => r.CreatedAt))
+                .Take(4)
+                .ToListAsync();
 
             ViewBag.PendingRequests =
                 allData.Where(r => r.Status == "Pending").ToList();
 
-            var myTopics = await _context.Topics
+            var myTopics = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Where(t => t.LecturerId == lid)
                 .ToListAsync();
 
             ViewBag.TotalTopics = myTopics.Count;
+            int appCount = myTopics.Count(t =>
+                (t.Category ?? "").Contains("Ứng dụng", StringComparison.OrdinalIgnoreCase)
+                || (t.Category ?? "").Contains("Ung dung", StringComparison.OrdinalIgnoreCase));
+            ViewBag.AppCount = appCount;
+            ViewBag.ResCount = Math.Max(0, myTopics.Count - appCount);
 
             // THÊM ĐOẠN NÀY
             ViewBag.Majors = await GetLecturerMajorsAsync(lid);
 
             // Đọc schedule từ DB thay vì hardcode
-            var schedules = await _context.Timelines
+            var schedules = await FilterTimelinesByActivePeriod(_context.Timelines, activePeriod)
                 .Where(t => t.IsActive && t.Date >= DateTime.Today)
                 .OrderBy(t => t.Date)
                 .Take(5)
@@ -103,6 +129,7 @@ namespace KLTN_Registration_System.Controllers
                 user?.FullName
                 ?? User.Identity?.Name
                 ?? "Giảng viên";
+            ViewBag.ActivePeriod = activePeriod;
 
             return View(allData);
         }
@@ -114,15 +141,21 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Approve(int id)
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var reg = await _context.Registrations
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var reg = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (reg == null) return NotFound();
             if (reg.Topic?.LecturerId != lid) return Forbid();
+            if (reg.Topic!.IsStudentProposed != true)
+            {
+                TempData["Error"] = "Giảng viên không duyệt đăng ký đề tài hệ thống. Yêu cầu này do Admin xử lý.";
+                return RedirectToAction(nameof(Approval));
+            }
 
-            var count = await _context.Registrations
+            var count = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .CountAsync(r => r.TopicId == reg.TopicId && r.Status == "Approved");
 
             if (count >= reg.Topic!.MaxStudents)
@@ -136,7 +169,7 @@ namespace KLTN_Registration_System.Controllers
             reg.UpdatedAt = DateTime.Now;
 
             // Từ chối các Pending khác của cùng SV
-            var otherPending = await _context.Registrations
+            var otherPending = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Where(r => r.StudentId == reg.StudentId && r.Id != reg.Id && r.Status == "Pending")
                 .ToListAsync();
             foreach (var o in otherPending) { o.Status = "Rejected"; o.UpdatedAt = DateTime.Now; }
@@ -160,12 +193,18 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Reject(int id, string? feedback)
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var reg = await _context.Registrations
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var reg = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Topic)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (reg == null) return NotFound();
             if (reg.Topic?.LecturerId != lid) return Forbid();
+            if (reg.Topic!.IsStudentProposed != true)
+            {
+                TempData["Error"] = "Giảng viên không từ chối đăng ký đề tài hệ thống. Yêu cầu này do Admin xử lý.";
+                return RedirectToAction(nameof(Approval));
+            }
 
             reg.Status = "Rejected";
             reg.Feedback = feedback;
@@ -187,16 +226,40 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Approval(string status = "Pending")
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
-            var allRegs = await _context.Registrations
+            var proposalQuery = FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                .Include(t => t.Student)
+                .Include(t => t.Major)
+                .Where(t => t.IsStudentProposed
+                    && !t.IsApproved
+                    && t.Status == TopicStatus.Pending
+                    && t.LecturerId == lid
+                    && (t.Note == null
+                        || (!t.Note.StartsWith(LecturerApprovedProposalPrefix)
+                            && !t.Note.StartsWith(LecturerRejectedProposalPrefix))));
+
+            var pendingStudentProposals = await proposalQuery
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+            ViewBag.PendingStudentProposals = pendingStudentProposals;
+            ViewBag.PendingStudentProposalCount = pendingStudentProposals.Count;
+            ViewBag.Lecturers = (await _userManager.GetUsersInRoleAsync("Lecturer"))
+                .Where(l => l.Id != lid)
+                .OrderBy(l => l.FullName)
+                .ToList();
+
+            var allRegs = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Student)
                 .Include(r => r.Topic)
-                .Where(r => r.Topic != null && r.Topic.LecturerId == lid)
+                .Where(r => r.Topic != null
+                    && r.Topic.LecturerId == lid
+                    && r.Topic.IsStudentProposed)
                 .ToListAsync();
 
             // ===== THỐNG KÊ =====
 
-            ViewBag.TotalPending = allRegs.Count(r => r.Status == "Pending");
+            ViewBag.TotalPending = allRegs.Count(r => r.Status == "Pending") + pendingStudentProposals.Count;
 
             ViewBag.TotalApproved = allRegs.Count(r => r.Status == "Approved");
 
@@ -221,19 +284,23 @@ namespace KLTN_Registration_System.Controllers
     .Select(r => r.Id)
     .FirstOrDefaultAsync();
 
-            var totalStudents = string.IsNullOrWhiteSpace(studentRoleId)
-                ? 0
-                : await _context.UserRoles.CountAsync(ur => ur.RoleId == studentRoleId);
+            var totalStudents = await _context.PeriodStudents
+                .CountAsync(ps => ps.RegistrationPeriodId == activePeriod.Id
+                    && ps.IsEligible
+                    && !ps.Student.HasCompletedThesis);
             ViewBag.GroupPercent = totalStudents == 0
                 ? 0
                 : (int)Math.Round((double)groupedStudents / totalStudents * 100);
 
             // ===== FILTER =====
 
-            var regs = await _context.Registrations
+            var regs = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
-                .Where(r => r.Topic != null && r.Topic.LecturerId == lid && r.Status == status)
+                .Where(r => r.Topic != null
+                    && r.Topic.LecturerId == lid
+                    && r.Topic.IsStudentProposed
+                    && r.Status == status)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
@@ -255,11 +322,145 @@ namespace KLTN_Registration_System.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> ApproveStudentProposal(int topicId)
+        {
+            var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                .Include(t => t.Student)
+                .FirstOrDefaultAsync(t => t.Id == topicId
+                    && t.IsStudentProposed
+                    && t.LecturerId == lecturerId
+                    && !t.IsApproved
+                    && t.Status == TopicStatus.Pending);
+
+            if (topic == null) return NotFound();
+
+            topic.Note = $"{LecturerApprovedProposalPrefix} Giảng viên đồng ý hướng dẫn. Chờ Admin thêm vào hệ thống.";
+            topic.IsRegistrationOpen = false;
+            await _context.SaveChangesAsync();
+
+            var admins = await _userManager.GetUsersInRoleAsync("Admin");
+            foreach (var admin in admins)
+            {
+                await Notify(admin.Id,
+                    "Đề xuất đã được giảng viên đồng ý",
+                    $"Giảng viên đã đồng ý hướng dẫn đề tài \"{topic.Title}\". Vui lòng duyệt để thêm vào hệ thống.",
+                    "NewTopic",
+                    "/Admin/StudentProposals?status=pending");
+            }
+
+            if (!string.IsNullOrWhiteSpace(topic.CreatedByStudentId))
+            {
+                await Notify(topic.CreatedByStudentId,
+                    "Giảng viên đã đồng ý hướng dẫn",
+                    $"Đề tài \"{topic.Title}\" đã được giảng viên đồng ý. Đề xuất đang chờ Admin thêm vào hệ thống.",
+                    "NewTopic",
+                    "/Student/MyRegistration");
+            }
+
+            TempData["Success"] = $"Đã đồng ý hướng dẫn đề tài \"{topic.Title}\". Đề xuất đã chuyển Admin xử lý.";
+            return RedirectToAction(nameof(Approval), new { tab = "proposals" });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> RejectStudentProposal(int topicId, string? reason)
+        {
+            var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                .Include(t => t.Student)
+                .FirstOrDefaultAsync(t => t.Id == topicId
+                    && t.IsStudentProposed
+                    && t.LecturerId == lecturerId
+                    && !t.IsApproved
+                    && t.Status == TopicStatus.Pending);
+
+            if (topic == null) return NotFound();
+
+            var message = string.IsNullOrWhiteSpace(reason)
+                ? "Giảng viên từ chối hướng dẫn. Vui lòng đề xuất tên đề tài khác trước khi hạn đăng ký kết thúc."
+                : reason.Trim();
+            topic.Note = message;
+            topic.Status = TopicStatus.Rejected;
+            topic.IsApproved = false;
+            topic.IsRegistrationOpen = false;
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(topic.CreatedByStudentId))
+            {
+                await Notify(topic.CreatedByStudentId,
+                    "Đề xuất đề tài bị từ chối",
+                    $"Đề tài \"{topic.Title}\" chưa được giảng viên chấp nhận. Vui lòng đề xuất tên đề tài khác trước khi hạn đăng ký kết thúc.",
+                    "TopicRejected",
+                    "/Student/ProposeTopic");
+            }
+
+            TempData["Success"] = $"Đã từ chối đề xuất \"{topic.Title}\". Sinh viên sẽ được yêu cầu nộp đề tài khác.";
+            return RedirectToAction(nameof(Approval), new { tab = "proposals" });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForwardStudentProposal(int topicId, string assignLecturerId)
+        {
+            var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                .Include(t => t.Student)
+                .FirstOrDefaultAsync(t => t.Id == topicId
+                    && t.IsStudentProposed
+                    && t.LecturerId == lecturerId
+                    && !t.IsApproved
+                    && t.Status == TopicStatus.Pending);
+
+            if (topic == null) return NotFound();
+
+            if (string.IsNullOrWhiteSpace(assignLecturerId) || assignLecturerId == lecturerId)
+            {
+                TempData["Error"] = "Vui lòng chọn một giảng viên khác để chuyển đề xuất.";
+                return RedirectToAction(nameof(Approval), new { tab = "proposals" });
+            }
+
+            var newLecturer = await _userManager.FindByIdAsync(assignLecturerId);
+            if (newLecturer == null || !await _userManager.IsInRoleAsync(newLecturer, "Lecturer"))
+            {
+                TempData["Error"] = "Giảng viên được phân công không hợp lệ.";
+                return RedirectToAction(nameof(Approval), new { tab = "proposals" });
+            }
+
+            topic.LecturerId = assignLecturerId;
+            topic.Note = null;
+            topic.IsApproved = false;
+            topic.IsRegistrationOpen = false;
+            topic.Status = TopicStatus.Pending;
+            await _context.SaveChangesAsync();
+
+            await Notify(assignLecturerId,
+                "Đề xuất cần bạn xem xét hướng dẫn",
+                $"Đề tài sinh viên đề xuất \"{topic.Title}\" đã được chuyển cho bạn xem xét.",
+                "NewTopic",
+                "/Lecturer/Approval?tab=proposals");
+
+            if (!string.IsNullOrWhiteSpace(topic.CreatedByStudentId))
+            {
+                await Notify(topic.CreatedByStudentId,
+                    "Đề xuất được chuyển sang giảng viên khác",
+                    $"Đề tài \"{topic.Title}\" đã được chuyển sang giảng viên khác xem xét.",
+                    "NewTopic",
+                    "/Student/MyRegistration");
+            }
+
+            TempData["Success"] = $"Đã chuyển đề xuất \"{topic.Title}\" sang giảng viên khác xem xét.";
+            return RedirectToAction(nameof(Approval), new { tab = "proposals" });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveGroup(List<int> ids)
         {
             if (ids == null || !ids.Any()) return RedirectToAction(nameof(Approval));
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var regs = await _context.Registrations
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var regs = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
                 .Where(r => ids.Contains(r.Id))
@@ -273,6 +474,12 @@ namespace KLTN_Registration_System.Controllers
 
             if (regs.Any(r => r.Topic?.LecturerId != lid))
                 return Forbid();
+
+            if (regs.Any(r => r.Topic?.IsStudentProposed != true))
+            {
+                TempData["Error"] = "Giảng viên không duyệt đăng ký đề tài hệ thống. Yêu cầu này do Admin xử lý.";
+                return RedirectToAction(nameof(Approval));
+            }
 
             if (regs.Any(r => r.Status != "Pending"))
             {
@@ -288,7 +495,7 @@ namespace KLTN_Registration_System.Controllers
             }
 
             var topic = regs.First().Topic!;
-            int approvedCount = await _context.Registrations
+            int approvedCount = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .CountAsync(r => r.TopicId == topic.Id && r.Status == "Approved");
 
             if (approvedCount + regs.Count > topic.MaxStudents)
@@ -324,7 +531,7 @@ namespace KLTN_Registration_System.Controllers
 
             var approvedStudentIds = regs.Select(r => r.StudentId).Distinct().ToList();
             var approvedRegIds = regs.Select(r => r.Id).ToList();
-            var otherPending = await _context.Registrations
+            var otherPending = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Where(r => approvedStudentIds.Contains(r.StudentId)
                     && !approvedRegIds.Contains(r.Id)
                     && r.Status == "Pending")
@@ -347,7 +554,8 @@ namespace KLTN_Registration_System.Controllers
         {
             if (ids == null || !ids.Any()) return RedirectToAction(nameof(Approval));
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var regs = await _context.Registrations
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var regs = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Topic)
                 .Where(r => ids.Contains(r.Id))
                 .ToListAsync();
@@ -360,6 +568,12 @@ namespace KLTN_Registration_System.Controllers
 
             if (regs.Any(r => r.Topic?.LecturerId != lid))
                 return Forbid();
+
+            if (regs.Any(r => r.Topic?.IsStudentProposed != true))
+            {
+                TempData["Error"] = "Giảng viên không từ chối đăng ký đề tài hệ thống. Yêu cầu này do Admin xử lý.";
+                return RedirectToAction(nameof(Approval));
+            }
 
             if (regs.Any(r => r.Status != "Pending"))
             {
@@ -401,8 +615,9 @@ namespace KLTN_Registration_System.Controllers
             int? majorId = null)
         {
             var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
-            var query = _context.Topics
+            var query = FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Include(t => t.Registrations)
                 .Include(t => t.Major)
                 .Include(t => t.Lecturer)
@@ -433,7 +648,7 @@ namespace KLTN_Registration_System.Controllers
                 .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();
 
-            var my = await _context.Topics
+            var my = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Where(t => t.LecturerId == uid)
                 .ToListAsync();
 
@@ -450,8 +665,46 @@ namespace KLTN_Registration_System.Controllers
             ViewBag.TotalPages = 1;
 
             ViewBag.Majors = await GetLecturerMajorsAsync(uid);
+            ViewBag.ActivePeriod = activePeriod;
 
             return View("_TopicList", topics);
+        }
+
+        public async Task<IActionResult> GuidedTopics()
+        {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+
+            var topics = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                .Include(t => t.Major)
+                .Include(t => t.Registrations!)
+                    .ThenInclude(r => r.Student)
+                .Where(t => t.LecturerId == uid && t.IsApproved)
+                .OrderByDescending(t => t.Registrations!.Any(r => r.Status == "Approved"))
+                .ThenByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            var guidedStudents = topics
+                .SelectMany(t => t.Registrations ?? new List<Registration>())
+                .Where(r => r.Status == "Approved")
+                .Where(r => r.Student != null)
+                .Select(r => r.Student!)
+                .GroupBy(s => s.Id)
+                .Select(g => g.First())
+                .ToList();
+
+            ViewBag.ActivePeriod = activePeriod;
+            ViewBag.TotalApprovedTopics = topics.Count;
+            ViewBag.TotalGuidedStudents = guidedStudents.Count;
+            ViewBag.CompletedGuidedStudents = guidedStudents.Count(s => s.HasCompletedThesis);
+            ViewBag.PendingStudents = topics
+                .SelectMany(t => t.Registrations ?? new List<Registration>())
+                .Count(r => r.Status == "Pending");
+            ViewBag.TopicsWithStudents = topics.Count(t => t.Registrations?.Any(r => r.Status == "Approved") == true);
+            ViewBag.EmptyApprovedTopics = topics.Count(t => !(t.Registrations?.Any(r => r.Status == "Approved") == true));
+            ViewBag.SelectedPeriodName = activePeriod.Name;
+
+            return View(topics);
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -461,18 +714,20 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Create()
         {
             var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
             var allowedMajors = await GetLecturerMajorsAsync(uid);
 
             ViewBag.MajorId = new SelectList(
                 allowedMajors,
                 "Id", "Name");
             ViewBag.NoMajorAssigned = !allowedMajors.Any();
+            ViewBag.ActivePeriodName = activePeriod.Name;
 
             return View(new Topic
             {
                 MaxStudents = 1,
                 Deadline = DateTime.Now.AddMonths(3),
-                Semester = "HK2-2025-2026",
+                Semester = activePeriod.Name,
                 Level = TopicLevel.Easy
             });
         }
@@ -482,6 +737,7 @@ namespace KLTN_Registration_System.Controllers
         {
             try
             {
+                var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
                 if (topic == null)
                 {
                     return Json(new
@@ -541,6 +797,8 @@ namespace KLTN_Registration_System.Controllers
                 }
 
                 topic.LecturerId = userId;
+                topic.Semester = activePeriod.Name;
+                topic.RegistrationPeriodId = activePeriod.Id;
 
                 topic.CreatedAt = DateTime.Now;
 
@@ -587,6 +845,7 @@ namespace KLTN_Registration_System.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateFromForm(Topic topic)
         {
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
             ModelState.Remove("Lecturer");
             ModelState.Remove("Major");
             ModelState.Remove("Student");
@@ -603,6 +862,7 @@ namespace KLTN_Registration_System.Controllers
                     allowedMajors,
                     "Id", "Name", topic.MajorId);
                 ViewBag.NoMajorAssigned = !allowedMajors.Any();
+                ViewBag.ActivePeriodName = activePeriod.Name;
 
                 return View("Create", topic);
             }
@@ -618,10 +878,13 @@ namespace KLTN_Registration_System.Controllers
                 var allowedMajors = await GetLecturerMajorsAsync(userId);
                 ViewBag.MajorId = new SelectList(allowedMajors, "Id", "Name", topic.MajorId);
                 ViewBag.NoMajorAssigned = !allowedMajors.Any();
+                ViewBag.ActivePeriodName = activePeriod.Name;
                 return View("Create", topic);
             }
 
             topic.LecturerId = userId;
+            topic.Semester = activePeriod.Name;
+            topic.RegistrationPeriodId = activePeriod.Id;
             topic.CreatedAt = DateTime.Now;
             topic.IsApproved = false;
             topic.IsRegistrationOpen = false;
@@ -657,8 +920,10 @@ namespace KLTN_Registration_System.Controllers
         {
             if (id == null) return NotFound();
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var topic = await _context.Topics
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Include(t => t.Major)
+                .Include(t => t.Registrations)
                 .FirstOrDefaultAsync(t => t.Id == id);
             if (topic == null) return NotFound();
             if (topic.LecturerId != lid && !User.IsInRole("Admin")) return Forbid();
@@ -670,6 +935,9 @@ namespace KLTN_Registration_System.Controllers
             ViewBag.MajorId = new SelectList(
                 allowedMajors,
                 "Id", "Name", topic.MajorId);
+            ViewBag.ActivePeriodName = activePeriod.Name;
+            ViewBag.ApprovedCount = topic.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+            ViewBag.PendingCount = topic.Registrations?.Count(r => r.Status == "Pending") ?? 0;
             return View(topic);          // ← trả đúng View "Edit", không dùng _TopicList
         }
 
@@ -678,6 +946,7 @@ namespace KLTN_Registration_System.Controllers
         {
             if (id != topic.Id) return NotFound();
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
             ModelState.Remove("Lecturer"); ModelState.Remove("Major");
             ModelState.Remove("Student"); ModelState.Remove("Registrations");
@@ -685,7 +954,7 @@ namespace KLTN_Registration_System.Controllers
 
             if (ModelState.IsValid)
             {
-                var existing = await _context.Topics
+                var existing = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                     .Include(t => t.Registrations)
                     .FirstOrDefaultAsync(t => t.Id == id);
                 if (existing == null) return NotFound();
@@ -703,6 +972,9 @@ namespace KLTN_Registration_System.Controllers
                         ViewBag.MajorId = new SelectList(
                             await GetLecturerMajorsAsync(lid),
                             "Id", "Name", topic.MajorId);
+                        ViewBag.ActivePeriodName = activePeriod.Name;
+                        ViewBag.ApprovedCount = existing.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+                        ViewBag.PendingCount = existing.Registrations?.Count(r => r.Status == "Pending") ?? 0;
 
                         return View(topic);
                     }
@@ -720,14 +992,17 @@ namespace KLTN_Registration_System.Controllers
                     ViewBag.MajorId = new SelectList(
                         allowedMajors,
                         "Id", "Name", topic.MajorId);
+                    ViewBag.ActivePeriodName = activePeriod.Name;
+                    ViewBag.ApprovedCount = existing.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+                    ViewBag.PendingCount = existing.Registrations?.Count(r => r.Status == "Pending") ?? 0;
 
                     return View(topic);
                 }
 
-                existing.TopicCode = topic.TopicCode;
                 existing.Title = topic.Title.Trim();
                 existing.Description = topic.Description?.Trim() ?? "";
-                existing.Semester = topic.Semester?.Trim();
+                existing.Semester = activePeriod.Name;
+                existing.RegistrationPeriodId = activePeriod.Id;
                 existing.MajorId = topic.MajorId;
                 existing.Level = topic.Level;
                 existing.MaxStudents = Math.Clamp(topic.MaxStudents, 1, 10);
@@ -747,7 +1022,7 @@ namespace KLTN_Registration_System.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!_context.Topics.Any(t => t.Id == id)) return NotFound();
+                    if (!await FilterTopicsByActivePeriod(_context.Topics, activePeriod).AnyAsync(t => t.Id == id)) return NotFound();
                     throw;
                 }
                 return RedirectToAction(nameof(ThesisManagement));
@@ -759,6 +1034,9 @@ namespace KLTN_Registration_System.Controllers
             ViewBag.MajorId = new SelectList(
                 editMajors,
                 "Id", "Name", topic.MajorId);
+            ViewBag.ActivePeriodName = activePeriod.Name;
+            ViewBag.ApprovedCount = 0;
+            ViewBag.PendingCount = 0;
             return View(topic);
         }
 
@@ -769,7 +1047,8 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> DeleteTopic(int id)
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var topic = await _context.Topics
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Include(t => t.Registrations)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
@@ -799,7 +1078,10 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> ToggleRegistration(int id, bool isOpen)
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var topic = await _context.Topics.Include(t => t.Registrations).FirstOrDefaultAsync(t => t.Id == id);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                .Include(t => t.Registrations)
+                .FirstOrDefaultAsync(t => t.Id == id);
             if (topic == null) return Json(new { success = false, message = "Không tìm thấy đề tài." });
             if (topic.LecturerId != lid && !User.IsInRole("Admin"))
                 return Json(new { success = false, message = "Không có quyền cập nhật đề tài này." });
@@ -828,7 +1110,10 @@ namespace KLTN_Registration_System.Controllers
             {
                 int id = data.GetProperty("id").GetInt32();
                 bool isOpen = data.GetProperty("isOpen").GetBoolean();
-                var topic = await _context.Topics.Include(t => t.Registrations).FirstOrDefaultAsync(t => t.Id == id);
+                var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+                var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                    .Include(t => t.Registrations)
+                    .FirstOrDefaultAsync(t => t.Id == id);
                 if (topic == null) return Json(new { success = false, message = "Không tìm thấy" });
 
                 var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -863,6 +1148,7 @@ namespace KLTN_Registration_System.Controllers
         [RequestSizeLimit(5 * 1024 * 1024)]
         public async Task<IActionResult> ImportTopics(IFormFile file)
         {
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
             if (!IsValidExcelUpload(file, out var uploadError))
             {
                 TempData["Error"] = uploadError;
@@ -899,7 +1185,8 @@ namespace KLTN_Registration_System.Controllers
                     if (string.IsNullOrWhiteSpace(code))
                         code = $"TOPIC-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
-                    var exists = await _context.Topics.AnyAsync(t => t.TopicCode == code);
+                    var exists = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                        .AnyAsync(t => t.TopicCode == code);
                     if (exists)
                     {
                         skipped++;
@@ -917,7 +1204,8 @@ namespace KLTN_Registration_System.Controllers
                         Title = title,
                         Category = ws.Cells[row, 3].Value?.ToString() ?? "Ứng dụng",
                         Description = ws.Cells[row, 4].Value?.ToString() ?? "",
-                        Semester = "HK2-2025-2026",
+                        Semester = activePeriod.Name,
+                        RegistrationPeriodId = activePeriod.Id,
                         LecturerId = lid,
                         MajorId = major.Id,
                         Faculty = major.FacultyName,
@@ -950,7 +1238,8 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> ExportRegistrations(int? topicId = null)
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var query = _context.Registrations
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var query = FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Topic)
                 .Include(r => r.Student)
                 .Where(r => r.Topic != null && r.Topic.LecturerId == lid && r.Status == "Approved")
@@ -1021,14 +1310,15 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> TopicRegistrations(int id)
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
-            var topic = await _context.Topics
+            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Include(t => t.Major)
                 .FirstOrDefaultAsync(t => t.Id == id && t.LecturerId == lid);
 
             if (topic == null) return NotFound();
 
-            var registrations = await _context.Registrations
+            var registrations = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
                 .Include(r => r.Student)
                 .Include(r => r.Topic)
                 .Where(r => r.TopicId == id)
@@ -1046,12 +1336,13 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> Profile()
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
             var user = await _context.Users
                 .Include(u => u.Major)
                 .FirstOrDefaultAsync(u => u.Id == lid);
             if (user == null) return RedirectToAction("Login", "Account");
 
-            var myTopics = await _context.Topics
+            var myTopics = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Include(t => t.Registrations)
                 .Where(t => t.LecturerId == lid)
                 .ToListAsync();
@@ -1059,6 +1350,7 @@ namespace KLTN_Registration_System.Controllers
             ViewBag.TotalTopics = myTopics.Count;
             ViewBag.TotalStudents = myTopics.Sum(t => t.Registrations?.Count(r => r.Status == "Approved") ?? 0);
             ViewBag.Majors = await _context.Majors.Where(m => m.IsActive).ToListAsync();
+            ViewBag.ActivePeriod = activePeriod;
 
             return View(user);
         }
@@ -1084,7 +1376,8 @@ namespace KLTN_Registration_System.Controllers
         public async Task<IActionResult> GetTopicStats()
         {
             var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var topics = await _context.Topics
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var topics = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Include(t => t.Registrations)
                 .Where(t => t.LecturerId == lid)
                 .ToListAsync();
@@ -1141,17 +1434,38 @@ namespace KLTN_Registration_System.Controllers
             public bool IsUrgent { get; set; }
         }
 
+        public class DefenseEligibilityVM
+        {
+            public string StudentId { get; set; } = "";
+            public string StudentName { get; set; } = "";
+            public string StudentCode { get; set; } = "";
+            public string TopicTitle { get; set; } = "";
+            public int RequiredCount { get; set; }
+            public int ApprovedCount { get; set; }
+            public int PendingCount { get; set; }
+            public int RejectedCount { get; set; }
+            public int MissingCount { get; set; }
+            public bool IsEligible { get; set; }
+        }
+
         public async Task<IActionResult> TimelineManagement()
         {
             var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
 
-            var myStudentIds = await _context.Registrations
+            var myApprovedRegistrations = await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
+                .Include(r => r.Student)
+                .Include(r => r.Topic)
                 .Where(r => r.Topic != null && r.Topic.LecturerId == lecturerId && r.Status == "Approved")
-                .Select(r => r.StudentId)
-                .Distinct()
+                .OrderBy(r => r.Student!.FullName)
                 .ToListAsync();
 
-            var timelines = await _context.Timelines
+            var myStudentIds = myApprovedRegistrations
+                .Select(r => r.StudentId)
+                .Distinct()
+                .ToList();
+
+            var timelines = await FilterTimelinesByActivePeriod(_context.Timelines, activePeriod)
 
                 .Include(t => t.TimelineSubmissions
                     .Where(s => s.StudentId != null && myStudentIds.Contains(s.StudentId)))
@@ -1165,6 +1479,60 @@ namespace KLTN_Registration_System.Controllers
 
                 .ToListAsync();
 
+            var requiredTimelines = timelines
+                .Where(t => t.IsActive && t.AllowSubmission)
+                .ToList();
+
+            var latestSubmissions = timelines
+                .SelectMany(t => t.TimelineSubmissions ?? new List<TimelineSubmission>())
+                .Where(s => !string.IsNullOrWhiteSpace(s.StudentId))
+                .GroupBy(s => new { s.StudentId, s.TimelineId })
+                .ToDictionary(
+                    g => (g.Key.StudentId!, g.Key.TimelineId),
+                    g => g.OrderByDescending(s => s.SubmittedAt).First());
+
+            ViewBag.DefenseEligibility = myApprovedRegistrations
+                .GroupBy(r => r.StudentId)
+                .Select(g =>
+                {
+                    var first = g.First();
+                    int approved = 0;
+                    int pending = 0;
+                    int rejected = 0;
+                    int missing = 0;
+
+                    foreach (var timeline in requiredTimelines)
+                    {
+                        if (!latestSubmissions.TryGetValue((g.Key, timeline.Id), out var latest))
+                        {
+                            missing++;
+                            continue;
+                        }
+
+                        if (latest.Status == SubmissionStatus.Approved) approved++;
+                        else if (latest.Status == SubmissionStatus.Pending) pending++;
+                        else if (latest.Status == SubmissionStatus.Rejected) rejected++;
+                    }
+
+                    return new DefenseEligibilityVM
+                    {
+                        StudentId = g.Key,
+                        StudentName = first.Student?.FullName ?? first.Student?.Email ?? "Sinh viên",
+                        StudentCode = first.Student?.UserCode ?? "",
+                        TopicTitle = first.Topic?.Title ?? "",
+                        RequiredCount = requiredTimelines.Count,
+                        ApprovedCount = approved,
+                        PendingCount = pending,
+                        RejectedCount = rejected,
+                        MissingCount = missing,
+                        IsEligible = requiredTimelines.Any() && approved == requiredTimelines.Count
+                    };
+                })
+                .OrderBy(x => x.IsEligible)
+                .ThenBy(x => x.StudentName)
+                .ToList();
+
+            ViewBag.ActivePeriod = activePeriod;
             return View(timelines);
         }
 
@@ -1316,11 +1684,13 @@ namespace KLTN_Registration_System.Controllers
             if (string.IsNullOrEmpty(lecturerId))
                 return false;
 
-            return await _context.Registrations.AnyAsync(r =>
-                r.StudentId == studentId &&
-                r.Status == "Approved" &&
-                r.Topic != null &&
-                r.Topic.LecturerId == lecturerId);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            return await FilterRegistrationsByActivePeriod(_context.Registrations, activePeriod)
+                .AnyAsync(r =>
+                    r.StudentId == studentId &&
+                    r.Status == "Approved" &&
+                    r.Topic != null &&
+                    r.Topic.LecturerId == lecturerId);
         }
 
         private static Major ResolveLecturerImportMajor(

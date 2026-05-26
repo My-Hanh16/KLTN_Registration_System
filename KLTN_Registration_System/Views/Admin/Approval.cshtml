@@ -6,6 +6,9 @@
     // Fix: lấy status filter từ query string, default Pending
     string currentStatus = Context.Request.Query["status"].ToString();
     if (string.IsNullOrEmpty(currentStatus)) currentStatus = "Pending";
+    string selectedSemester = Context.Request.Query["semester"].ToString();
+    string selectedYear = Context.Request.Query["year"].ToString();
+    string selectedPeriodName = ViewBag.SelectedPeriodName as string ?? "";
 
     // Filter model theo status
     var filtered = Model.Where(r =>
@@ -94,7 +97,7 @@
             ══════════════════════════════════════ */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 14px;
             margin-bottom: 20px;
         }
@@ -187,6 +190,36 @@
             color: #94a3b8;
             font-weight: 500;
         }
+
+        .table-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-approve-all {
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid #bbf7d0;
+            background: #f0fdf4;
+            color: #15803d;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 0 14px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+            .btn-approve-all:hover {
+                background: #16a34a;
+                border-color: #16a34a;
+                color: #fff;
+                box-shadow: 0 4px 10px rgba(22,163,74,.22);
+            }
 
         /* Table */
         .approval-table {
@@ -391,29 +424,75 @@
             color: #94a3b8;
             font-weight: 500;
         }
+
+        .alert-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .alert-bar.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+        }
+
+        .alert-bar.error {
+            background: #fff5f5;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
     </style>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert-bar success">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>@TempData["Success"]</span>
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert-bar error">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>@TempData["Error"]</span>
+    </div>
 }
 
 <!-- PAGE HEADER -->
 <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
     <div>
         <h2 class="page-title">Duyệt đăng ký đề tài</h2>
-        <p class="page-sub">Xử lý các yêu cầu đăng ký thực hiện luận văn từ sinh viên.</p>
+        <p class="page-sub">
+            Xử lý các yêu cầu đăng ký thực hiện luận văn từ sinh viên
+            @if (!string.IsNullOrWhiteSpace(selectedPeriodName))
+            {
+                <span> trong đợt @selectedPeriodName</span>
+            }
+            .
+        </p>
     </div>
 
     <!-- Fix: filter tabs dùng href thay vì button thuần -->
     <div class="filter-tabs">
-        <a href="?status=Pending"
+        <a href="@Url.Action("Approval", "Admin", new { status = "Pending", semester = selectedSemester, year = selectedYear })"
            class="filter-tab @(currentStatus == "Pending" ? "active" : "")">
             Chờ duyệt
             <span class="tab-count">@Model.Count(r => r.Status == "Pending")</span>
         </a>
-        <a href="?status=Approved"
+        <a href="@Url.Action("Approval", "Admin", new { status = "Approved", semester = selectedSemester, year = selectedYear })"
            class="filter-tab @(currentStatus == "Approved" ? "active" : "")">
             Đã duyệt
             <span class="tab-count">@Model.Count(r => r.Status == "Approved")</span>
         </a>
-        <a href="?status=Rejected"
+        <a href="@Url.Action("Approval", "Admin", new { status = "Rejected", semester = selectedSemester, year = selectedYear })"
            class="filter-tab @(currentStatus == "Rejected" ? "active" : "")">
             Từ chối
             <span class="tab-count">@Model.Count(r => r.Status == "Rejected")</span>
@@ -471,7 +550,22 @@
                 <span style="color:#dc2626;font-weight:500;">đã từ chối</span>
             }
         </h3>
-        <span class="table-meta">@filtered.Count mục</span>
+        <div class="table-actions">
+            @if (currentStatus == "Pending" && filtered.Any())
+            {
+                <form asp-controller="Admin" asp-action="ApproveAllRegistrations" method="post" class="m-0"
+                      onsubmit="return confirm('Duyệt tất cả đăng ký đang chờ trong đợt này? Hệ thống sẽ tự bỏ qua sinh viên trùng hoặc đề tài đã đủ chỗ.')">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="semester" value="@selectedSemester" />
+                    <input type="hidden" name="year" value="@selectedYear" />
+                    <button type="submit" class="btn-approve-all">
+                        <i class="fa-solid fa-check-double"></i>
+                        Duyệt tất cả
+                    </button>
+                </form>
+            }
+            <span class="table-meta">@filtered.Count mục</span>
+        </div>
     </div>
 
     <div style="overflow-x:auto;">
@@ -536,6 +630,9 @@
                                         <form asp-controller="Admin" asp-action="ApproveRegistration"
                                               asp-route-id="@item.Id" method="post" class="m-0">
                                             @Html.AntiForgeryToken()
+                                            <input type="hidden" name="semester" value="@selectedSemester" />
+                                            <input type="hidden" name="year" value="@selectedYear" />
+                                            <input type="hidden" name="status" value="@currentStatus" />
                                             <button type="submit" class="btn-approve" title="Duyệt">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
@@ -544,6 +641,9 @@
                                               asp-route-id="@item.Id" method="post" class="m-0"
                                               onsubmit="return confirm('Từ chối đăng ký này?')">
                                             @Html.AntiForgeryToken()
+                                            <input type="hidden" name="semester" value="@selectedSemester" />
+                                            <input type="hidden" name="year" value="@selectedYear" />
+                                            <input type="hidden" name="status" value="@currentStatus" />
                                             <button type="submit" class="btn-reject" title="Từ chối">
                                                 <i class="fa-solid fa-xmark"></i>
                                             </button>

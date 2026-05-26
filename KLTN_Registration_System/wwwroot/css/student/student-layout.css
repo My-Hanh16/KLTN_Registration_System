@@ -531,3 +531,90 @@
             background: #eef4ff;
             color: #2563eb;
         }
+
+        .mobile-menu-btn,
+        .sidebar-backdrop {
+            display: none;
+        }
+
+        @media (max-width: 992px) {
+            :root {
+                --sidebar-w: 280px;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform .24s ease;
+                width: var(--sidebar-w);
+                z-index: 1100;
+            }
+
+            body.sidebar-open .sidebar {
+                transform: translateX(0);
+            }
+
+            .sidebar-backdrop {
+                background: rgba(15, 23, 42, .42);
+                display: none;
+                inset: 0;
+                position: fixed;
+                z-index: 1050;
+            }
+
+            body.sidebar-open .sidebar-backdrop {
+                display: block;
+            }
+
+            .main-wrapper {
+                margin-left: 0;
+            }
+
+            .topbar {
+                gap: 12px;
+                padding: 0 16px;
+            }
+
+            .mobile-menu-btn {
+                align-items: center;
+                background: #f8fafc;
+                border: 1.5px solid #e8ecf4;
+                border-radius: 10px;
+                color: #64748b;
+                display: inline-flex;
+                flex-shrink: 0;
+                height: 40px;
+                justify-content: center;
+                width: 40px;
+            }
+
+            .search-wrap {
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .search-wrap {
+                display: none;
+            }
+
+            .topbar-divider,
+            .user-info-text {
+                display: none;
+            }
+
+            .page-content {
+                padding: 18px 14px;
+            }
+
+            .toast-wrap {
+                left: 14px;
+                right: 14px;
+                top: 14px;
+            }
+
+            .toast-item {
+                max-width: none;
+                min-width: 0;
+                width: 100%;
+            }
+        }
