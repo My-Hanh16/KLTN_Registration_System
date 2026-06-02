@@ -602,7 +602,7 @@
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="page-title">Quản lý kho đề tài</h2>
-        <p class="page-sub">Biên soạn và theo dõi tiến độ các đề tài luận văn trong kỳ học này.</p>
+        <p class="page-sub">@(isAdmin ? "Biên soạn và theo dõi tiến độ các đề tài luận văn trong kỳ học này." : "Theo dõi danh sách sinh viên và tiến độ các đề tài luận văn trong kỳ học này.")</p>
     </div>
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -850,22 +850,37 @@
                     </a>
                 </div>
 
-                <div class="action-row">
-                    <a asp-controller="@(isAdmin ? "Admin" : "Lecturer")"
-                       asp-action="@(isAdmin ? "EditTopic" : "Edit")"
-                       asp-route-id="@item.Id"
-                       class="btn-card-action">
-                        <i class="fa-solid fa-pen"></i> Sửa
-                    </a>
-                    <form asp-action="DeleteTopic" method="post"
-                          onsubmit="confirmDelete(event, this)" class="m-0">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@item.Id" />
-                        <button type="submit" class="btn-card-action danger w-100">
-                            <i class="fa-solid fa-trash"></i> Xóa
+                @if (isAdmin)
+                {
+                    <div class="action-row">
+                        <button type="button"
+                           class="btn-card-action"
+                           data-edit-topic
+                           data-id="@item.Id"
+                           data-title="@item.Title"
+                           data-description="@item.Description"
+                           data-lecturer-id="@item.LecturerId"
+                           data-major-id="@item.MajorId"
+                           data-level="@item.Level"
+                           data-max-students="@item.MaxStudents"
+                           data-status="@item.Status"
+                           data-deadline="@item.Deadline.ToString("yyyy-MM-ddTHH:mm")"
+                           data-category="@item.Category"
+                           data-is-approved="@item.IsApproved.ToString().ToLowerInvariant()"
+                           data-is-registration-open="@item.IsRegistrationOpen.ToString().ToLowerInvariant()"
+                           data-note="@item.Note">
+                            <i class="fa-solid fa-pen"></i> Sửa
                         </button>
-                    </form>
-                </div>
+                        <form asp-action="DeleteTopic" method="post"
+                              onsubmit="confirmDelete(event, this)" class="m-0">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="btn-card-action danger w-100">
+                                <i class="fa-solid fa-trash"></i> Xóa
+                            </button>
+                        </form>
+                    </div>
+                }
 
             </div>
         </div>
@@ -881,6 +896,135 @@
             <a href="?page=@i&status=@Context.Request.Query["status"]&majorId=@Context.Request.Query["majorId"]&semester=@Context.Request.Query["semester"]"
                class="page-btn @(i == ViewBag.CurrentPage ? "active" : "")">@i</a>
         }
+    </div>
+}
+
+@if (isAdmin)
+{
+    <!-- MODAL SỬA ĐỀ TÀI -->
+    <div id="editModal" class="modal-overlay" onclick="if(event.target===this)closeEditModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+
+            <div class="modal-head">
+                <div>
+                    <p class="modal-head-title">Sửa đề tài</p>
+                    <p class="modal-head-sub">Cập nhật thông tin đề tài ngay trên danh sách</p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeEditModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="editTopicForm" onsubmit="submitEditTopic(event)">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" />
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Tên đề tài <span style="color:#ef4444;">*</span></label>
+                        <input name="Title" required class="form-control-custom" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Mô tả <span style="color:#ef4444;">*</span></label>
+                        <textarea name="Description" rows="3" required class="form-control-custom"></textarea>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Giảng viên hướng dẫn</label>
+                            <select name="LecturerId" class="form-control-custom">
+                                <option value="">-- Chưa phân công --</option>
+                                @if (ViewBag.Lecturers != null)
+                                {
+                                    foreach (var lec in ViewBag.Lecturers)
+                                    {
+                                        <option value="@lec.Id">@lec.FullName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Chuyên ngành</label>
+                            <select name="MajorId" class="form-control-custom">
+                                <option value="">-- Không chọn --</option>
+                                @if (ViewBag.Majors != null)
+                                {
+                                    foreach (var major in ViewBag.Majors)
+                                    {
+                                        <option value="@major.Id">@major.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Mức độ</label>
+                            <select name="Level" class="form-control-custom">
+                                <option value="Easy">Cơ bản</option>
+                                <option value="Medium">Trung bình</option>
+                                <option value="Hard">Nâng cao</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Tối đa SV</label>
+                            <input type="number" name="MaxStudents" min="1" max="10" class="form-control-custom" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Trạng thái</label>
+                            <select name="Status" class="form-control-custom">
+                                <option value="Available">Còn chỗ</option>
+                                <option value="Full">Đã đầy</option>
+                                <option value="Closed">Đóng</option>
+                                <option value="Pending">Chờ duyệt</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Hạn đăng ký</label>
+                            <input type="datetime-local" name="Deadline" class="form-control-custom" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Phân loại</label>
+                            <select name="Category" class="form-control-custom">
+                                <option value="Ứng dụng">Ứng dụng</option>
+                                <option value="Nghiên cứu">Nghiên cứu</option>
+                                <option value="Phân tích">Phân tích</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Tùy chọn</label>
+                            <label class="student-chip" style="width:100%;justify-content:flex-start;">
+                                <input type="checkbox" name="IsApproved" value="true" style="accent-color:#4f46e5;" />
+                                Đã phê duyệt
+                            </label>
+                            <label class="student-chip" style="width:100%;justify-content:flex-start;margin-top:8px;">
+                                <input type="checkbox" name="IsRegistrationOpen" value="true" style="accent-color:#4f46e5;" />
+                                Mở đăng ký
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ghi chú</label>
+                        <textarea name="Note" rows="2" class="form-control-custom"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal-cancel" onclick="closeEditModal()">Hủy</button>
+                    <button type="submit" class="btn-modal-submit" id="submitEditBtn">
+                        <i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi
+                    </button>
+                </div>
+            </form>
+
+        </div>
     </div>
 }
 
@@ -988,13 +1132,14 @@
 
     function getToken() {
         if (!_token) {
-            _token = document.querySelector('#createTopicForm input[name="__RequestVerificationToken"]')?.value ?? '';
+            _token = document.querySelector('#createTopicForm input[name="__RequestVerificationToken"], #editTopicForm input[name="__RequestVerificationToken"]')?.value ?? '';
         }
         return _token;
     }
 
     // Fix: resolve URL server-side, không check role phía client
     const CREATE_URL = '@createUrl';
+    const EDIT_URL   = '/Admin/EditTopic';
     const IS_ADMIN   = @(isAdmin ? "true" : "false");
 
     // ── FILTER ──
@@ -1015,8 +1160,42 @@
         document.getElementById('createTopicForm').reset();
     }
 
+    function openEditModal(button) {
+        const form = document.getElementById('editTopicForm');
+        if (!form) return;
+
+        form.reset();
+        form.Id.value = button.dataset.id || '';
+        form.Title.value = button.dataset.title || '';
+        form.Description.value = button.dataset.description || '';
+        form.LecturerId.value = button.dataset.lecturerId || '';
+        form.MajorId.value = button.dataset.majorId || '';
+        form.Level.value = button.dataset.level || 'Easy';
+        form.MaxStudents.value = button.dataset.maxStudents || 1;
+        form.Status.value = button.dataset.status || 'Pending';
+        form.Deadline.value = button.dataset.deadline || '';
+        form.Category.value = button.dataset.category || 'Ứng dụng';
+        form.Note.value = button.dataset.note || '';
+        form.IsApproved.checked = button.dataset.isApproved === 'true';
+        form.IsRegistrationOpen.checked = button.dataset.isRegistrationOpen === 'true';
+
+        document.getElementById('editModal').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditModal() {
+        const modal = document.getElementById('editModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+        document.getElementById('editTopicForm')?.reset();
+    }
+
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeCreateModal();
+        if (e.key === 'Escape') {
+            closeCreateModal();
+            closeEditModal();
+        }
     });
 
     // ── TOAST — Fix: đổi tên thành pageToast để tránh xung đột với layout cha showToast() ──
@@ -1091,6 +1270,45 @@
         }
     }
 
+    async function submitEditTopic(e) {
+        e.preventDefault();
+
+        const form = document.getElementById('editTopicForm');
+        const submitBtn = document.getElementById('submitEditBtn');
+        const formData = new FormData(form);
+
+        if (!form.IsApproved.checked) formData.append('IsApproved', 'false');
+        if (!form.IsRegistrationOpen.checked) formData.append('IsRegistrationOpen', 'false');
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...';
+
+        try {
+            const res = await fetch(EDIT_URL, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': getToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                pageToast(result.message || 'Đã cập nhật đề tài!');
+                closeEditModal();
+                setTimeout(() => location.reload(), 900);
+            } else {
+                pageToast(result.message || 'Cập nhật đề tài thất bại!', 'error');
+            }
+        } catch {
+            pageToast('Có lỗi xảy ra khi cập nhật đề tài!', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi';
+        }
+    }
+
     // ── DELETE CONFIRM ──
     function confirmDelete(event, form) {
         event.preventDefault();
@@ -1109,6 +1327,10 @@
 
     // ── SELECT ALL ──
     document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-edit-topic]').forEach(button => {
+            button.addEventListener('click', () => openEditModal(button));
+        });
+
         const selectAll  = document.getElementById('selectAllPending');
         if (!selectAll) return;
 

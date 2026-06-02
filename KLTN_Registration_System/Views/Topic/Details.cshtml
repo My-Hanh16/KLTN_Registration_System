@@ -49,6 +49,10 @@
             : "bg-green-100 text-green-700";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/topic/details.css" asp-append-version="true" />
+}
+
 <div class="max-w-5xl mx-auto px-4 py-6">
 
     @* ── Breadcrumb ── *@
@@ -238,8 +242,8 @@
                         @{
                             int pct = Model.MaxStudents > 0 ? Math.Min(100, (int)Math.Round((double)reservedCount / Model.MaxStudents * 100)) : 0;
                         }
-                        <div class="h-2 rounded-full transition-all @(pct >= 100 ? "bg-red-500" : "bg-blue-500")"
-                             style="width: @pct%"></div>
+                        <div class="topic-progress-fill h-2 rounded-full transition-all @(pct >= 100 ? "bg-red-500" : "bg-blue-500")"
+                             data-progress="@pct"></div>
                     </div>
                     <p class="text-xs text-slate-400 mt-1 text-right">@pct% đã điền</p>
                 </div>
@@ -394,3 +398,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/topic/details.js" asp-append-version="true"></script>
+}

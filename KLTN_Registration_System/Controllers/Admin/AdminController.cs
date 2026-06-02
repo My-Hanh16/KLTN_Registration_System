@@ -197,6 +197,9 @@ namespace KLTN_Registration_System.Controllers.Admin
             var totalTopics = await topicQuery.CountAsync();
             var approvedTopics = await topicQuery.CountAsync(t => t.IsApproved);
             var pendingTopics = await topicQuery.CountAsync(t => !t.IsApproved && t.Status == TopicStatus.Pending);
+            var rejectedTopics = await topicQuery.CountAsync(t => t.Status == TopicStatus.Rejected);
+            var otherUnapprovedTopics = await topicQuery.CountAsync(t =>
+                !t.IsApproved && t.Status != TopicStatus.Pending && t.Status != TopicStatus.Rejected);
             var totalLecturers = await topicQuery
                 .Where(t => t.LecturerId != null)
                 .Select(t => t.LecturerId!)
@@ -292,6 +295,8 @@ namespace KLTN_Registration_System.Controllers.Admin
 
             ViewBag.ApprovedTopics = approvedTopics;
             ViewBag.PendingTopics = pendingTopics;
+            ViewBag.RejectedTopics = rejectedTopics;
+            ViewBag.OtherUnapprovedTopics = otherUnapprovedTopics;
             ViewBag.TotalRegistrations = registrations.Count;
 
             ViewBag.RegistrationRate = registrationRate;
@@ -305,6 +310,14 @@ namespace KLTN_Registration_System.Controllers.Admin
             // Major chart
             ViewBag.MajorLabels = majorStats.Select(x => x.Faculty).ToList();
             ViewBag.MajorCounts = majorStats.Select(x => x.Count).ToList();
+
+            ViewBag.TopicStatusLabels = new List<string> { "Đã duyệt", "Chờ duyệt", "Từ chối/khác" };
+            ViewBag.TopicStatusCounts = new List<int>
+            {
+                approvedTopics,
+                pendingTopics,
+                rejectedTopics + otherUnapprovedTopics
+            };
 
             // Registration progress chart
             ViewBag.MonthLabels = progressDays
@@ -2833,9 +2846,16 @@ t.Lecturer.FullName.Contains(search)));
             ViewBag.RejectedCount = await _context.Topics.CountAsync(t => (t.IsStudentProposed || t.CreatedByStudentId != null) && t.Status == TopicStatus.Rejected);
             ViewBag.StatusFilter = status;
 
-            // Danh sách giảng viên để phân công
+            // Danh sách giảng viên để phân công, kèm chuyên ngành/khoa để lọc theo đề xuất.
             var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
-            ViewBag.Lecturers = lecturers.OrderBy(l => l.FullName).ToList();
+            var lecturerIds = lecturers.Select(l => l.Id).ToList();
+            ViewBag.Lecturers = await _context.Users
+                .Include(u => u.Major)
+                .Include(u => u.UserMajors)
+                    .ThenInclude(um => um.Major)
+                .Where(u => lecturerIds.Contains(u.Id))
+                .OrderBy(u => u.FullName)
+                .ToListAsync();
 
             return View(topics);
         }
@@ -2934,6 +2954,7 @@ t.Lecturer.FullName.Contains(search)));
         {
             var topic = await _context.Topics
                 .Include(t => t.Student)
+                .Include(t => t.Major)
                 .FirstOrDefaultAsync(t => t.Id == topicId && t.IsStudentProposed);
 
             if (topic == null) return NotFound();
@@ -2950,10 +2971,20 @@ t.Lecturer.FullName.Contains(search)));
                 return RedirectToAction(nameof(StudentProposals), new { status });
             }
 
-            var lecturer = await _userManager.FindByIdAsync(assignLecturerId);
+            var lecturer = await _context.Users
+                .Include(u => u.Major)
+                .Include(u => u.UserMajors)
+                    .ThenInclude(um => um.Major)
+                .FirstOrDefaultAsync(u => u.Id == assignLecturerId);
             if (lecturer == null || !await _userManager.IsInRoleAsync(lecturer, "Lecturer"))
             {
                 TempData["Error"] = "Giảng viên phân công không hợp lệ.";
+                return RedirectToAction(nameof(StudentProposals), new { status });
+            }
+
+            if (!IsLecturerMatchedTopicMajor(lecturer, topic))
+            {
+                TempData["Error"] = "Giảng viên được phân công phải cùng chuyên ngành hoặc cùng khoa với đề xuất.";
                 return RedirectToAction(nameof(StudentProposals), new { status });
             }
 
@@ -3049,11 +3080,14 @@ t.Lecturer.FullName.Contains(search)));
         [ActionName("EditTopic")]
         public async Task<IActionResult> EditTopicPost(Topic model)
         {
+            bool isAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
             var topic = await _context.Topics
                 .FirstOrDefaultAsync(t => t.Id == model.Id);
 
             if (topic == null)
-                return NotFound();
+                return isAjax
+                    ? Json(new { success = false, message = "Không tìm thấy đề tài." })
+                    : NotFound();
 
             ModelState.Remove("Lecturer");
             ModelState.Remove("Major");
@@ -3062,6 +3096,20 @@ t.Lecturer.FullName.Contains(search)));
 
             if (!ModelState.IsValid)
             {
+                if (isAjax)
+                {
+                    var message = string.Join(" | ", ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .Where(e => !string.IsNullOrWhiteSpace(e)));
+
+                    return Json(new
+                    {
+                        success = false,
+                        message = string.IsNullOrWhiteSpace(message) ? "Dữ liệu không hợp lệ." : message
+                    });
+                }
+
                 var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
 
                 ViewBag.Lecturers = new SelectList(
@@ -3096,6 +3144,14 @@ t.Lecturer.FullName.Contains(search)));
             if (model.MaxStudents < activeCount)
             {
                 TempData["Error"] = $"Số sinh viên tối đa không thể nhỏ hơn số đăng ký/chờ duyệt hiện tại ({activeCount}).";
+                if (isAjax)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = $"Số sinh viên tối đa không thể nhỏ hơn số đăng ký/chờ duyệt hiện tại ({activeCount})."
+                    });
+                }
 
                 var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
                 ViewBag.Lecturers = new SelectList(lecturers.OrderBy(l => l.FullName), "Id", "FullName", model.LecturerId);
@@ -3131,6 +3187,10 @@ t.Lecturer.FullName.Contains(search)));
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Đã cập nhật đề tài thành công!";
+            if (isAjax)
+            {
+                return Json(new { success = true, message = "Đã cập nhật đề tài thành công!" });
+            }
 
             return RedirectToAction(nameof(ManageTopics));
         }
@@ -3262,6 +3322,27 @@ t.Lecturer.FullName.Contains(search)));
             await _context.SaveChangesAsync();
 
             return Json(new { success = true });
+        }
+
+        private static bool IsLecturerMatchedTopicMajor(ApplicationUser lecturer, Topic topic)
+        {
+            if (topic.MajorId.HasValue)
+            {
+                if (lecturer.MajorId == topic.MajorId.Value)
+                    return true;
+
+                if (lecturer.UserMajors.Any(um => um.MajorId == topic.MajorId.Value))
+                    return true;
+            }
+
+            var topicFaculty = topic.Major?.FacultyName ?? topic.Faculty;
+            if (string.IsNullOrWhiteSpace(topicFaculty))
+                return !topic.MajorId.HasValue;
+
+            return string.Equals(lecturer.Faculty, topicFaculty, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(lecturer.Major?.FacultyName, topicFaculty, StringComparison.OrdinalIgnoreCase)
+                || lecturer.UserMajors.Any(um =>
+                    string.Equals(um.Major?.FacultyName, topicFaculty, StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool IsValidExcelUpload(IFormFile? file, out string error)

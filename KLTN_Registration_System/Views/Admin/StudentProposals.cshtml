@@ -20,515 +20,7 @@
 }
 
 @section Styles {
-    <style>
-        /* ══════════════════════════════════════
-               PAGE HEADER
-            ══════════════════════════════════════ */
-        .page-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .page-sub {
-            font-size: 13.5px;
-            color: #94a3b8;
-            margin: 0;
-        }
-
-        /* ══════════════════════════════════════
-               STATS ROW
-            ══════════════════════════════════════ */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 16px;
-            margin-bottom: 22px;
-        }
-
-        .stat-card {
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            padding: 18px 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.03);
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-            .stat-icon.blue {
-                background: #eff6ff;
-                color: #2563eb;
-            }
-
-            .stat-icon.amber {
-                background: #fffbeb;
-                color: #d97706;
-            }
-
-            .stat-icon.green {
-                background: #f0fdf4;
-                color: #16a34a;
-            }
-
-            .stat-icon.red {
-                background: #fff5f5;
-                color: #dc2626;
-            }
-
-        .stat-label {
-            font-size: 12px;
-            color: #64748b;
-            font-weight: 500;
-            margin-bottom: 3px;
-        }
-
-        .stat-number {
-            font-size: 24px;
-            font-weight: 800;
-            color: #1e293b;
-            line-height: 1;
-        }
-
-        /* ══════════════════════════════════════
-               ALERTS
-            ══════════════════════════════════════ */
-        .alert-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 20px;
-        }
-
-            .alert-bar.success {
-                background: #f0fdf4;
-                border: 1px solid #bbf7d0;
-                color: #15803d;
-            }
-
-            .alert-bar.error {
-                background: #fff5f5;
-                border: 1px solid #fecaca;
-                color: #dc2626;
-            }
-
-        /* ══════════════════════════════════════
-               FILTER TABS
-            ══════════════════════════════════════ */
-        .filter-tabs {
-            display: flex;
-            gap: 4px;
-            background: #f1f5f9;
-            padding: 4px;
-            border-radius: 12px;
-            width: fit-content;
-            margin-bottom: 20px;
-        }
-
-        .filter-tab {
-            font-size: 13px;
-            font-weight: 600;
-            padding: 7px 18px;
-            border-radius: 9px;
-            border: none;
-            background: transparent;
-            color: #64748b;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all .15s;
-            white-space: nowrap;
-        }
-
-            .filter-tab:hover {
-                background: #fff;
-                color: #4f46e5;
-            }
-
-            .filter-tab.active {
-                background: #fff;
-                color: #1e293b;
-                box-shadow: 0 1px 4px rgba(0,0,0,.08);
-            }
-
-                .filter-tab.active.all {
-                    color: #1e293b;
-                }
-
-                .filter-tab.active.amber {
-                    color: #d97706;
-                }
-
-                .filter-tab.active.green {
-                    color: #16a34a;
-                }
-
-        .tab-count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 20px;
-            height: 18px;
-            padding: 0 6px;
-            border-radius: 99px;
-            font-size: 10px;
-            font-weight: 800;
-            margin-left: 5px;
-        }
-
-            .tab-count.amber {
-                background: #fef3c7;
-                color: #d97706;
-            }
-
-            .tab-count.green {
-                background: #dcfce7;
-                color: #15803d;
-            }
-
-            .tab-count.red {
-                background: #fee2e2;
-                color: #dc2626;
-            }
-
-            .tab-count.blue {
-                background: #dbeafe;
-                color: #2563eb;
-            }
-
-        /* ══════════════════════════════════════
-               PROPOSAL CARD
-            ══════════════════════════════════════ */
-        .proposal-card {
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.03);
-            margin-bottom: 14px;
-            overflow: hidden;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-            .proposal-card:last-child {
-                margin-bottom: 0;
-            }
-
-            .proposal-card:hover {
-                border-color: #c7d2fe;
-                box-shadow: 0 4px 16px rgba(0,0,0,.06);
-            }
-
-        .proposal-body {
-            padding: 20px 24px;
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-        }
-
-        /* Left: info */
-        .prop-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .prop-badges {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-bottom: 8px;
-        }
-
-        /* Status badge */
-        .s-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .4px;
-            padding: 3px 10px;
-            border-radius: 99px;
-        }
-
-            .s-badge.added {
-                background: #dcfce7;
-                color: #15803d;
-            }
-
-            .s-badge.lec-ok {
-                background: #dbeafe;
-                color: #1d4ed8;
-            }
-
-            .s-badge.lec-no {
-                background: #fee2e2;
-                color: #dc2626;
-            }
-
-            .s-badge.admin-no {
-                background: #fff5f5;
-                color: #b91c1c;
-            }
-
-            .s-badge.need-lec {
-                background: #fef3c7;
-                color: #d97706;
-            }
-
-            .s-badge.waiting {
-                background: #f1f5f9;
-                color: #64748b;
-            }
-
-        /* Topic code */
-        .topic-code {
-            font-size: 11px;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            background: #f1f5f9;
-            color: #64748b;
-            border-radius: 5px;
-            padding: 2px 7px;
-        }
-
-        .prop-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 5px;
-            line-height: 1.4;
-        }
-
-        .prop-desc {
-            font-size: 13px;
-            color: #64748b;
-            line-height: 1.6;
-            margin-bottom: 12px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .prop-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            font-size: 12.5px;
-            color: #64748b;
-        }
-
-        .prop-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-            .prop-meta-item i {
-                font-size: 11px;
-                color: #94a3b8;
-            }
-
-            .prop-meta-item strong {
-                color: #334155;
-            }
-
-        /* Note box */
-        .note-box {
-            margin-top: 12px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 9px;
-            padding: 8px 12px;
-            font-size: 12.5px;
-            color: #475569;
-            line-height: 1.55;
-        }
-
-        /* Right: actions panel */
-        .prop-actions {
-            width: 280px;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        /* Action group */
-        .action-group {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .action-group-label {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .7px;
-            text-transform: uppercase;
-            color: #94a3b8;
-            margin-bottom: 4px;
-        }
-
-        /* Inline select */
-        .act-select {
-            width: 100%;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 9px;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-family: inherit;
-            color: #1e293b;
-            background: #fff;
-            outline: none;
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-            padding-right: 28px;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-            .act-select:focus {
-                border-color: #3b82f6;
-                box-shadow: 0 0 0 3px rgba(59,130,246,.1);
-            }
-
-            .act-select.red:focus {
-                border-color: #dc2626;
-                box-shadow: 0 0 0 3px rgba(220,38,38,.08);
-            }
-
-        .act-input {
-            width: 100%;
-            border: 1.5px solid #fca5a5;
-            border-radius: 9px;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-family: inherit;
-            color: #1e293b;
-            background: #fff;
-            outline: none;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-            .act-input:focus {
-                border-color: #dc2626;
-                box-shadow: 0 0 0 3px rgba(220,38,38,.08);
-            }
-
-            .act-input::placeholder {
-                color: #cbd5e1;
-            }
-
-        /* Action buttons */
-        .act-btn {
-            width: 100%;
-            padding: 9px 14px;
-            border-radius: 9px;
-            font-size: 13px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            transition: all .15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-            .act-btn.green {
-                background: #16a34a;
-                color: #fff;
-                box-shadow: 0 3px 10px rgba(22,163,74,.22);
-            }
-
-                .act-btn.green:hover {
-                    background: #15803d;
-                }
-
-            .act-btn.blue {
-                background: #2563eb;
-                color: #fff;
-                box-shadow: 0 3px 10px rgba(37,99,235,.22);
-            }
-
-                .act-btn.blue:hover {
-                    background: #1d4ed8;
-                }
-
-            .act-btn.red-outline {
-                background: #fff5f5;
-                color: #dc2626;
-                border: 1.5px solid #fca5a5;
-            }
-
-                .act-btn.red-outline:hover {
-                    background: #dc2626;
-                    color: #fff;
-                }
-
-        /* ══════════════════════════════════════
-               EMPTY STATE
-            ══════════════════════════════════════ */
-        .empty-state {
-            text-align: center;
-            padding: 64px 24px;
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            color: #94a3b8;
-        }
-
-        .empty-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            background: #f1f5f9;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            margin: 0 auto 16px;
-            opacity: .6;
-        }
-
-        .empty-state h3 {
-            font-size: 15px;
-            font-weight: 700;
-            color: #475569;
-            margin-bottom: 6px;
-        }
-
-        .empty-state p {
-            font-size: 13px;
-            margin: 0;
-        }
-    </style>
+    <link rel="stylesheet" href="~/css/admin/student-proposals.css" asp-append-version="true" />
 }
 
 <!-- ════════════════════════════════
@@ -644,6 +136,7 @@ else
             bool lecturerRejected = !string.IsNullOrWhiteSpace(topic.Note) && topic.Note.StartsWith(lecturerRejectedPrefix);
             bool needsLecturer = string.IsNullOrWhiteSpace(topic.LecturerId);
             bool adminRejected = topic.Status == TopicStatus.Rejected;
+            string finalStateClass = adminRejected ? "final-state--rejected" : "final-state--approved";
 
             string badgeCls, badgeTxt, badgeIco;
 
@@ -665,6 +158,20 @@ else
             .Replace(lecturerRejectedPrefix, "")
             .Trim();
 
+            string? topicFaculty = topic.Major?.FacultyName ?? topic.Faculty;
+            var eligibleLecturers = lecturerOptions
+                .Where(lec => lec.Id != topic.LecturerId)
+                .Where(lec =>
+                    (topic.MajorId.HasValue
+                        && (lec.MajorId == topic.MajorId.Value
+                            || lec.UserMajors.Any(um => um.MajorId == topic.MajorId.Value)))
+                    || (!string.IsNullOrWhiteSpace(topicFaculty)
+                        && (string.Equals(lec.Faculty, topicFaculty, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(lec.Major?.FacultyName, topicFaculty, StringComparison.OrdinalIgnoreCase)
+                            || lec.UserMajors.Any(um => string.Equals(um.Major?.FacultyName, topicFaculty, StringComparison.OrdinalIgnoreCase)))))
+                .OrderBy(lec => lec.FullName)
+                .ToList();
+
             <div class="proposal-card">
                 <div class="proposal-body">
 
@@ -672,7 +179,7 @@ else
                     <div class="prop-info">
                         <div class="prop-badges">
                             <span class="s-badge @badgeCls">
-                                <i class="@badgeIco" style="font-size:9px;"></i>
+                                <i class="@badgeIco badge-icon"></i>
                                 @badgeTxt
                             </span>
                             @if (!string.IsNullOrEmpty(topic.TopicCode))
@@ -681,7 +188,7 @@ else
                             }
                             @if (!string.IsNullOrEmpty(topic.Category))
                             {
-                                <span style="font-size:11.5px;color:#94a3b8;font-weight:500;">@topic.Category</span>
+                                <span class="category-text">@topic.Category</span>
                             }
                         </div>
 
@@ -713,7 +220,7 @@ else
                         @if (!string.IsNullOrEmpty(noteClean))
                         {
                             <div class="note-box">
-                                <i class="fa-solid fa-comment" style="font-size:11px;margin-right:5px;color:#94a3b8;"></i>
+                                <i class="fa-solid fa-comment note-icon"></i>
                                 @noteClean
                             </div>
                         }
@@ -729,11 +236,11 @@ else
                             {
                                 <div class="action-group">
                                     <div class="action-group-label">
-                                        <i class="fa-solid fa-circle-check" style="color:#16a34a;margin-right:3px;"></i>
+                                        <i class="fa-solid fa-circle-check action-icon action-icon--green"></i>
                                         Duyệt & thêm vào hệ thống
                                     </div>
                                     <form asp-action="ApproveStudentProposal" asp-controller="Admin"
-                                          method="post" style="display:flex;flex-direction:column;gap:8px;">
+                                          method="post" class="action-form">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="topicId" value="@topic.Id" />
                                         <input type="hidden" name="status" value="@statusFilter" />
@@ -748,35 +255,39 @@ else
                             <!-- Phân công GV khác -->
                             <div class="action-group">
                                 <div class="action-group-label">
-                                    <i class="fa-solid fa-rotate" style="color:#2563eb;margin-right:3px;"></i>
+                                    <i class="fa-solid fa-rotate action-icon action-icon--blue"></i>
                                     Phân công giảng viên khác
                                 </div>
                                 <form asp-action="ReassignStudentProposal" asp-controller="Admin"
-                                      method="post" style="display:flex;flex-direction:column;gap:8px;">
+                                      method="post" class="action-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="topicId" value="@topic.Id" />
                                     <input type="hidden" name="status" value="@statusFilter" />
                                     <select name="assignLecturerId" required class="act-select">
-                                        <option value="">-- Chọn giảng viên --</option>
-                                        @foreach (var lec in lecturerOptions)
+                                        <option value="">-- Chọn giảng viên cùng khoa --</option>
+                                        @foreach (var lec in eligibleLecturers)
                                         {
                                             <option value="@lec.Id">@lec.FullName</option>
                                         }
                                     </select>
-                                    <button type="submit" class="act-btn blue">
+                                    @if (!eligibleLecturers.Any())
+                                    {
+                                        <div class="empty-lecturer-note">Không có giảng viên phù hợp với khoa/chuyên ngành này.</div>
+                                    }
+                                    <button type="submit" class="act-btn blue" @(!eligibleLecturers.Any() ? "disabled" : "")>
                                         <i class="fa-solid fa-rotate"></i> Phân công GV
                                     </button>
                                 </form>
                             </div>
 
                             <!-- Từ chối -->
-                            <div class="action-group" style="background:#fff5f5;border-color:#fecaca;">
-                                <div class="action-group-label" style="color:#dc2626;">
-                                    <i class="fa-solid fa-xmark" style="margin-right:3px;"></i>
+                            <div class="action-group action-group--danger">
+                                <div class="action-group-label action-group-label--danger">
+                                    <i class="fa-solid fa-xmark action-icon"></i>
                                     Từ chối đề xuất
                                 </div>
                                 <form asp-action="RejectStudentProposal" asp-controller="Admin"
-                                      method="post" style="display:flex;flex-direction:column;gap:8px;">
+                                      method="post" class="action-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="topicId" value="@topic.Id" />
                                     <input type="hidden" name="status" value="@statusFilter" />
@@ -792,8 +303,8 @@ else
                     }
                     else
                     {
-                        <div style="flex-shrink:0;">
-                            <div style="display:flex;align-items:center;gap:7px;padding:10px 16px;background:@(adminRejected ? "#fff5f5" : "#f0fdf4");border:1px solid @(adminRejected ? "#fecaca" : "#bbf7d0");border-radius:10px;font-size:12.5px;font-weight:700;color:@(adminRejected ? "#dc2626" : "#15803d");">
+                        <div class="final-state-wrap">
+                            <div class="final-state @finalStateClass">
                                 <i class="fa-solid @(adminRejected ? "fa-ban" : "fa-circle-check")"></i>
                                 @(adminRejected ? "Đề xuất đã bị từ chối" : "Đã thêm vào hệ thống")
                             </div>

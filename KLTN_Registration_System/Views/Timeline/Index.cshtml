@@ -1,4 +1,4 @@
-﻿@model IEnumerable<KLTN_Registration_System.Models.Entities.Timeline>
+@model IEnumerable<KLTN_Registration_System.Models.Entities.Timeline>
 @{
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Mốc thời gian";
@@ -8,635 +8,7 @@
 }
 
 @section Styles {
-    <style>
-        /* ══════════════════════════════════════
-               HEADER
-            ══════════════════════════════════════ */
-        .page-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .page-sub {
-            font-size: 13.5px;
-            color: #94a3b8;
-            margin: 0;
-        }
-
-        .btn-add {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13.5px;
-            font-weight: 700;
-            padding: 9px 20px;
-            border-radius: 10px;
-            border: none;
-            background: #4f46e5;
-            color: #fff;
-            cursor: pointer;
-            transition: background .15s;
-            box-shadow: 0 4px 12px rgba(79,70,229,.22);
-        }
-
-            .btn-add:hover {
-                background: #4338ca;
-            }
-
-        /* ══════════════════════════════════════
-               LEGEND
-            ══════════════════════════════════════ */
-        .legend-bar {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-            padding: 10px 16px;
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 10px;
-            margin-bottom: 16px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            color: #475569;
-        }
-
-        .legend-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        /* ══════════════════════════════════════
-               TIMELINE LIST CARD
-            ══════════════════════════════════════ */
-        .tl-list-card {
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        }
-
-        /* ══════════════════════════════════════
-               TIMELINE ROW
-            ══════════════════════════════════════ */
-        .tl-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-            padding: 16px 20px;
-            border-bottom: 1px solid #f1f5f9;
-            transition: background .15s;
-        }
-
-            .tl-row:last-child {
-                border-bottom: none;
-            }
-
-            .tl-row:hover {
-                background: #fafbff;
-            }
-
-            .tl-row.is-past {
-                opacity: 0.55;
-            }
-
-            .tl-row.is-urgent {
-                background: #fff8f8;
-            }
-
-                .tl-row.is-urgent:hover {
-                    background: #fff3f3;
-                }
-
-        /* DATE BOX */
-        .date-box {
-            width: 50px;
-            min-width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-            .date-box.past {
-                background: #f1f5f9;
-            }
-
-            .date-box.urgent {
-                background: #fff1f2;
-            }
-
-            .date-box.normal {
-                background: #eef2ff;
-            }
-
-        .date-month {
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            line-height: 1;
-            margin-bottom: 2px;
-        }
-
-        .date-box.past .date-month {
-            color: #94a3b8;
-        }
-
-        .date-box.urgent .date-month {
-            color: #e11d48;
-        }
-
-        .date-box.normal .date-month {
-            color: #4f46e5;
-        }
-
-        .date-day {
-            font-size: 19px;
-            font-weight: 800;
-            line-height: 1;
-        }
-
-        .date-box.past .date-day {
-            color: #64748b;
-        }
-
-        .date-box.urgent .date-day {
-            color: #be123c;
-        }
-
-        .date-box.normal .date-day {
-            color: #3730a3;
-        }
-
-        /* CONTENT */
-        .tl-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .tl-title-row {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            flex-wrap: wrap;
-            margin-bottom: 6px;
-        }
-
-        .tl-name {
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #1e293b;
-            line-height: 1.4;
-        }
-
-        .tl-desc {
-            font-size: 12px;
-            color: #64748b;
-            margin-bottom: 8px;
-            line-height: 1.5;
-        }
-
-        /* Deadline info grid */
-        .deadline-grid {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .deadline-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: #f8fafc;
-            border: 1px solid #e8edf4;
-            border-radius: 8px;
-            padding: 5px 10px;
-            font-size: 11.5px;
-            font-weight: 500;
-            color: #475569;
-        }
-
-            .deadline-item i {
-                font-size: 11px;
-            }
-
-            /* Deadline state colors */
-            .deadline-item.dl-ok {
-                border-color: #bbf7d0;
-                background: #f0fdf4;
-                color: #15803d;
-            }
-
-            .deadline-item.dl-urgent {
-                border-color: #fde68a;
-                background: #fffbeb;
-                color: #b45309;
-            }
-
-            .deadline-item.dl-expired {
-                border-color: #fecaca;
-                background: #fff5f5;
-                color: #dc2626;
-                text-decoration: line-through;
-            }
-
-            .deadline-item.dl-none {
-                border-color: #e8edf4;
-                background: #f8fafc;
-                color: #94a3b8;
-            }
-
-        .deadline-label {
-            font-size: 9.5px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-right: 2px;
-        }
-
-        /* Chips */
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 99px;
-            letter-spacing: 0.3px;
-            white-space: nowrap;
-            gap: 4px;
-        }
-
-            .chip.past {
-                background: #f1f5f9;
-                color: #64748b;
-            }
-
-            .chip.urgent {
-                background: #fff1f2;
-                color: #e11d48;
-            }
-
-            .chip.hidden-tl {
-                background: #f1f5f9;
-                color: #94a3b8;
-            }
-
-            .chip.allow {
-                background: #eff6ff;
-                color: #2563eb;
-            }
-
-            .chip.locked {
-                background: #f8fafc;
-                color: #94a3b8;
-            }
-
-            .chip.type {
-                background: #f5f3ff;
-                color: #7c3aed;
-            }
-
-        /* ACTIONS */
-        .tl-actions {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-shrink: 0;
-            padding-top: 2px;
-        }
-
-        .btn-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 9px;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all .15s;
-        }
-
-            .btn-icon.toggle-on {
-                background: #f0fdf4;
-                color: #16a34a;
-            }
-
-            .btn-icon.toggle-off {
-                background: #f1f5f9;
-                color: #94a3b8;
-            }
-
-            .btn-icon.edit {
-                background: #eef2ff;
-                color: #4f46e5;
-            }
-
-            .btn-icon.delete {
-                background: #fff5f5;
-                color: #dc2626;
-            }
-
-            .btn-icon.toggle-on:hover {
-                background: #16a34a;
-                color: #fff;
-            }
-
-            .btn-icon.toggle-off:hover {
-                background: #e2e8f0;
-                color: #475569;
-            }
-
-            .btn-icon.edit:hover {
-                background: #4f46e5;
-                color: #fff;
-            }
-
-            .btn-icon.delete:hover {
-                background: #dc2626;
-                color: #fff;
-            }
-
-        /* Empty state */
-        .empty-state {
-            padding: 56px 24px;
-            text-align: center;
-        }
-
-            .empty-state i {
-                font-size: 34px;
-                color: #cbd5e1;
-                display: block;
-                margin-bottom: 10px;
-            }
-
-            .empty-state p {
-                font-size: 13.5px;
-                color: #94a3b8;
-                margin: 0;
-            }
-
-        /* ══════════════════════════════════════
-               MODAL
-            ══════════════════════════════════════ */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(3px);
-            z-index: 1050;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-        }
-
-            .modal-overlay.open {
-                display: flex;
-            }
-
-        .modal-box {
-            background: #fff;
-            border-radius: 14px;
-            width: 100%;
-            max-width: 520px;
-            max-height: 92vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.16);
-        }
-
-        .modal-head {
-            padding: 16px 20px 14px;
-            border-bottom: 1px solid #f1f5f9;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            background: #fff;
-            z-index: 1;
-        }
-
-        .modal-head-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1e293b;
-            margin: 0;
-        }
-
-        .modal-close {
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            border: 1.5px solid #e8edf4;
-            background: #f8fafc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #64748b;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all .15s;
-        }
-
-            .modal-close:hover {
-                background: #fee2e2;
-                color: #dc2626;
-                border-color: #fecaca;
-            }
-
-        .modal-body {
-            padding: 16px 20px;
-        }
-
-        .modal-section {
-            margin-bottom: 16px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-            .modal-section:last-child {
-                border-bottom: none;
-                margin-bottom: 0;
-                padding-bottom: 0;
-            }
-
-        .modal-section-title {
-            font-size: 10.5px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            color: #94a3b8;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-            .modal-section-title i {
-                font-size: 11px;
-                color: #4f46e5;
-            }
-
-        .modal-footer {
-            padding: 12px 20px;
-            border-top: 1px solid #f1f5f9;
-            display: flex;
-            gap: 10px;
-            position: sticky;
-            bottom: 0;
-            background: #fff;
-        }
-
-        /* Form fields */
-        .form-group {
-            margin-bottom: 13px;
-        }
-
-            .form-group:last-child {
-                margin-bottom: 0;
-            }
-
-        .form-label {
-            display: block;
-            font-size: 11.5px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 5px;
-        }
-
-            .form-label .req {
-                color: #ef4444;
-                margin-left: 2px;
-            }
-
-        .form-hint {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 4px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .form-control-custom {
-            width: 100%;
-            border: 1.5px solid #e8edf4;
-            border-radius: 10px;
-            padding: 8px 12px;
-            font-size: 13px;
-            font-family: 'Inter', sans-serif;
-            color: #1e293b;
-            background: #f8fafc;
-            outline: none;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-            .form-control-custom:focus {
-                border-color: #4f46e5;
-                background: #fff;
-                box-shadow: 0 0 0 3px rgba(79,70,229,.08);
-            }
-
-        .form-grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #475569;
-            cursor: pointer;
-        }
-
-            .toggle-row input[type="checkbox"] {
-                width: 15px;
-                height: 15px;
-                accent-color: #4f46e5;
-                cursor: pointer;
-            }
-
-        /* Deadline warning box in modal */
-        .deadline-note {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            border-radius: 9px;
-            padding: 9px 12px;
-            font-size: 12px;
-            color: #b45309;
-            display: flex;
-            align-items: flex-start;
-            gap: 7px;
-            margin-top: 12px;
-        }
-
-            .deadline-note i {
-                font-size: 12px;
-                margin-top: 1px;
-                flex-shrink: 0;
-            }
-
-        .btn-modal-cancel {
-            flex: 1;
-            padding: 9px;
-            border-radius: 10px;
-            border: 1.5px solid #e8edf4;
-            background: #f8fafc;
-            color: #64748b;
-            font-size: 13.5px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all .15s;
-        }
-
-            .btn-modal-cancel:hover {
-                background: #f1f5f9;
-                color: #1e293b;
-            }
-
-        .btn-modal-submit {
-            flex: 1;
-            padding: 9px;
-            border-radius: 10px;
-            border: none;
-            background: #4f46e5;
-            color: #fff;
-            font-size: 13.5px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background .15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-            .btn-modal-submit:hover {
-                background: #4338ca;
-            }
-    </style>
+    <link rel="stylesheet" href="~/css/timeline/index.css" asp-append-version="true" />
 }
 
 <!-- PAGE HEADER -->
@@ -647,7 +19,7 @@
     </div>
     @if (canManageTimeline)
     {
-        <button type="button" class="btn-add" onclick="openModal('modalAdd')">
+        <button type="button" class="btn-add js-open-modal" data-modal-target="modalAdd">
             <i class="fa-solid fa-plus"></i> Thêm mốc mới
         </button>
     }
@@ -655,11 +27,11 @@
 
 <!-- LEGEND -->
 <div class="legend-bar">
-    <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Trạng thái deadline:</span>
-    <div class="legend-item"><span class="legend-dot" style="background:#16a34a;"></span> Còn hạn</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> Sắp hết hạn (≤3 ngày)</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#dc2626;"></span> Đã quá hạn</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#94a3b8;"></span> Chưa cấu hình</div>
+    <span class="legend-title">Trạng thái deadline:</span>
+    <div class="legend-item"><span class="legend-dot legend-dot--ok"></span> Còn hạn</div>
+    <div class="legend-item"><span class="legend-dot legend-dot--urgent"></span> Sắp hết hạn (≤3 ngày)</div>
+    <div class="legend-item"><span class="legend-dot legend-dot--expired"></span> Đã quá hạn</div>
+    <div class="legend-item"><span class="legend-dot legend-dot--none"></span> Chưa cấu hình</div>
 </div>
 
 <!-- TIMELINE LIST -->
@@ -867,12 +239,12 @@
 ══════════════════════════════════════ -->
 @if (canManageTimeline)
 {
-<div id="modalAdd" class="modal-overlay" onclick="if(event.target===this)closeModal('modalAdd')">
-    <div class="modal-box" onclick="event.stopPropagation()">
+<div id="modalAdd" class="modal-overlay js-modal-overlay">
+    <div class="modal-box">
 
         <div class="modal-head">
             <p class="modal-head-title">Thêm mốc thời gian mới</p>
-            <button type="button" class="modal-close" onclick="closeModal('modalAdd')">
+            <button type="button" class="modal-close js-close-modal" data-modal-target="modalAdd">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -949,7 +321,7 @@
                         </div>
                     </div>
 
-                    <label class="toggle-row" style="margin-top:4px;">
+                    <label class="toggle-row toggle-row--spaced">
                         <input type="checkbox" name="allowSubmission" value="true" id="addAllowSub" />
                         Cho phép sinh viên nộp bài tại mốc này
                     </label>
@@ -994,7 +366,7 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn-modal-cancel" onclick="closeModal('modalAdd')">Hủy</button>
+                <button type="button" class="btn-modal-cancel js-close-modal" data-modal-target="modalAdd">Hủy</button>
                 <button type="submit" class="btn-modal-submit">
                     <i class="fa-solid fa-plus"></i> Thêm mốc
                 </button>
@@ -1007,12 +379,12 @@
 <!-- ══════════════════════════════════════
      MODAL: CHỈNH SỬA
 ══════════════════════════════════════ -->
-<div id="modalEdit" class="modal-overlay" onclick="if(event.target===this)closeModal('modalEdit')">
-    <div class="modal-box" onclick="event.stopPropagation()">
+<div id="modalEdit" class="modal-overlay js-modal-overlay">
+    <div class="modal-box">
 
         <div class="modal-head">
             <p class="modal-head-title">Chỉnh sửa mốc thời gian</p>
-            <button type="button" class="modal-close" onclick="closeModal('modalEdit')">
+            <button type="button" class="modal-close js-close-modal" data-modal-target="modalEdit">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
@@ -1082,7 +454,7 @@
                         </div>
                     </div>
 
-                    <label class="toggle-row" style="margin-top:4px;">
+                    <label class="toggle-row toggle-row--spaced">
                         <input type="checkbox" name="allowSubmission" id="editAllowSub" value="true" />
                         Cho phép sinh viên nộp bài
                     </label>
@@ -1125,7 +497,7 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn-modal-cancel" onclick="closeModal('modalEdit')">Hủy</button>
+                <button type="button" class="btn-modal-cancel js-close-modal" data-modal-target="modalEdit">Hủy</button>
                 <button type="submit" class="btn-modal-submit">
                     <i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi
                 </button>
@@ -1138,127 +510,5 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        function openModal(id) {
-            const modal = document.getElementById(id);
-            if (!modal) return;
-            modal.classList.add('open');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeModal(id) {
-            const modal = document.getElementById(id);
-            if (!modal) return;
-            modal.classList.remove('open');
-            document.body.style.overflow = '';
-        }
-
-        function openEdit(id, title, desc, date, subDl, revDl, isActive, allowSub, type, subType) {
-            document.getElementById('editId').value        = id;
-            document.getElementById('editTitle').value     = title;
-            document.getElementById('editDesc').value      = desc;
-            document.getElementById('editDate').value      = date;
-            document.getElementById('editSubDl').value     = subDl;
-            document.getElementById('editRevDl').value     = revDl;
-            document.getElementById('editActive').checked  = isActive;
-            document.getElementById('editAllowSub').checked = allowSub || !!subDl;
-            document.getElementById('editSubType').value   = subType;
-
-            // Set select type
-            const sel = document.getElementById('editType');
-            for (let i = 0; i < sel.options.length; i++) {
-                if (sel.options[i].value === type) { sel.selectedIndex = i; break; }
-            }
-
-            openModal('modalEdit');
-        }
-
-        function confirmDelete(event, title) {
-            event.preventDefault();
-            const form = event.target;
-            Swal.fire({
-                title: 'Xóa mốc thời gian?',
-                text: title,
-                icon: 'warning',
-                showCancelButton:   true,
-                confirmButtonColor: '#dc2626',
-                cancelButtonColor:  '#64748b',
-                confirmButtonText:  'Xóa',
-                cancelButtonText:   'Hủy',
-                reverseButtons:     true
-            }).then(r => { if (r.isConfirmed) form.submit(); });
-            return false;
-        }
-
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') {
-                closeModal('modalAdd');
-                closeModal('modalEdit');
-            }
-        });
-
-        document.querySelectorAll('.edit-timeline-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                openEdit(
-                    button.dataset.id,
-                    button.dataset.title || '',
-                    button.dataset.desc || '',
-                    button.dataset.date || '',
-                    button.dataset.subDl || '',
-                    button.dataset.revDl || '',
-                    button.dataset.active === 'true',
-                    button.dataset.allowSub === 'true',
-                    button.dataset.type || '',
-                    button.dataset.subType || ''
-                );
-            });
-        });
-
-        document.querySelectorAll('.delete-timeline-form').forEach(form => {
-            form.addEventListener('submit', event => {
-                confirmDelete(event, form.dataset.title || 'mốc thời gian này');
-            });
-        });
-
-        document.querySelectorAll('form').forEach(form => {
-            const subDl = form.querySelector('[name="submissionDeadline"]');
-            const allowSub = form.querySelector('[name="allowSubmission"]');
-            if (!subDl || !allowSub) return;
-
-            subDl.addEventListener('change', () => {
-                if (subDl.value) allowSub.checked = true;
-            });
-        });
-
-        // Validate: ReviewDeadline phải sau SubmissionDeadline
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                const openAt = this.querySelector('[name="date"]');
-                const subDl = this.querySelector('[name="submissionDeadline"]');
-                const revDl = this.querySelector('[name="reviewDeadline"]');
-                const allowSub = this.querySelector('[name="allowSubmission"]');
-                const requiresSubmission = allowSub && allowSub.checked;
-                if (!subDl || !revDl) return;
-                if (requiresSubmission && openAt && openAt.value && subDl.value && openAt.value >= subDl.value) {
-                    e.preventDefault();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Thời gian nộp không hợp lệ',
-                        text: 'Thời điểm mở nộp phải trước hạn cuối sinh viên nộp bài.',
-                        confirmButtonColor: '#4f46e5'
-                    });
-                    return;
-                }
-                if (requiresSubmission && subDl.value && revDl.value && revDl.value <= subDl.value) {
-                    e.preventDefault();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Deadline không hợp lệ',
-                        text: 'Hạn GV duyệt phải sau Hạn SV nộp.',
-                        confirmButtonColor: '#4f46e5'
-                    });
-                }
-            });
-        });
-    </script>
+    <script src="~/js/timeline/index.js" asp-append-version="true"></script>
 }

@@ -232,17 +232,21 @@ public class TimelineController : BaseController
             string? timelineId,
             int page = 1,
             string? semester = null,
-            string? year = null)
+            string? year = null,
+            string? faculty = null,
+            int? majorId = null)
         {
             const int pageSize = 15;
 
             var selectedPeriod = await GetSelectedPeriodForTimelineAsync(semester, year);
             keyword = keyword?.Trim();
+            faculty = faculty?.Trim();
             page = Math.Max(page, 1);
             int? selectedTimelineIdFromRequest = ResolveTimelineId(timelineId);
 
             var query = _context.TimelineSubmissions
                 .Include(s => s.Student)
+                    .ThenInclude(st => st!.Major)
                 .Include(s => s.Timeline)
                 .Include(s => s.ReviewedBy)
                 .Where(s => s.Status == SubmissionStatus.Approved)
@@ -254,6 +258,24 @@ public class TimelineController : BaseController
 
             var timelines = await timelineQuery
                 .OrderBy(t => t.Date)
+                .ToListAsync();
+
+            var faculties = await _context.Majors
+                .Where(m => !string.IsNullOrWhiteSpace(m.FacultyName))
+                .Select(m => m.FacultyName!)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+
+            var majorsQuery = _context.Majors.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(faculty))
+            {
+                majorsQuery = majorsQuery.Where(m => m.FacultyName == faculty);
+            }
+
+            var majors = await majorsQuery
+                .OrderBy(m => m.FacultyName)
+                .ThenBy(m => m.Name)
                 .ToListAsync();
 
             int requestedTimelineId = selectedTimelineIdFromRequest.GetValueOrDefault();
@@ -285,6 +307,20 @@ public class TimelineController : BaseController
                     (s.Timeline != null && (s.Timeline.Title ?? "").Contains(keyword)));
             }
 
+            if (!string.IsNullOrWhiteSpace(faculty))
+            {
+                query = query.Where(s =>
+                    s.Student != null &&
+                    ((s.Student.Major != null && s.Student.Major.FacultyName == faculty) ||
+                     s.Student.Faculty == faculty));
+            }
+
+            if (majorId.HasValue)
+            {
+                int selectedMajorId = majorId.Value;
+                query = query.Where(s => s.Student != null && s.Student.MajorId == selectedMajorId);
+            }
+
             var total = await query.CountAsync();
             var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
             if (page > totalPages) page = totalPages;
@@ -304,11 +340,15 @@ public class TimelineController : BaseController
                 .ToListAsync();
 
             ViewBag.Timelines = timelines;
+            ViewBag.Faculties = faculties;
+            ViewBag.Majors = majors;
 
             ViewBag.CurrentPage = page;
             ViewBag.PageSize = pageSize;
             ViewBag.TotalPages = totalPages;
             ViewBag.Keyword = keyword;
+            ViewBag.Faculty = faculty;
+            ViewBag.MajorId = majorId;
             ViewBag.TimelineId = selectedTimelineId;
             ViewBag.TotalApproved = total;
             ViewBag.TodayApproved = todayApproved;
@@ -1279,7 +1319,13 @@ public class TimelineController : BaseController
             return RedirectToLecturerTimeline();
         }
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> ExportApprovedSubmissions(string? keyword, string? timelineId, string? semester = null, string? year = null)
+        public async Task<IActionResult> ExportApprovedSubmissions(
+            string? keyword,
+            string? timelineId,
+            string? semester = null,
+            string? year = null,
+            string? faculty = null,
+            int? majorId = null)
         {
             var selectedPeriod = await GetSelectedPeriodForTimelineAsync(semester, year);
             int? selectedTimelineId = ResolveTimelineId(timelineId);
@@ -1287,10 +1333,11 @@ public class TimelineController : BaseController
             if (!selectedTimelineId.HasValue)
             {
                 TempData["Error"] = "Vui lòng chọn mốc thời gian trước khi xuất Excel.";
-                return RedirectToAction(nameof(ApprovedSubmissions), new { keyword, semester, year });
+                return RedirectToAction(nameof(ApprovedSubmissions), new { keyword, semester, year, faculty, majorId });
             }
 
             keyword = keyword?.Trim();
+            faculty = faculty?.Trim();
 
             var timeline = await _context.Timelines
                 .FirstOrDefaultAsync(t => t.Id == selectedTimelineId.Value);
@@ -1298,12 +1345,13 @@ public class TimelineController : BaseController
             if (timeline == null || (selectedPeriod != null && timeline.RegistrationPeriodId != selectedPeriod.Id))
             {
                 TempData["Error"] = "Không tìm thấy mốc thời gian.";
-                return RedirectToAction(nameof(ApprovedSubmissions), new { keyword, semester, year });
+                return RedirectToAction(nameof(ApprovedSubmissions), new { keyword, semester, year, faculty, majorId });
             }
 
             int timelineFilterId = selectedTimelineId.Value;
             var query = _context.TimelineSubmissions
                 .Include(s => s.Student)
+                    .ThenInclude(st => st!.Major)
                 .Include(s => s.Timeline)
                 .Include(s => s.ReviewedBy)
                 .Where(s =>
@@ -1318,8 +1366,24 @@ public class TimelineController : BaseController
                     (s.Student != null && (s.Student.UserCode ?? "").Contains(keyword)));
             }
 
+            if (!string.IsNullOrWhiteSpace(faculty))
+            {
+                query = query.Where(s =>
+                    s.Student != null &&
+                    ((s.Student.Major != null && s.Student.Major.FacultyName == faculty) ||
+                     s.Student.Faculty == faculty));
+            }
+
+            if (majorId.HasValue)
+            {
+                int selectedMajorId = majorId.Value;
+                query = query.Where(s => s.Student != null && s.Student.MajorId == selectedMajorId);
+            }
+
             var data = await query
-                .OrderBy(s => s.Student != null ? s.Student.UserCode : "")
+                .OrderBy(s => s.Student != null && s.Student.Major != null ? s.Student.Major.FacultyName : s.Student != null ? s.Student.Faculty : "")
+                .ThenBy(s => s.Student != null && s.Student.Major != null ? s.Student.Major.Name : "")
+                .ThenBy(s => s.Student != null ? s.Student.UserCode : "")
                 .ThenBy(s => s.Student != null ? s.Student.FullName : "")
                 .ToListAsync();
 
@@ -1344,16 +1408,18 @@ public class TimelineController : BaseController
             ws.Cell(headerRow, 1).Value = "STT";
             ws.Cell(headerRow, 2).Value = "Mã sinh viên";
             ws.Cell(headerRow, 3).Value = "Họ tên sinh viên";
-            ws.Cell(headerRow, 4).Value = "Mốc thời gian";
-            ws.Cell(headerRow, 5).Value = "Ngày duyệt";
-            ws.Cell(headerRow, 6).Value = "Giảng viên duyệt";
-            ws.Cell(headerRow, 7).Value = "Điểm";
-            ws.Cell(headerRow, 8).Value = "Nhận xét";
-            ws.Cell(headerRow, 9).Value = "Trạng thái";
-            ws.Cell(headerRow, 10).Value = "File";
-            ws.Cell(headerRow, 11).Value = "Email";
+            ws.Cell(headerRow, 4).Value = "Khoa";
+            ws.Cell(headerRow, 5).Value = "Ngành";
+            ws.Cell(headerRow, 6).Value = "Mốc thời gian";
+            ws.Cell(headerRow, 7).Value = "Ngày duyệt";
+            ws.Cell(headerRow, 8).Value = "Giảng viên duyệt";
+            ws.Cell(headerRow, 9).Value = "Điểm";
+            ws.Cell(headerRow, 10).Value = "Nhận xét";
+            ws.Cell(headerRow, 11).Value = "Trạng thái";
+            ws.Cell(headerRow, 12).Value = "File";
+            ws.Cell(headerRow, 13).Value = "Email";
 
-            var header = ws.Range(headerRow, 1, headerRow, 11);
+            var header = ws.Range(headerRow, 1, headerRow, 13);
             header.Style.Font.Bold = true;
             header.Style.Fill.BackgroundColor = XLColor.FromHtml("#4F46E5");
             header.Style.Font.FontColor = XLColor.White;
@@ -1367,23 +1433,25 @@ public class TimelineController : BaseController
                 ws.Cell(row, 1).Value = stt++;
                 ws.Cell(row, 2).Value = item.Student?.UserCode ?? "";
                 ws.Cell(row, 3).Value = item.Student?.FullName ?? "";
-                ws.Cell(row, 4).Value = timeline.Title;
-                ws.Cell(row, 5).Value = item.ReviewedAt?.ToString("dd/MM/yyyy HH:mm") ?? "";
-                ws.Cell(row, 6).Value = item.ReviewedBy?.FullName ?? item.ReviewedBy?.Email ?? "";
-                ws.Cell(row, 7).Value = item.Score;
-                ws.Cell(row, 8).Value = item.Comment ?? "";
-                ws.Cell(row, 9).Value = "Đã duyệt";
-                ws.Cell(row, 10).Value = Url.Action(
+                ws.Cell(row, 4).Value = item.Student?.Major?.FacultyName ?? item.Student?.Faculty ?? "";
+                ws.Cell(row, 5).Value = item.Student?.Major?.Name ?? "";
+                ws.Cell(row, 6).Value = timeline.Title;
+                ws.Cell(row, 7).Value = item.ReviewedAt?.ToString("dd/MM/yyyy HH:mm") ?? "";
+                ws.Cell(row, 8).Value = item.ReviewedBy?.FullName ?? item.ReviewedBy?.Email ?? "";
+                ws.Cell(row, 9).Value = item.Score;
+                ws.Cell(row, 10).Value = item.Comment ?? "";
+                ws.Cell(row, 11).Value = "Đã duyệt";
+                ws.Cell(row, 12).Value = Url.Action(
                     nameof(DownloadSubmissionFile),
                     "Timeline",
                     new { submissionId = item.Id },
                     Request.Scheme) ?? "";
-                ws.Cell(row, 11).Value = item.Student?.Email ?? "";
+                ws.Cell(row, 13).Value = item.Student?.Email ?? "";
 
                 row++;
             }
 
-            ws.Range(headerRow, 1, Math.Max(headerRow, row - 1), 11).SetAutoFilter();
+            ws.Range(headerRow, 1, Math.Max(headerRow, row - 1), 13).SetAutoFilter();
             ws.SheetView.FreezeRows(headerRow);
             ws.Columns().AdjustToContents();
 

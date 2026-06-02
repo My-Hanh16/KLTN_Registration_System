@@ -6,7 +6,6 @@
     string currentStatus = Context.Request.Query["status"].ToString();
     if (string.IsNullOrEmpty(currentStatus)) currentStatus = "Pending";
     var pendingProposals = ViewBag.PendingStudentProposals as List<Topic> ?? new List<Topic>();
-    var lecturers = ViewBag.Lecturers as List<ApplicationUser> ?? new List<ApplicationUser>();
 }
 
 @section Styles {
@@ -82,7 +81,7 @@
         <div class="table-header">
             <div>
                 <h3 class="table-title">Đề xuất sinh viên chọn bạn hướng dẫn</h3>
-                <div class="text-muted small">Đồng ý hướng dẫn, chuyển sang giảng viên khác, hoặc từ chối để sinh viên đề xuất đề tài mới trước hạn đăng ký.</div>
+                <div class="text-muted small">Đồng ý hướng dẫn, từ chối để sinh viên đề xuất đề tài khác, hoặc báo bận để Admin phân công giảng viên khác.</div>
             </div>
             <span class="stat-badge blue">@pendingProposals.Count đề xuất</span>
         </div>
@@ -133,15 +132,9 @@
                                     <form asp-action="ForwardStudentProposal" method="post" class="d-flex gap-2 align-items-center">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="topicId" value="@topic.Id" />
-                                        <select name="assignLecturerId" class="modal-textarea"
-                                                style="width:220px;min-height:38px;padding:8px 10px;" required>
-                                            <option value="">Chuyển cho GV khác...</option>
-                                            @foreach (var lecturer in lecturers)
-                                            {
-                                                <option value="@lecturer.Id">@lecturer.FullName</option>
-                                            }
-                                        </select>
-                                        <button type="submit" class="btn-approve" title="Phân công giảng viên khác">
+                                        <input name="reason" class="modal-textarea" style="width:220px;min-height:38px;padding:8px 10px;"
+                                               placeholder="Lý do bận, gửi Admin..." />
+                                        <button type="submit" class="btn-approve" title="Chuyển Admin phân công">
                                             <i class="fa-solid fa-user-plus"></i>
                                         </button>
                                     </form>

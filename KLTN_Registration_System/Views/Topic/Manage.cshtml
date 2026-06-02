@@ -1,331 +1,52 @@
-@using KLTN_Registration_System.Models.Entities
+﻿@using KLTN_Registration_System.Models.Entities
 @model List<Registration>
 
 @{
     Layout = "_LayoutDashboard";
-    ViewData["Title"] = "Quản lý đăng ký đề tài";
+    ViewData["Title"] = "Quáº£n lÃ½ Ä‘Äƒng kÃ½ Ä‘á» tÃ i";
 
     var registrations = Model ?? new List<Registration>();
-    var activePeriodName = ViewBag.ActivePeriodName as string ?? "Đợt hiện tại";
+    var activePeriodName = ViewBag.ActivePeriodName as string ?? "Äá»£t hiá»‡n táº¡i";
     int pendingCount = ViewBag.PendingCount ?? registrations.Count(r => r.Status == "Pending");
     int approvedCount = ViewBag.ApprovedCount ?? registrations.Count(r => r.Status == "Approved");
     int rejectedCount = ViewBag.RejectedCount ?? registrations.Count(r => r.Status == "Rejected");
     int topicCount = ViewBag.TopicCount ?? registrations.Select(r => r.TopicId).Distinct().Count();
 }
 
-<style>
-    .manage-shell {
-        max-width: 1180px;
-        margin: 0 auto;
-    }
-
-    .page-kicker {
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 600;
-        margin-bottom: 8px;
-    }
-
-    .page-title {
-        color: #0f172a;
-        font-size: 24px;
-        font-weight: 800;
-        margin: 0;
-    }
-
-    .page-subtitle {
-        color: #64748b;
-        font-size: 14px;
-        margin: 8px 0 0;
-    }
-
-    .stat-grid {
-        display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        margin: 24px 0;
-    }
-
-    .stat-card {
-        background: #fff;
-        border: 1px solid #e8edf4;
-        border-radius: 16px;
-        padding: 18px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
-    }
-
-    .stat-label {
-        color: #94a3b8;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: .7px;
-        text-transform: uppercase;
-    }
-
-    .stat-value {
-        color: #0f172a;
-        font-size: 30px;
-        font-weight: 800;
-        line-height: 1.1;
-        margin-top: 10px;
-    }
-
-    .manage-alert {
-        align-items: center;
-        border: 0;
-        border-radius: 14px;
-        display: flex;
-        font-size: 13.5px;
-        font-weight: 600;
-        gap: 10px;
-        margin-bottom: 14px;
-        padding: 12px 14px;
-    }
-
-    .manage-alert.success {
-        background: #ecfdf5;
-        color: #047857;
-    }
-
-    .manage-alert.error {
-        background: #fef2f2;
-        color: #dc2626;
-    }
-
-    .registration-panel {
-        background: #fff;
-        border: 1px solid #e8edf4;
-        border-radius: 18px;
-        overflow: hidden;
-        box-shadow: 0 8px 28px rgba(15, 23, 42, .05);
-    }
-
-    .panel-head {
-        align-items: center;
-        border-bottom: 1px solid #eef2f7;
-        display: flex;
-        justify-content: space-between;
-        padding: 18px 22px;
-    }
-
-    .panel-head h3 {
-        color: #0f172a;
-        font-size: 17px;
-        font-weight: 800;
-        margin: 0;
-    }
-
-    .panel-head span {
-        color: #94a3b8;
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .registration-list {
-        display: grid;
-    }
-
-    .registration-row {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: minmax(0, 1.4fr) minmax(220px, .9fr) 140px 210px;
-        padding: 18px 22px;
-        align-items: center;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .registration-row:last-child {
-        border-bottom: 0;
-    }
-
-    .topic-title {
-        color: #0f172a;
-        font-size: 15px;
-        font-weight: 800;
-        line-height: 1.45;
-        margin: 0 0 8px;
-    }
-
-    .topic-meta,
-    .student-meta {
-        color: #64748b;
-        display: flex;
-        flex-wrap: wrap;
-        font-size: 12.5px;
-        font-weight: 600;
-        gap: 10px;
-    }
-
-    .student-name {
-        color: #0f172a;
-        font-size: 14px;
-        font-weight: 800;
-        margin-bottom: 6px;
-    }
-
-    .status-pill {
-        border-radius: 999px;
-        display: inline-flex;
-        font-size: 12px;
-        font-weight: 800;
-        justify-content: center;
-        padding: 7px 12px;
-        width: fit-content;
-    }
-
-    .status-pending {
-        background: #fff7ed;
-        color: #ea580c;
-    }
-
-    .status-approved {
-        background: #ecfdf5;
-        color: #059669;
-    }
-
-    .status-rejected {
-        background: #fef2f2;
-        color: #dc2626;
-    }
-
-    .status-other {
-        background: #f1f5f9;
-        color: #64748b;
-    }
-
-    .action-stack {
-        display: grid;
-        gap: 8px;
-    }
-
-    .action-btn {
-        align-items: center;
-        border: 0;
-        border-radius: 11px;
-        display: inline-flex;
-        font-size: 13px;
-        font-weight: 800;
-        gap: 8px;
-        justify-content: center;
-        min-height: 38px;
-        padding: 8px 12px;
-        text-decoration: none;
-        width: 100%;
-    }
-
-    .action-approve {
-        background: #dcfce7;
-        color: #047857;
-    }
-
-    .action-reject {
-        background: #fee2e2;
-        color: #dc2626;
-    }
-
-    .reject-box {
-        display: none;
-        gap: 8px;
-    }
-
-    .reject-box.open {
-        display: grid;
-    }
-
-    .reject-box textarea {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        color: #0f172a;
-        font-size: 13px;
-        min-height: 72px;
-        padding: 10px 12px;
-        resize: vertical;
-        width: 100%;
-    }
-
-    .empty-state {
-        align-items: center;
-        color: #64748b;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-height: 260px;
-        justify-content: center;
-        padding: 42px 20px;
-        text-align: center;
-    }
-
-    .empty-state i {
-        align-items: center;
-        background: #eef2ff;
-        border-radius: 18px;
-        color: #4f46e5;
-        display: inline-flex;
-        font-size: 26px;
-        height: 64px;
-        justify-content: center;
-        width: 64px;
-    }
-
-    .empty-state strong {
-        color: #0f172a;
-        font-size: 17px;
-    }
-
-    @@media (max-width: 992px) {
-        .stat-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .registration-row {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    @@media (max-width: 576px) {
-        .stat-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .panel-head {
-            align-items: flex-start;
-            flex-direction: column;
-            gap: 6px;
-        }
-    }
-</style>
+@section Styles {
+    <link rel="stylesheet" href="~/css/topic/manage.css" asp-append-version="true" />
+}
 
 <div class="manage-shell">
     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
         <div>
             <div class="page-kicker">@activePeriodName</div>
-            <h1 class="page-title">Quản lý đăng ký đề tài</h1>
-            <p class="page-subtitle">Theo dõi và xử lý sinh viên đăng ký vào các đề tài bạn phụ trách trong đợt hiện tại.</p>
+            <h1 class="page-title">Quáº£n lÃ½ Ä‘Äƒng kÃ½ Ä‘á» tÃ i</h1>
+            <p class="page-subtitle">Theo dÃµi vÃ  xá»­ lÃ½ sinh viÃªn Ä‘Äƒng kÃ½ vÃ o cÃ¡c Ä‘á» tÃ i báº¡n phá»¥ trÃ¡ch trong Ä‘á»£t hiá»‡n táº¡i.</p>
         </div>
         <a asp-controller="@(User.IsInRole("Admin") ? "Admin" : "Lecturer")"
            asp-action="Approval"
-           class="action-btn action-approve"
-           style="width:auto; min-width: 160px;">
+           class="action-btn action-approve action-main-approval">
             <i class="fa-regular fa-square-check"></i>
-            Trang duyệt chính
+            Trang duyá»‡t chÃ­nh
         </a>
     </div>
 
     <div class="stat-grid">
         <div class="stat-card">
-            <div class="stat-label">Tổng đăng ký</div>
+            <div class="stat-label">Tá»•ng Ä‘Äƒng kÃ½</div>
             <div class="stat-value">@registrations.Count</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Chờ duyệt</div>
+            <div class="stat-label">Chá» duyá»‡t</div>
             <div class="stat-value">@pendingCount</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Đã duyệt</div>
+            <div class="stat-label">ÄÃ£ duyá»‡t</div>
             <div class="stat-value">@approvedCount</div>
         </div>
         <div class="stat-card">
-            <div class="stat-label">Đề tài có đăng ký</div>
+            <div class="stat-label">Äá» tÃ i cÃ³ Ä‘Äƒng kÃ½</div>
             <div class="stat-value">@topicCount</div>
         </div>
     </div>
@@ -348,16 +69,16 @@
 
     <div class="registration-panel">
         <div class="panel-head">
-            <h3>Danh sách sinh viên đăng ký</h3>
-            <span>@registrations.Count mục - @rejectedCount đã từ chối</span>
+            <h3>Danh sÃ¡ch sinh viÃªn Ä‘Äƒng kÃ½</h3>
+            <span>@registrations.Count má»¥c - @rejectedCount Ä‘Ã£ tá»« chá»‘i</span>
         </div>
 
         @if (!registrations.Any())
         {
             <div class="empty-state">
                 <i class="fa-regular fa-folder-open"></i>
-                <strong>Chưa có sinh viên đăng ký</strong>
-                <span>Khi sinh viên gửi đăng ký vào đề tài của bạn, danh sách sẽ hiển thị tại đây.</span>
+                <strong>ChÆ°a cÃ³ sinh viÃªn Ä‘Äƒng kÃ½</strong>
+                <span>Khi sinh viÃªn gá»­i Ä‘Äƒng kÃ½ vÃ o Ä‘á» tÃ i cá»§a báº¡n, danh sÃ¡ch sáº½ hiá»ƒn thá»‹ táº¡i Ä‘Ã¢y.</span>
             </div>
         }
         else
@@ -375,15 +96,15 @@
 
                     var statusText = item.Status switch
                     {
-                        "Pending" => "Chờ duyệt",
-                        "Approved" => "Đã duyệt",
-                        "Rejected" => "Từ chối",
+                        "Pending" => "Chá» duyá»‡t",
+                        "Approved" => "ÄÃ£ duyá»‡t",
+                        "Rejected" => "Tá»« chá»‘i",
                         _ => item.Status
                     };
 
                     <div class="registration-row">
                         <div>
-                            <h4 class="topic-title">@(item.Topic?.Title ?? "Không rõ đề tài")</h4>
+                            <h4 class="topic-title">@(item.Topic?.Title ?? "KhÃ´ng rÃµ Ä‘á» tÃ i")</h4>
                             <div class="topic-meta">
                                 <span><i class="fa-regular fa-calendar me-1"></i>@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
                                 @if (!string.IsNullOrWhiteSpace(item.Topic?.TopicCode))
@@ -398,9 +119,9 @@
                         </div>
 
                         <div>
-                            <div class="student-name">@(item.Student?.FullName ?? item.Student?.UserName ?? "Không rõ sinh viên")</div>
+                            <div class="student-name">@(item.Student?.FullName ?? item.Student?.UserName ?? "KhÃ´ng rÃµ sinh viÃªn")</div>
                             <div class="student-meta">
-                                <span>@(item.Student?.UserCode ?? "Chưa có MSSV")</span>
+                                <span>@(item.Student?.UserCode ?? "ChÆ°a cÃ³ MSSV")</span>
                                 <span>@(item.Student?.Email ?? "")</span>
                             </div>
                         </div>
@@ -417,31 +138,31 @@
                                     <input type="hidden" name="returnTo" value="Manage" />
                                     <button type="submit" class="action-btn action-approve">
                                         <i class="fa-solid fa-check"></i>
-                                        Duyệt
+                                        Duyá»‡t
                                     </button>
                                 </form>
 
                                 <button type="button" class="action-btn action-reject" data-toggle-reject="@item.Id">
                                     <i class="fa-solid fa-xmark"></i>
-                                    Từ chối
+                                    Tá»« chá»‘i
                                 </button>
 
                                 <form asp-action="Reject" asp-route-id="@item.Id" method="post" class="reject-box" id="reject-@item.Id">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="returnTo" value="Manage" />
-                                    <textarea name="feedback" placeholder="Nhập lý do từ chối để sinh viên biết cần chỉnh gì..."></textarea>
+                                    <textarea name="feedback" placeholder="Nháº­p lÃ½ do tá»« chá»‘i Ä‘á»ƒ sinh viÃªn biáº¿t cáº§n chá»‰nh gÃ¬..."></textarea>
                                     <button type="submit" class="action-btn action-reject">
-                                        Gửi từ chối
+                                        Gá»­i tá»« chá»‘i
                                     </button>
                                 </form>
                             }
                             else if (!string.IsNullOrWhiteSpace(item.Feedback))
                             {
-                                <span class="text-muted small">Lý do: @item.Feedback</span>
+                                <span class="text-muted small">LÃ½ do: @item.Feedback</span>
                             }
                             else
                             {
-                                <span class="text-muted small">Không còn thao tác</span>
+                                <span class="text-muted small">KhÃ´ng cÃ²n thao tÃ¡c</span>
                             }
                         </div>
                     </div>
@@ -452,12 +173,6 @@
 </div>
 
 @section Scripts {
-    <script>
-        document.querySelectorAll('[data-toggle-reject]').forEach(button => {
-            button.addEventListener('click', () => {
-                const id = button.getAttribute('data-toggle-reject');
-                document.getElementById(`reject-${id}`)?.classList.toggle('open');
-            });
-        });
-    </script>
+    <script src="~/js/topic/manage.js" asp-append-version="true"></script>
 }
+

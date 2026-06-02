@@ -633,11 +633,16 @@ namespace KLTN_Registration_System.Controllers
         // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Student")]
-        public async Task<IActionResult> SubmitGroupRegistration(int topicId, List<string>? memberEmails)
+        public async Task<IActionResult> SubmitGroupRegistration(int topicId, List<string>? memberEmails, string? returnTo = null)
         {
             var leaderId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
             var now = DateTime.Now;
             var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            IActionResult RedirectGroupForm()
+                => string.Equals(returnTo, "Index", StringComparison.OrdinalIgnoreCase)
+                    ? RedirectToAction(nameof(Index))
+                    : RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+
             if (!await IsStudentEligibleForPeriodAsync(leaderId, activePeriod.Id))
             {
                 TempData["Error"] = await GetStudentEligibilityErrorMessageAsync(leaderId);
@@ -710,7 +715,7 @@ namespace KLTN_Registration_System.Controllers
             if (!cleanEmails.Any())
             {
                 TempData["Error"] = "Đề tài nhóm bắt buộc phải có ít nhất 2 sinh viên. Vui lòng nhập thêm 1 thành viên.";
-                return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                return RedirectGroupForm();
             }
 
             int current = topic.Registrations!
@@ -729,7 +734,7 @@ namespace KLTN_Registration_System.Controllers
             if (cleanEmails.Count + 1 > remainingSlots)
             {
                 TempData["Error"] = $"Đề tài chỉ còn {remainingSlots} chỗ trống. Nhóm của bạn đang có {cleanEmails.Count + 1} sinh viên.";
-                return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                return RedirectGroupForm();
             }
 
             var allIds = new List<string> { leaderId };
@@ -742,19 +747,19 @@ namespace KLTN_Registration_System.Controllers
                 if (member == null)
                 {
                     TempData["Error"] = $"Không tìm thấy sinh viên: {email}";
-                    return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                    return RedirectGroupForm();
                 }
 
                 if (member.Id == leaderId)
                 {
                     TempData["Error"] = "Không thể nhập chính bạn làm thành viên nhóm. Vui lòng nhập sinh viên khác.";
-                    return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                    return RedirectGroupForm();
                 }
 
                 if (!await _userManager.IsInRoleAsync(member, "Student"))
                 {
                     TempData["Error"] = $"{email} không phải tài khoản sinh viên.";
-                    return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                    return RedirectGroupForm();
                 }
 
                 if (allIds.Contains(member.Id)) continue;
@@ -764,13 +769,13 @@ namespace KLTN_Registration_System.Controllers
                     TempData["Error"] = member.HasCompletedThesis
                         ? $"Sinh viên {email} đã hoàn thành KLTN nên không thể tham gia đăng ký ở đợt này."
                         : $"Sinh viên {email} chưa nằm trong danh sách đủ điều kiện của đợt đăng ký hiện tại.";
-                    return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                    return RedirectGroupForm();
                 }
 
                 if (!await CanStudentAccessTopicAsync(member.Id, topic.MajorId, topic.Faculty))
                 {
                     TempData["Error"] = $"Sinh viên {email} không thuộc khoa/chuyên ngành của đề tài.";
-                    return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                    return RedirectGroupForm();
                 }
 
                 bool isBusy = await StudentHasActiveRegistrationAsync(member.Id);
@@ -778,13 +783,13 @@ namespace KLTN_Registration_System.Controllers
                 if (isBusy)
                 {
                     TempData["Error"] = $"Sinh viên {email} đã có đề tài khác!";
-                    return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                    return RedirectGroupForm();
                 }
 
                 if (await HasPendingProposalAsync(member.Id, activePeriod.Id))
                 {
                     TempData["Error"] = $"Sinh viên {email} đang có đề xuất đề tài chờ duyệt.";
-                    return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                    return RedirectGroupForm();
                 }
 
                 allIds.Add(member.Id);
@@ -793,7 +798,7 @@ namespace KLTN_Registration_System.Controllers
             if (allIds.Count < 2)
             {
                 TempData["Error"] = "Đề tài nhóm bắt buộc phải có ít nhất 2 sinh viên.";
-                return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
+                return RedirectGroupForm();
             }
 
             // Lưu đăng ký cho cả nhóm

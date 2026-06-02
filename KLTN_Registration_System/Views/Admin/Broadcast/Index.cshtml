@@ -9,728 +9,7 @@
 }
 
 @section Styles {
-    <style>
-        /* ══════════════════════════════════════
-               PAGE HEADER
-            ══════════════════════════════════════ */
-        .page-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .page-sub {
-            font-size: 13.5px;
-            color: #94a3b8;
-            margin: 0;
-        }
-
-        /* ══════════════════════════════════════
-               STATS ROW
-            ══════════════════════════════════════ */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 22px;
-        }
-
-        .stat-card {
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            padding: 18px 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.03);
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-            .stat-icon.blue {
-                background: #eff6ff;
-                color: #2563eb;
-            }
-
-            .stat-icon.green {
-                background: #f0fdf4;
-                color: #16a34a;
-            }
-
-            .stat-icon.purple {
-                background: #f5f3ff;
-                color: #7c3aed;
-            }
-
-            .stat-icon.amber {
-                background: #fffbeb;
-                color: #d97706;
-            }
-
-        .stat-label {
-            font-size: 12px;
-            color: #64748b;
-            font-weight: 500;
-            margin-bottom: 3px;
-        }
-
-        .stat-number {
-            font-size: 24px;
-            font-weight: 800;
-            color: #1e293b;
-            line-height: 1;
-        }
-
-        /* ══════════════════════════════════════
-               ALERT BANNERS
-            ══════════════════════════════════════ */
-        .alert-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 20px;
-        }
-
-            .alert-bar.success {
-                background: #f0fdf4;
-                border: 1px solid #bbf7d0;
-                color: #15803d;
-            }
-
-            .alert-bar.error {
-                background: #fff5f5;
-                border: 1px solid #fecaca;
-                color: #dc2626;
-            }
-
-        /* ══════════════════════════════════════
-               MAIN 2-COL GRID
-            ══════════════════════════════════════ */
-        .bc-grid {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 20px;
-            align-items: start;
-        }
-
-        /* ══════════════════════════════════════
-               CARD BASE
-            ══════════════════════════════════════ */
-        .bc-card {
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.03);
-            overflow: hidden;
-        }
-
-        .bc-card-head {
-            padding: 16px 24px;
-            border-bottom: 1px solid #f1f5f9;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .bc-card-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1e293b;
-            margin: 0;
-        }
-
-        .bc-card-body {
-            padding: 24px;
-        }
-
-        /* ══════════════════════════════════════
-               FORM ELEMENTS
-            ══════════════════════════════════════ */
-        .f-section {
-            margin-bottom: 20px;
-        }
-
-        .f-label {
-            display: block;
-            font-size: 10.5px;
-            font-weight: 700;
-            letter-spacing: .8px;
-            text-transform: uppercase;
-            color: #64748b;
-            margin-bottom: 9px;
-        }
-
-            .f-label .req {
-                color: #ef4444;
-                margin-left: 2px;
-            }
-
-            .f-label .opt {
-                font-weight: 400;
-                font-size: 11px;
-                text-transform: none;
-                letter-spacing: 0;
-                color: #94a3b8;
-                margin-left: 6px;
-            }
-
-        .f-input, .f-select, .f-textarea {
-            width: 100%;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-size: 13.5px;
-            font-family: inherit;
-            color: #1e293b;
-            background: #fff;
-            outline: none;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-            .f-input:focus, .f-select:focus, .f-textarea:focus {
-                border-color: #3b82f6;
-                box-shadow: 0 0 0 3px rgba(59,130,246,.1);
-            }
-
-            .f-input::placeholder, .f-textarea::placeholder {
-                color: #cbd5e1;
-            }
-
-        .f-textarea {
-            resize: vertical;
-            min-height: 120px;
-            line-height: 1.65;
-        }
-
-        .f-select {
-            appearance: none;
-            cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 14px center;
-            padding-right: 36px;
-        }
-
-        /* Icon wrapper */
-        .f-wrap {
-            position: relative;
-        }
-
-        .f-ico {
-            position: absolute;
-            left: 13px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #94a3b8;
-            font-size: 13px;
-            pointer-events: none;
-        }
-
-        .f-wrap .f-input,
-        .f-wrap .f-select {
-            padding-left: 38px;
-        }
-
-        /* Char counter */
-        .char-row {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
-        }
-
-        .char-hint {
-            font-size: 11px;
-            color: #cbd5e1;
-        }
-
-        .char-ct {
-            font-size: 11px;
-            color: #94a3b8;
-            font-weight: 600;
-        }
-
-            .char-ct.warn {
-                color: #f59e0b;
-            }
-
-        /* ══════════════════════════════════════
-               TARGET CARDS
-            ══════════════════════════════════════ */
-        .tg-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-        }
-
-        .tg-card {
-            position: relative;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px 10px 14px;
-            cursor: pointer;
-            text-align: center;
-            transition: all .15s;
-            background: #fff;
-            user-select: none;
-        }
-
-            .tg-card input[type=radio] {
-                position: absolute;
-                inset: 0;
-                opacity: 0;
-                cursor: pointer;
-                width: 100%;
-                height: 100%;
-                margin: 0;
-            }
-
-            .tg-card:hover {
-                border-color: #93c5fd;
-                background: #f8fbff;
-            }
-
-            .tg-card.sel {
-                border-color: #2563eb;
-                background: #eff6ff;
-                box-shadow: 0 0 0 3px rgba(37,99,235,.1);
-            }
-
-        .tg-check {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #2563eb;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-            opacity: 0;
-            transition: opacity .15s;
-        }
-
-        .tg-card.sel .tg-check {
-            opacity: 1;
-        }
-
-        .tg-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            margin: 0 auto 10px;
-        }
-
-        .tg-card:not(.sel) .tg-icon {
-            background: #f1f5f9;
-            color: #64748b;
-        }
-
-        .tg-card.sel .tg-icon {
-            background: #dbeafe;
-            color: #2563eb;
-        }
-
-        .tg-name {
-            font-size: 13px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 2px;
-        }
-
-        .tg-count {
-            font-size: 11.5px;
-            color: #94a3b8;
-        }
-
-        /* ══════════════════════════════════════
-               LIVE PREVIEW
-            ══════════════════════════════════════ */
-        .preview-box {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px;
-            display: none;
-            margin-bottom: 20px;
-        }
-
-        .preview-lbl {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .8px;
-            text-transform: uppercase;
-            color: #94a3b8;
-            margin-bottom: 12px;
-        }
-
-        .preview-row {
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
-        }
-
-        .preview-ni {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            flex-shrink: 0;
-            transition: background .2s, color .2s;
-        }
-
-        .preview-title {
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 3px;
-        }
-
-        .preview-body {
-            font-size: 12.5px;
-            color: #64748b;
-            line-height: 1.55;
-        }
-
-        .preview-meta {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 5px;
-        }
-
-        .placeholder-tx {
-            color: #cbd5e1;
-            font-style: italic;
-        }
-
-        /* ══════════════════════════════════════
-               FORM FOOTER
-            ══════════════════════════════════════ */
-        .f-foot {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-top: 18px;
-            border-top: 1px solid #f1f5f9;
-            margin-top: 4px;
-        }
-
-        .f-foot-hint {
-            font-size: 12px;
-            color: #94a3b8;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        /* ══════════════════════════════════════
-               BUTTONS
-            ══════════════════════════════════════ */
-        .btn-send {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 10px 24px;
-            border-radius: 10px;
-            font-size: 13.5px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            background: #2563eb;
-            color: #fff;
-            box-shadow: 0 4px 14px rgba(37,99,235,.28);
-            transition: all .15s;
-        }
-
-            .btn-send:hover {
-                background: #1d4ed8;
-                box-shadow: 0 6px 20px rgba(37,99,235,.36);
-                transform: translateY(-1px);
-            }
-
-            .btn-send:active {
-                transform: none;
-            }
-
-            .btn-send:disabled {
-                background: #e2e8f0;
-                color: #94a3b8;
-                box-shadow: none;
-                cursor: not-allowed;
-                transform: none;
-            }
-
-        .btn-ghost {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 14px;
-            border-radius: 9px;
-            font-size: 12.5px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            background: #f8fafc;
-            color: #64748b;
-            border: 1.5px solid #e2e8f0;
-            transition: all .15s;
-        }
-
-            .btn-ghost:hover {
-                background: #f1f5f9;
-                color: #1e293b;
-            }
-
-        .btn-danger-full {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            background: #fff;
-            color: #dc2626;
-            border: 1.5px solid #fca5a5;
-            transition: all .15s;
-        }
-
-            .btn-danger-full:hover {
-                background: #dc2626;
-                color: #fff;
-                box-shadow: 0 4px 14px rgba(220,38,38,.25);
-            }
-
-        .send-spinner {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,.35);
-            border-top-color: #fff;
-            animation: spin .7s linear infinite;
-            display: none;
-        }
-
-        @@keyframes spin {
-            to
-
-        {
-            transform: rotate(360deg);
-        }
-
-        }
-
-        /* ══════════════════════════════════════
-               SIDEBAR ELEMENTS
-            ══════════════════════════════════════ */
-        .sidebar-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        /* Stat rows */
-        .s-stat {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 9px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-            .s-stat:first-child {
-                padding-top: 0;
-            }
-
-            .s-stat:last-child {
-                border-bottom: none;
-                padding-bottom: 0;
-            }
-
-        .s-stat-lbl {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: #64748b;
-        }
-
-        .s-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-            .s-dot.all {
-                background: #2563eb;
-            }
-
-            .s-dot.sv {
-                background: #16a34a;
-            }
-
-            .s-dot.gv {
-                background: #7c3aed;
-            }
-
-        .s-stat-val {
-            font-size: 20px;
-            font-weight: 800;
-            color: #1e293b;
-        }
-
-        /* History items */
-        .hist-empty {
-            text-align: center;
-            padding: 20px 0;
-            color: #94a3b8;
-            font-size: 13px;
-        }
-
-            .hist-empty i {
-                font-size: 22px;
-                display: block;
-                margin-bottom: 8px;
-                opacity: .35;
-            }
-
-        .hist-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 10px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-            .hist-item:first-child {
-                padding-top: 0;
-            }
-
-            .hist-item:last-child {
-                border-bottom: none;
-                padding-bottom: 0;
-            }
-
-        .hist-ico {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            flex-shrink: 0;
-        }
-
-            .hist-ico.sys {
-                background: #dbeafe;
-                color: #2563eb;
-            }
-
-            .hist-ico.warn {
-                background: #fef3c7;
-                color: #d97706;
-            }
-
-            .hist-ico.dead {
-                background: #fce7f3;
-                color: #db2777;
-            }
-
-        .hist-name {
-            font-size: 12.5px;
-            font-weight: 700;
-            color: #1e293b;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 190px;
-            margin-bottom: 2px;
-        }
-
-        .hist-meta {
-            font-size: 11px;
-            color: #94a3b8;
-        }
-
-        /* Danger zone */
-        .danger-zone {
-            background: #fff5f5;
-            border: 1px solid #fecaca;
-            border-radius: 14px;
-            padding: 18px 20px;
-        }
-
-        .danger-title {
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #991b1b;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            margin-bottom: 5px;
-        }
-
-        .danger-desc {
-            font-size: 12px;
-            color: #dc2626;
-            line-height: 1.6;
-            margin-bottom: 14px;
-        }
-
-        .f-select-danger {
-            width: 100%;
-            border: 1.5px solid #fca5a5;
-            border-radius: 10px;
-            padding: 8px 34px 8px 12px;
-            font-size: 13px;
-            font-family: inherit;
-            color: #991b1b;
-            background: #fff;
-            outline: none;
-            cursor: pointer;
-            margin-bottom: 10px;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fca5a5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            transition: border-color .15s;
-        }
-
-            .f-select-danger:focus {
-                border-color: #dc2626;
-                box-shadow: 0 0 0 3px rgba(220,38,38,.1);
-            }
-    </style>
+    <link rel="stylesheet" href="~/css/admin/broadcast-index.css" asp-append-version="true" />
 }
 
 <!-- ════════════════════════════════════════
@@ -793,10 +72,10 @@
     <div class="bc-card">
         <div class="bc-card-head">
             <h3 class="bc-card-title">
-                <i class="fa-regular fa-pen-to-square" style="color:#94a3b8;margin-right:6px;font-size:13px;"></i>
+                <i class="fa-regular fa-pen-to-square bc-card-title-icon"></i>
                 Soạn thông báo
             </h3>
-            <button type="button" class="btn-ghost" id="btnPreview" onclick="togglePreview()">
+            <button type="button" class="btn-ghost" id="btnPreview">
                 <i class="fa-regular fa-eye"></i> Xem trước
             </button>
         </div>
@@ -821,11 +100,11 @@
                         @foreach (var (val, lbl, ico, cnt) in targets)
                         {
                             <div class="tg-card @(val == "all" ? "sel" : "")"
-                                 id="tc-@val" onclick="selectTarget('@val')">
+                                 id="tc-@val" data-target-value="@val">
                                 <input type="radio" name="target" value="@val"
                                        @(val == "all" ? "checked" : "") />
                                 <div class="tg-check">
-                                    <i class="fa-solid fa-check" style="font-size:8px;"></i>
+                                    <i class="fa-solid fa-check target-check-icon"></i>
                                 </div>
                                 <div class="tg-icon">
                                     <i class="@ico"></i>
@@ -841,8 +120,8 @@
                 <div class="f-section">
                     <label class="f-label">Loại thông báo</label>
                     <div class="f-wrap">
-                        <i class="fa-regular fa-bell f-ico" id="typeIco" style="color:#2563eb;"></i>
-                        <select name="type" class="f-select" id="typeSelect" onchange="onTypeChange()">
+                        <i class="fa-regular fa-bell f-ico type-icon" id="typeIco"></i>
+                        <select name="type" class="f-select" id="typeSelect">
                             <option value="System">🔔  Thông báo hệ thống</option>
                             <option value="SystemAlert">⚠️  Cảnh báo quan trọng</option>
                             <option value="Deadline">⏰  Nhắc nhở deadline</option>
@@ -860,8 +139,7 @@
                         <input type="text" name="title" id="titleInput"
                                required maxlength="120"
                                placeholder="VD: Thông báo gia hạn đăng ký đề tài"
-                               class="f-input"
-                               oninput="onTitleInput()" />
+                               class="f-input" />
                     </div>
                     <div class="char-row">
                         <span class="char-hint">Tối đa 120 ký tự</span>
@@ -877,8 +155,7 @@
                     <textarea name="content" id="contentInput"
                               required rows="5" maxlength="500"
                               placeholder="Nhập nội dung thông báo chi tiết để sinh viên / giảng viên nắm rõ..."
-                              class="f-textarea"
-                              oninput="onContentInput()"></textarea>
+                              class="f-textarea"></textarea>
                     <div class="char-row">
                         <span class="char-hint">Tối đa 500 ký tự</span>
                         <span class="char-ct" id="contentCt">0 / 500</span>
@@ -903,11 +180,10 @@
                 <div class="preview-box" id="previewBox">
                     <div class="preview-lbl">Xem trước thông báo</div>
                     <div class="preview-row">
-                        <div class="preview-ni" id="previewIco"
-                             style="background:#dbeafe;color:#2563eb;">
+                        <div class="preview-ni preview-ni--system" id="previewIco">
                             <i class="fa-regular fa-bell"></i>
                         </div>
-                        <div style="min-width:0;flex:1;">
+                        <div class="preview-content">
                             <div class="preview-title" id="previewTitle">
                                 <span class="placeholder-tx">Tiêu đề sẽ hiển thị ở đây...</span>
                             </div>
@@ -915,7 +191,7 @@
                                 <span class="placeholder-tx">Nội dung thông báo...</span>
                             </div>
                             <div class="preview-meta">
-                                <i class="fa-regular fa-clock" style="font-size:10px;"></i>
+                                <i class="fa-regular fa-clock preview-meta-icon"></i>
                                 Vừa xong · Gửi bởi Admin
                             </div>
                         </div>
@@ -925,11 +201,10 @@
                 <!-- FORM FOOTER -->
                 <div class="f-foot">
                     <span class="f-foot-hint">
-                        <i class="fa-solid fa-triangle-exclamation" style="color:#f59e0b;"></i>
+                        <i class="fa-solid fa-triangle-exclamation foot-warning-icon"></i>
                         Không thể hoàn tác sau khi gửi.
                     </span>
-                    <button type="submit" class="btn-send" id="sendBtn"
-                            onclick="onSend(event)">
+                    <button type="submit" class="btn-send" id="sendBtn">
                         <div class="send-spinner" id="sendSpinner"></div>
                         <i class="fa-solid fa-paper-plane" id="sendIco"></i>
                         <span id="sendTxt">Gửi thông báo</span>
@@ -948,7 +223,7 @@
             <div class="bc-card-head">
                 <h3 class="bc-card-title">Tổng số người nhận</h3>
             </div>
-            <div class="bc-card-body" style="padding-top:14px;padding-bottom:14px;">
+            <div class="bc-card-body bc-card-body--compact">
                 <div class="s-stat">
                     <span class="s-stat-lbl">
                         <span class="s-dot all"></span> Tất cả
@@ -975,7 +250,7 @@
             <div class="bc-card-head">
                 <h3 class="bc-card-title">Đã gửi gần đây</h3>
             </div>
-            <div class="bc-card-body" style="padding-top:12px;padding-bottom:12px;">
+            <div class="bc-card-body bc-card-body--tight">
                 @if (ViewBag.RecentBroadcasts != null &&
                                 ((IEnumerable<dynamic>)ViewBag.RecentBroadcasts).Any())
                 {
@@ -994,7 +269,7 @@
                             <div class="hist-ico @hc">
                                 <i class="@hico"></i>
                             </div>
-                            <div style="min-width:0;">
+                            <div class="hist-main">
                                 <div class="hist-name" title="@item.Title">@item.Title</div>
                                 <div class="hist-meta">
                                     @item.CreatedAt.ToString("dd/MM HH:mm") · @item.Type
@@ -1016,22 +291,21 @@
         <!-- Danger zone -->
         <div class="danger-zone">
             <div class="danger-title">
-                <i class="fa-solid fa-trash-can" style="font-size:13px;"></i>
+                <i class="fa-solid fa-trash-can danger-title-icon"></i>
                 Dọn dẹp thông báo cũ
             </div>
             <div class="danger-desc">
                 Xóa vĩnh viễn thông báo đã đọc theo thời hạn chọn để giảm tải DB.
                 Hành động <strong>không thể hoàn tác</strong>.
             </div>
-            <form method="post" asp-action="DeleteOld" asp-controller="Broadcast">
+            <form method="post" asp-action="DeleteOld" asp-controller="Broadcast" class="js-delete-old-form">
                 @Html.AntiForgeryToken()
                 <select name="daysOld" class="f-select-danger">
                     <option value="30">Cũ hơn 30 ngày</option>
                     <option value="60">Cũ hơn 60 ngày</option>
                     <option value="90">Cũ hơn 90 ngày</option>
                 </select>
-                <button type="submit" class="btn-danger-full"
-                        onclick="return deleteOld(event)">
+                <button type="submit" class="btn-danger-full">
                     <i class="fa-solid fa-trash-can"></i>
                     Xóa thông báo cũ
                 </button>
@@ -1041,208 +315,12 @@
     </div><!-- /sidebar -->
 </div><!-- /bc-grid -->
 @section Scripts {
-    <script>
-        /* ── Target selection ── */
-        function selectTarget(val) {
-            document.querySelectorAll('.tg-card').forEach(c => c.classList.remove('sel'));
-            const card = document.getElementById('tc-' + val);
-            if (card) {
-                card.classList.add('sel');
-                card.querySelector('input[type=radio]').checked = true;
-            }
-        }
-
-        /* ── Type change ── */
-        const typeCfg = {
-            System:      { ico: 'fa-regular fa-bell',               c: '#2563eb', bg: '#dbeafe' },
-            SystemAlert: { ico: 'fa-solid fa-triangle-exclamation', c: '#d97706', bg: '#fef3c7' },
-            Deadline:    { ico: 'fa-regular fa-clock',              c: '#db2777', bg: '#fce7f3' },
-        };
-
-        function onTypeChange() {
-            const cfg = typeCfg[document.getElementById('typeSelect').value] || typeCfg.System;
-            const pi  = document.getElementById('previewIco');
-            pi.style.background = cfg.bg;
-            pi.style.color      = cfg.c;
-            pi.innerHTML        = `<i class="${cfg.ico}"></i>`;
-        }
-
-        /* ── Preview toggle ── */
-        function togglePreview() {
-            const box = document.getElementById('previewBox');
-            const btn = document.getElementById('btnPreview');
-            const show = box.style.display === 'none' || box.style.display === '';
-            box.style.display = show ? 'block' : 'none';
-            btn.innerHTML = show
-                ? '<i class="fa-regular fa-eye-slash"></i> Ẩn xem trước'
-                : '<i class="fa-regular fa-eye"></i> Xem trước';
-            if (show) { syncPreview(); onTypeChange(); }
-        }
-
-        /* ── Sync preview text ── */
-        function syncPreview() {
-            const title   = document.getElementById('titleInput').value.trim();
-            const content = document.getElementById('contentInput').value.trim();
-            const pt = document.getElementById('previewTitle');
-            const pb = document.getElementById('previewBody');
-
-            pt.innerHTML = title
-                ? `<strong>${esc(title)}</strong>`
-                : `<span class="placeholder-tx">Tiêu đề sẽ hiển thị ở đây...</span>`;
-
-            pb.innerHTML = content
-                ? esc(content)
-                : `<span class="placeholder-tx">Nội dung thông báo...</span>`;
-        }
-
-        function esc(s) {
-            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        }
-
-        /* ── Input handlers ── */
-        function onTitleInput() {
-            const len = document.getElementById('titleInput').value.length;
-            const el  = document.getElementById('titleCt');
-            el.textContent = len + ' / 120';
-            el.classList.toggle('warn', len > 100);
-            syncPreview();
-        }
-
-        function onContentInput() {
-            const len = document.getElementById('contentInput').value.length;
-            const el  = document.getElementById('contentCt');
-            el.textContent = len + ' / 500';
-            el.classList.toggle('warn', len > 420);
-            syncPreview();
-        }
-
-        /* ── Submit ── */
-                async function onSend(e) {
-            e.preventDefault();
-
-            const title = document.getElementById('titleInput').value.trim();
-            const content = document.getElementById('contentInput').value.trim();
-
-            if (!title) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Thiếu tiêu đề',
-                    text: 'Vui lòng nhập tiêu đề thông báo.'
-                });
-
-                document.getElementById('titleInput').focus();
-                return false;
-            }
-
-            if (!content) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Thiếu nội dung',
-                    text: 'Vui lòng nhập nội dung thông báo.'
-                });
-
-                document.getElementById('contentInput').focus();
-                return false;
-            }
-
-            const tval = document.querySelector('input[name=target]:checked')?.value;
-
-            const tlbl = {
-                all: 'tất cả người dùng',
-                student: 'sinh viên',
-                lecturer: 'giảng viên'
-            }[tval] || 'người dùng';
-
-            const result = await Swal.fire({
-                title: 'Xác nhận gửi?',
-                html: `
-                    <div style="text-align:left">
-                        <b>Tiêu đề:</b> ${title}<br><br>
-                        <b>Người nhận:</b> ${tlbl}<br><br>
-                        <span style="color:#dc2626;font-size:13px">
-                            Hành động này không thể hoàn tác.
-                        </span>
-                    </div>
-                `,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Gửi thông báo',
-                cancelButtonText: 'Huỷ',
-                confirmButtonColor: '#2563eb',
-                cancelButtonColor: '#94a3b8'
-            });
-
-            if (!result.isConfirmed) {
-                return false;
-            }
-
-            /* Loading */
-            const btn = document.getElementById('sendBtn');
-
-            btn.disabled = true;
-
-            document.getElementById('sendSpinner').style.display = 'block';
-            document.getElementById('sendIco').style.display = 'none';
-            document.getElementById('sendTxt').textContent = 'Đang gửi...';
-
-            document.getElementById('bcForm').submit();
-        }
-
-        /* ── Max-length guard ── */
-        document.getElementById('titleInput').addEventListener('input', function () {
-            if (this.value.length > 120) this.value = this.value.substring(0, 120);
-        });
-
-        document.getElementById('contentInput').addEventListener('input', function () {
-            if (this.value.length > 500) this.value = this.value.substring(0, 500);
-        });
-                async function deleteOld(e) {
-            e.preventDefault();
-
-            const result = await Swal.fire({
-                title: 'Xóa thông báo cũ?',
-                text: 'Hành động này không thể hoàn tác.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Xóa',
-                cancelButtonText: 'Huỷ',
-                confirmButtonColor: '#dc2626'
-            });
-
-            if (result.isConfirmed) {
-                e.target.closest('form').submit();
-            }
-
-            return false;
-        }
-                @if (TempData["Success"] != null)
-        {
-                <script>
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: '@TempData["Success"]',
-                        showConfirmButton: false,
-                        timer: 2500,
-                        timerProgressBar: true
-                    });
-        </script>
-    }
-
-    @if (TempData["Error"] != null)
-    {
-        <script>
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'error',
-                title: '@TempData["Error"]',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
-        </script>
-    }
+    <script id="broadcastFlash" type="application/json">
+@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+{
+    success = TempData["Success"]?.ToString(),
+    error = TempData["Error"]?.ToString()
+}))
     </script>
+    <script src="~/js/admin/broadcast-index.js" asp-append-version="true"></script>
 }

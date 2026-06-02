@@ -401,7 +401,7 @@ namespace KLTN_Registration_System.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> ForwardStudentProposal(int topicId, string assignLecturerId)
+        public async Task<IActionResult> ForwardStudentProposal(int topicId, string? reason)
         {
             var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
@@ -415,42 +415,35 @@ namespace KLTN_Registration_System.Controllers
 
             if (topic == null) return NotFound();
 
-            if (string.IsNullOrWhiteSpace(assignLecturerId) || assignLecturerId == lecturerId)
-            {
-                TempData["Error"] = "Vui lòng chọn một giảng viên khác để chuyển đề xuất.";
-                return RedirectToAction(nameof(Approval), new { tab = "proposals" });
-            }
-
-            var newLecturer = await _userManager.FindByIdAsync(assignLecturerId);
-            if (newLecturer == null || !await _userManager.IsInRoleAsync(newLecturer, "Lecturer"))
-            {
-                TempData["Error"] = "Giảng viên được phân công không hợp lệ.";
-                return RedirectToAction(nameof(Approval), new { tab = "proposals" });
-            }
-
-            topic.LecturerId = assignLecturerId;
-            topic.Note = null;
+            var message = string.IsNullOrWhiteSpace(reason)
+                ? "Giảng viên bận, chuyển Admin phân công giảng viên khác."
+                : reason.Trim();
+            topic.Note = $"{LecturerRejectedProposalPrefix} {message}";
             topic.IsApproved = false;
             topic.IsRegistrationOpen = false;
             topic.Status = TopicStatus.Pending;
             await _context.SaveChangesAsync();
 
-            await Notify(assignLecturerId,
-                "Đề xuất cần bạn xem xét hướng dẫn",
-                $"Đề tài sinh viên đề xuất \"{topic.Title}\" đã được chuyển cho bạn xem xét.",
-                "NewTopic",
-                "/Lecturer/Approval?tab=proposals");
+            var admins = await _userManager.GetUsersInRoleAsync("Admin");
+            foreach (var admin in admins)
+            {
+                await Notify(admin.Id,
+                    "Giảng viên bận, cần phân công lại",
+                    $"Giảng viên đã chuyển đề tài \"{topic.Title}\" lên Admin. Vui lòng phân công giảng viên khác.",
+                    "NewTopic",
+                    "/Admin/StudentProposals?status=pending");
+            }
 
             if (!string.IsNullOrWhiteSpace(topic.CreatedByStudentId))
             {
                 await Notify(topic.CreatedByStudentId,
-                    "Đề xuất được chuyển sang giảng viên khác",
-                    $"Đề tài \"{topic.Title}\" đã được chuyển sang giảng viên khác xem xét.",
+                    "Đề xuất đang chờ Admin phân công",
+                    $"Đề tài \"{topic.Title}\" đang chờ Admin phân công giảng viên khác xem xét.",
                     "NewTopic",
                     "/Student/MyRegistration");
             }
 
-            TempData["Success"] = $"Đã chuyển đề xuất \"{topic.Title}\" sang giảng viên khác xem xét.";
+            TempData["Success"] = $"Đã chuyển đề xuất \"{topic.Title}\" lên Admin phân công giảng viên khác.";
             return RedirectToAction(nameof(Approval), new { tab = "proposals" });
         }
 
@@ -913,161 +906,26 @@ namespace KLTN_Registration_System.Controllers
         }
 
         // ─────────────────────────────────────────────────────────────
-        // SỬA ĐỀ TÀI  →  /Lecturer/Edit/{id}
+        // SỬA / XÓA ĐỀ TÀI: chỉ Admin được thực hiện
         // ─────────────────────────────────────────────────────────────
         [HttpGet]
-        public async Task<IActionResult> Edit(int? id)
+        public IActionResult Edit(int? id)
         {
-            if (id == null) return NotFound();
-            var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
-            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
-                .Include(t => t.Major)
-                .Include(t => t.Registrations)
-                .FirstOrDefaultAsync(t => t.Id == id);
-            if (topic == null) return NotFound();
-            if (topic.LecturerId != lid && !User.IsInRole("Admin")) return Forbid();
-
-            var allowedMajors = User.IsInRole("Admin")
-                ? await _context.Majors.Where(m => m.IsActive).OrderBy(m => m.FacultyName).ThenBy(m => m.Name).ToListAsync()
-                : await GetLecturerMajorsAsync(lid);
-
-            ViewBag.MajorId = new SelectList(
-                allowedMajors,
-                "Id", "Name", topic.MajorId);
-            ViewBag.ActivePeriodName = activePeriod.Name;
-            ViewBag.ApprovedCount = topic.Registrations?.Count(r => r.Status == "Approved") ?? 0;
-            ViewBag.PendingCount = topic.Registrations?.Count(r => r.Status == "Pending") ?? 0;
-            return View(topic);          // ← trả đúng View "Edit", không dùng _TopicList
+            TempData["Error"] = "Chỉ Admin mới có quyền sửa đề tài.";
+            return RedirectToAction(nameof(ThesisManagement));
         }
 
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Topic topic)
+        public IActionResult Edit(int id, Topic topic)
         {
-            if (id != topic.Id) return NotFound();
-            var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
-
-            ModelState.Remove("Lecturer"); ModelState.Remove("Major");
-            ModelState.Remove("Student"); ModelState.Remove("Registrations");
-            ModelState.Remove("Comments");
-
-            if (ModelState.IsValid)
-            {
-                var existing = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
-                    .Include(t => t.Registrations)
-                    .FirstOrDefaultAsync(t => t.Id == id);
-                if (existing == null) return NotFound();
-                if (existing.LecturerId != lid && !User.IsInRole("Admin")) return Forbid();
-
-                if (!User.IsInRole("Admin"))
-                {
-                    var allowedMajorIds = (await GetLecturerMajorsAsync(lid))
-                        .Select(m => m.Id)
-                        .ToHashSet();
-
-                    if (!topic.MajorId.HasValue || !allowedMajorIds.Contains(topic.MajorId.Value))
-                    {
-                        TempData["Error"] = "Bạn chỉ được sửa đề tài thuộc khoa/chuyên ngành đã được Admin phân công.";
-                        ViewBag.MajorId = new SelectList(
-                            await GetLecturerMajorsAsync(lid),
-                            "Id", "Name", topic.MajorId);
-                        ViewBag.ActivePeriodName = activePeriod.Name;
-                        ViewBag.ApprovedCount = existing.Registrations?.Count(r => r.Status == "Approved") ?? 0;
-                        ViewBag.PendingCount = existing.Registrations?.Count(r => r.Status == "Pending") ?? 0;
-
-                        return View(topic);
-                    }
-                }
-
-                var activeCount = existing.Registrations?
-                    .Count(r => r.Status == "Pending" || r.Status == "Approved") ?? 0;
-
-                if (topic.MaxStudents < activeCount)
-                {
-                    TempData["Error"] = $"Số sinh viên tối đa không thể nhỏ hơn số đăng ký hiện tại ({activeCount}).";
-                    var allowedMajors = User.IsInRole("Admin")
-                        ? await _context.Majors.Where(m => m.IsActive).OrderBy(m => m.FacultyName).ThenBy(m => m.Name).ToListAsync()
-                        : await GetLecturerMajorsAsync(lid);
-                    ViewBag.MajorId = new SelectList(
-                        allowedMajors,
-                        "Id", "Name", topic.MajorId);
-                    ViewBag.ActivePeriodName = activePeriod.Name;
-                    ViewBag.ApprovedCount = existing.Registrations?.Count(r => r.Status == "Approved") ?? 0;
-                    ViewBag.PendingCount = existing.Registrations?.Count(r => r.Status == "Pending") ?? 0;
-
-                    return View(topic);
-                }
-
-                existing.Title = topic.Title.Trim();
-                existing.Description = topic.Description?.Trim() ?? "";
-                existing.Semester = activePeriod.Name;
-                existing.RegistrationPeriodId = activePeriod.Id;
-                existing.MajorId = topic.MajorId;
-                existing.Level = topic.Level;
-                existing.MaxStudents = Math.Clamp(topic.MaxStudents, 1, 10);
-                existing.Category = topic.Category?.Trim();
-                existing.Deadline = topic.Deadline == default
-                    ? DateTime.Now.AddMonths(3)
-                    : topic.Deadline;
-                existing.Note = topic.Note?.Trim();
-                existing.IsApproved = false;          // Reset: Admin duyệt lại
-                existing.IsRegistrationOpen = false;
-                existing.Status = TopicStatus.Pending;
-
-                try
-                {
-                    await _context.SaveChangesAsync();
-                    TempData["Success"] = "Cập nhật xong! Chờ Admin duyệt lại.";
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!await FilterTopicsByActivePeriod(_context.Topics, activePeriod).AnyAsync(t => t.Id == id)) return NotFound();
-                    throw;
-                }
-                return RedirectToAction(nameof(ThesisManagement));
-            }
-
-            var editMajors = User.IsInRole("Admin")
-                ? await _context.Majors.Where(m => m.IsActive).OrderBy(m => m.FacultyName).ThenBy(m => m.Name).ToListAsync()
-                : await GetLecturerMajorsAsync(lid);
-            ViewBag.MajorId = new SelectList(
-                editMajors,
-                "Id", "Name", topic.MajorId);
-            ViewBag.ActivePeriodName = activePeriod.Name;
-            ViewBag.ApprovedCount = 0;
-            ViewBag.PendingCount = 0;
-            return View(topic);
+            TempData["Error"] = "Chỉ Admin mới có quyền sửa đề tài.";
+            return RedirectToAction(nameof(ThesisManagement));
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // XÓA ĐỀ TÀI
-        // ─────────────────────────────────────────────────────────────
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteTopic(int id)
+        public IActionResult DeleteTopic(int id)
         {
-            var lid = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
-            var topic = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
-                .Include(t => t.Registrations)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
-            if (topic == null) return NotFound();
-            if (topic.LecturerId != lid && !User.IsInRole("Admin")) return Forbid();
-
-            if (topic.Registrations != null && topic.Registrations.Any(r => r.Status == "Approved"))
-            {
-                TempData["Error"] = "Không thể xóa đề tài đã có sinh viên được duyệt!";
-                return RedirectToAction(nameof(ThesisManagement));
-            }
-
-            if (topic.Registrations != null)
-                _context.Registrations.RemoveRange(topic.Registrations);
-
-            _context.Topics.Remove(topic);
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = $"Đã xóa đề tài \"{topic.Title}\".";
+            TempData["Error"] = "Chỉ Admin mới có quyền xóa đề tài.";
             return RedirectToAction(nameof(ThesisManagement));
         }
 

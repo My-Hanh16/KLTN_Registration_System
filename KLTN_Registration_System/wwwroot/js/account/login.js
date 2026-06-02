@@ -3,6 +3,17 @@
     const toggleButton = document.getElementById("togglePasswordBtn");
     const eyeIcon = document.getElementById("eyeIcon");
     const loginForm = document.getElementById("loginForm");
+    const loginToast = document.getElementById("loginToast");
+
+    if (loginToast) {
+        const hideToast = () => {
+            loginToast.classList.add("is-hiding");
+            window.setTimeout(() => loginToast.remove(), 180);
+        };
+
+        loginToast.querySelector(".login-toast-close")?.addEventListener("click", hideToast);
+        window.setTimeout(hideToast, 3200);
+    }
 
     if (toggleButton && passwordInput && eyeIcon) {
         toggleButton.addEventListener("click", () => {

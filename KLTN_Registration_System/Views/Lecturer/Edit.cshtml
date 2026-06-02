@@ -16,163 +16,159 @@
     int minStudents = Math.Max(1, activeRegistrationCount);
 }
 
-<div class="max-w-3xl mx-auto px-4 py-8">
+@section Styles {
+    <link rel="stylesheet" href="~/css/lecturer/edit.css" asp-append-version="true" />
+}
 
-    <div class="flex items-center gap-3 mb-6">
+<div class="lecturer-edit-page">
+
+    <div class="edit-heading">
         <a asp-action="ThesisManagement" asp-controller="Lecturer"
-           class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           class="edit-back-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
         </a>
         <div>
-            <h1 class="text-xl font-bold text-slate-800">Sửa đề tài</h1>
-            <p class="text-sm text-slate-500">Chỉnh sửa thông tin — đề tài sẽ cần Admin duyệt lại</p>
+            <h1>Sửa đề tài</h1>
+            <p>Chỉnh sửa thông tin - đề tài sẽ cần Admin duyệt lại</p>
         </div>
     </div>
 
     @if (TempData["Error"] != null)
     {
-        <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
-            ⚠️ @TempData["Error"]
+        <div class="edit-alert edit-alert-danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            @TempData["Error"]
         </div>
     }
 
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+    <div class="edit-card">
         <form asp-action="Edit" asp-controller="Lecturer" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
-            <div asp-validation-summary="ModelOnly" class="mb-4 text-sm text-red-600"></div>
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
 
-            <div class="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wide">Mã đề tài</div>
-                    <div class="mt-1 text-sm font-bold text-slate-800">@(Model.TopicCode ?? $"TOPIC-{Model.Id}")</div>
+            <div class="edit-stats-grid">
+                <div class="edit-stat-card edit-stat-code">
+                    <div class="edit-stat-label">Mã đề tài</div>
+                    <div class="edit-stat-value edit-stat-code-value">@(Model.TopicCode ?? $"TOPIC-{Model.Id}")</div>
                 </div>
-                <div class="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
-                    <div class="text-xs font-bold text-emerald-600 uppercase tracking-wide">Đã duyệt</div>
-                    <div class="mt-1 text-xl font-black text-emerald-700">@approvedCount</div>
+                <div class="edit-stat-card edit-stat-approved">
+                    <div class="edit-stat-label">Đã duyệt</div>
+                    <div class="edit-stat-value">@approvedCount</div>
                 </div>
-                <div class="rounded-xl bg-amber-50 border border-amber-100 p-4">
-                    <div class="text-xs font-bold text-amber-600 uppercase tracking-wide">Chờ duyệt</div>
-                    <div class="mt-1 text-xl font-black text-amber-700">@pendingCount</div>
+                <div class="edit-stat-card edit-stat-pending">
+                    <div class="edit-stat-label">Chờ duyệt</div>
+                    <div class="edit-stat-value">@pendingCount</div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-6">
+            <div class="edit-form-grid">
 
-                <div>
-                    <label asp-for="Title" class="block text-sm font-medium text-slate-700 mb-1">
-                        Tên đề tài <span class="text-red-500">*</span>
+                <div class="form-group">
+                    <label asp-for="Title">
+                        Tên đề tài <span>*</span>
                     </label>
                     <input asp-for="Title" required
-                           class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                    <span asp-validation-for="Title" class="text-red-500 text-xs mt-1"></span>
+                           class="form-control" />
+                    <span asp-validation-for="Title" class="field-validation"></span>
                 </div>
-                <div>
-                    <label asp-for="Description" class="block text-sm font-medium text-slate-700 mb-1">
-                        Mô tả đề tài <span class="text-red-500">*</span>
+                <div class="form-group">
+                    <label asp-for="Description">
+                        Mô tả đề tài <span>*</span>
                     </label>
                     <textarea asp-for="Description" rows="5" required
-                              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                     focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    <span asp-validation-for="Description" class="text-red-500 text-xs mt-1"></span>
+                              class="form-control"></textarea>
+                    <span asp-validation-for="Description" class="field-validation"></span>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Học kỳ hiện tại</label>
+                <div class="edit-two-cols">
+                    <div class="form-group">
+                        <label>Học kỳ hiện tại</label>
                         <input value="@activePeriodName" readonly
-                               class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                      bg-slate-50 text-slate-500 cursor-not-allowed" />
-                        <p class="mt-1 text-xs text-slate-400">Hệ thống tự gắn đề tài vào đợt đang mở, không sửa thủ công tại đây.</p>
+                               class="form-control form-control-readonly" />
+                        <p class="form-help">Hệ thống tự gắn đề tài vào đợt đang mở, không sửa thủ công tại đây.</p>
                     </div>
-                    <div>
-                        <label asp-for="MajorId" class="block text-sm font-medium text-slate-700 mb-1">Chuyên ngành</label>
+                    <div class="form-group">
+                        <label asp-for="MajorId">Chuyên ngành</label>
                         <select asp-for="MajorId" asp-items="ViewBag.MajorId"
-                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                       focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="form-control">
                             <option value="">-- Không chọn --</option>
                         </select>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label asp-for="Level" class="block text-sm font-medium text-slate-700 mb-1">Mức độ</label>
+                <div class="edit-two-cols">
+                    <div class="form-group">
+                        <label asp-for="Level">Mức độ</label>
                         <select asp-for="Level"
-                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                       focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="form-control">
                             <option value="Easy">Cơ bản</option>
                             <option value="Medium">Trung bình</option>
                             <option value="Hard">Nâng cao</option>
                         </select>
                     </div>
 
-                    <div>
-                        <label asp-for="MaxStudents" class="block text-sm font-medium text-slate-700 mb-1">
+                    <div class="form-group">
+                        <label asp-for="MaxStudents">
                             Số sinh viên tối đa
                         </label>
                         <input asp-for="MaxStudents" type="number" min="@minStudents" max="5"
-                               class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                      focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                               class="form-control" />
                         @if (activeRegistrationCount > 0)
                         {
-                            <p class="mt-1 text-xs text-slate-400">Không thể nhỏ hơn @activeRegistrationCount sinh viên đang đăng ký/chờ duyệt.</p>
+                            <p class="form-help">Không thể nhỏ hơn @activeRegistrationCount sinh viên đang đăng ký/chờ duyệt.</p>
                         }
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label asp-for="Category" class="block text-sm font-medium text-slate-700 mb-1">Phân loại</label>
+                <div class="edit-two-cols">
+                    <div class="form-group">
+                        <label asp-for="Category">Phân loại</label>
                         <select asp-for="Category"
-                                class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                       focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                class="form-control">
                             <option value="Ứng dụng">Ứng dụng</option>
                             <option value="Nghiên cứu">Nghiên cứu</option>
                             <option value="Phân tích">Phân tích</option>
                         </select>
                     </div>
 
-                    <div>
-                        <label asp-for="Deadline" class="block text-sm font-medium text-slate-700 mb-1">
+                    <div class="form-group">
+                        <label asp-for="Deadline">
                             Hạn đăng ký
                         </label>
                         <input asp-for="Deadline" type="datetime-local"
                                value="@Model.Deadline.ToString("yyyy-MM-ddTHH:mm")"
-                               class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                      focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                               class="form-control" />
                     </div>
                 </div>
-                <div>
-                    <label asp-for="Note" class="block text-sm font-medium text-slate-700 mb-1">Ghi chú</label>
+                <div class="form-group">
+                    <label asp-for="Note">Ghi chú</label>
                     <textarea asp-for="Note" rows="2"
-                              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm
-                                     focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              class="form-control"
                               placeholder="Yêu cầu đặc biệt, công nghệ cần có..."></textarea>
                 </div>
 
             </div>
 
-            <div class="mt-8 flex gap-3">
+            <div class="edit-actions">
                 <button type="submit"
-                        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl
-                               text-sm font-semibold transition-colors">
-                    💾 Lưu thay đổi
+                        class="btn-save">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    Lưu thay đổi
                 </button>
                 <a asp-action="ThesisManagement" asp-controller="Lecturer"
-                   class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl
-                          text-sm font-medium transition-colors">
+                   class="btn-cancel">
                     Hủy
                 </a>
             </div>
         </form>
     </div>
 
-    <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-        ⚠️ Sau khi sửa, đề tài sẽ chuyển về trạng thái <strong>Chờ duyệt</strong> và cần Admin phê duyệt lại trước khi sinh viên có thể đăng ký.
+    <div class="edit-alert edit-alert-warning edit-final-note">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        Sau khi sửa, đề tài sẽ chuyển về trạng thái <strong>Chờ duyệt</strong> và cần Admin phê duyệt lại trước khi sinh viên có thể đăng ký.
     </div>
 </div>
 

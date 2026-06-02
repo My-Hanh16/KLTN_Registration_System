@@ -1,6 +1,7 @@
 ﻿@{
     Layout = null;
     ViewData["Title"] = "Đăng nhập";
+    var successMessage = TempData["Success"] as string;
 }
 
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
@@ -71,14 +72,6 @@
         <div class="form-card">
             <div class="card-title">Đăng nhập</div>
             <div class="card-sub">Chào mừng trở lại với hệ thống KLTN</div>
-
-            @if (TempData["Success"] != null)
-            {
-                <div class="alert-success">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <span>@TempData["Success"]</span>
-                </div>
-            }
 
             @if (ViewData.ModelState.Values.Any(v => v.Errors.Count > 0)
                         && ViewData.ModelState["username"]?.Errors.Count == 0
@@ -200,5 +193,17 @@
     </div>
 </footer>
 
-<script src="~/js/account/login.js" asp-append-version="true"></script>
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div id="loginToast" class="login-toast" role="status" aria-live="polite">
+        <div class="login-toast-icon">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="login-toast-text">@successMessage</div>
+        <button type="button" class="login-toast-close" aria-label="Đóng thông báo">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+}
 
+<script src="~/js/account/login.js" asp-append-version="true"></script>

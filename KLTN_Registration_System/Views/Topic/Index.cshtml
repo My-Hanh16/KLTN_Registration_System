@@ -15,731 +15,19 @@
     string participationMessage = ViewBag.StudentParticipationMessage as string ?? "";
 }
 
-<style>
-    /* =========================
-       GLOBAL
-    ========================== */   
-
-    body {
-        background: #f8fafc;
-    }
-
-    /* =========================
-       TOPIC ITEM
-    ========================== */
-
-    .topic-item {
-        background: #fff;
-        border-radius: 14px;
-        padding: 20px 24px;
-        margin-bottom: 14px;
-        border: 1px solid #edf2f7;
-
-        transition: all 0.22s ease;
-
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 18px;
-    }
-
-    .topic-item:hover {
-        box-shadow: 0 6px 18px rgba(15,23,42,0.06);
-        transform: translateY(-1px);
-        border-color: #dbeafe;
-    }
-
-    /* =========================
-       FULL TOPIC
-    ========================== */
-
-    .topic-item.topic-full {
-        opacity: 0.58;
-        background-color: #f8fafc !important;
-        border-color: #e2e8f0;
-        filter: grayscale(0.35);
-    }
-
-    .topic-full h5 {
-        text-decoration: line-through;
-        color: #64748b !important;
-    }
-
-    .topic-full .badge-category,
-    .topic-full .badge-type,
-    .topic-full .text-primary,
-    .topic-full i,
-    .topic-full .text-success,
-    .topic-full .text-full,
-    .topic-full .meta-data {
-        background-color: #e2e8f0 !important;
-        color: #94a3b8 !important;
-        border-color: #cbd5e1 !important;
-    }
-
-    .topic-full .btn-register,
-    .topic-full .btn-primary {
-        pointer-events: none;
-    }
-
-    .topic-full .btn-full {
-        background: #cbd5e1 !important;
-        color: #94a3b8 !important;
-        border: none !important;
-    }
-
-    /* =========================
-       TOPIC INFO
-    ========================== */
-
-    .topic-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .topic-meta-top {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 6px;
-    }
-
-    .label-department {
-        font-size: 11px;
-        font-weight: 700;
-        color: #2b4eff;
-        letter-spacing: 0.35px;
-
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    /* =========================
-       TITLE
-    ========================== */
-
-    .topic-info h5 {
-        font-size: 16px;
-        font-weight: 700;
-        color: #1e293b;
-
-        margin: 6px 0 8px;
-        line-height: 1.45;
-
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-
-        overflow: hidden;
-    }
-
-    /* =========================
-       BADGES
-    ========================== */
-
-    .badge-category,
-    .badge-type {
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-
-        padding: 3px 8px 2px;
-
-        border-radius: 5px;
-        letter-spacing: 0.4px;
-        line-height: 1.2;
-
-        display: inline-flex;
-        align-items: center;
-    }
-
-    /* LEVEL */
-
-    .tag-basic {
-        background: #f0fff4;
-        color: #38a169;
-        border: 1px solid #c6f6d5;
-    }
-
-    .tag-medium {
-        background: #fffaf0;
-        color: #dd6b20;
-        border: 1px solid #fbd38d;
-    }
-
-    .tag-advanced {
-        background: #fff5f5;
-        color: #e53e3e;
-        border: 1px solid #fed7d7;
-    }
-
-    /* TYPE */
-
-    .tag-group {
-        background: #f5f3ff;
-        color: #7c3aed;
-        border: 1px solid #ddd6fe;
-    }
-
-    .tag-individual {
-        background: #eff6ff;
-        color: #2563eb;
-        border: 1px solid #dbeafe;
-    }
-
-    /* =========================
-       META
-    ========================== */
-
-    .meta-data {
-        display: flex;
-        align-items: center;
-        gap: 18px;
-
-        flex-wrap: wrap;
-
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 400;
-    }
-
-    .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .meta-item i {
-        font-size: 13px;
-        color: #94a3b8;
-        flex-shrink: 0;
-    }
-
-    .meta-item strong {
-        color: #1e293b;
-        font-weight: 600;
-    }
-
-    .text-full {
-        color: #e53e3e;
-        font-weight: 600;
-        font-size: 13px;
-    }
-
-    /* =========================
-       ACTIONS
-    ========================== */
-
-    .topic-actions {
-        display: flex;
-        align-items: center;
-        align-self: center;
-
-        gap: 12px;
-        flex-shrink: 0;
-    }
-
-    .link-detail {
-        font-size: 13.5px;
-        font-weight: 600;
-
-        color: #2b4eff;
-        text-decoration: none;
-
-        white-space: nowrap;
-        transition: color 0.2s;
-    }
-
-    .link-detail:hover {
-        color: #1a3bd1;
-        text-decoration: underline;
-    }
-
-    /* =========================
-       BUTTONS
-    ========================== */
-
-    .btn-register {
-        background: #2b4eff;
-        color: white;
-
-        border-radius: 8px;
-        padding: 8px 20px;
-
-        font-size: 13.5px;
-        font-weight: 600;
-
-        border: none;
-        white-space: nowrap;
-
-        transition: all 0.2s ease;
-
-        box-shadow: 0 2px 8px rgba(43,78,255,0.18);
-    }
-
-    .btn-register:hover {
-        background: #1a3bd1;
-        color: white;
-    }
-
-    .btn-register.btn-group-type {
-        background: #7c3aed;
-        box-shadow: 0 2px 8px rgba(124,58,237,0.22);
-    }
-
-    .btn-register.btn-group-type:hover {
-        background: #6d28d9;
-    }
-
-    .btn-full {
-        background: #edf2f7;
-        color: #a0aec0;
-
-        cursor: not-allowed;
-
-        border-radius: 8px;
-        padding: 8px 20px;
-
-        font-size: 13.5px;
-        font-weight: 600;
-
-        border: none;
-        white-space: nowrap;
-    }
-
-    .confirm-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 1200;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 18px;
-        background: rgba(15, 23, 42, .42);
-        backdrop-filter: blur(3px);
-    }
-
-    .confirm-overlay.open {
-        display: flex;
-    }
-
-    .confirm-box {
-        width: min(420px, 100%);
-        background: #fff;
-        border: 1px solid #e8edf4;
-        border-radius: 14px;
-        box-shadow: 0 20px 60px rgba(15, 23, 42, .22);
-        padding: 20px;
-    }
-
-    .confirm-head {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 14px;
-    }
-
-    .confirm-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #eef2ff;
-        color: #2b4eff;
-        flex-shrink: 0;
-    }
-
-    .confirm-title {
-        margin: 0 0 4px;
-        font-size: 16px;
-        font-weight: 800;
-        color: #0f172a;
-    }
-
-    .confirm-message {
-        margin: 0;
-        font-size: 13.5px;
-        line-height: 1.55;
-        color: #64748b;
-    }
-
-    .confirm-topic {
-        margin-top: 8px;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: #f8fafc;
-        border: 1px solid #e8edf4;
-        color: #1e293b;
-        font-size: 13px;
-        font-weight: 700;
-    }
-
-    .confirm-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 18px;
-    }
-
-    .confirm-btn {
-        flex: 1;
-        height: 40px;
-        border-radius: 10px;
-        border: 1.5px solid #e2e8f0;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all .15s;
-    }
-
-    .confirm-btn.cancel {
-        background: #f8fafc;
-        color: #64748b;
-    }
-
-    .confirm-btn.cancel:hover {
-        background: #f1f5f9;
-        color: #1e293b;
-    }
-
-    .confirm-btn.submit {
-        background: #2b4eff;
-        border-color: #2b4eff;
-        color: #fff;
-        box-shadow: 0 4px 12px rgba(43, 78, 255, .22);
-    }
-
-    .confirm-btn.submit:hover {
-        background: #1a3bd1;
-        border-color: #1a3bd1;
-    }
-
-    /* =========================
-       BTN PROPOSE
-    ========================== */
-
-    .btn-propose {
-        border-radius: 12px;
-
-        font-size: 13.5px;
-        font-weight: 700;
-
-        background-color: #2b4eff;
-        color: #fff;
-
-        border: none;
-
-        padding: 10px 20px;
-
-        box-shadow: 0 4px 14px rgba(43,78,255,0.28);
-
-        transition: background 0.2s;
-
-        white-space: nowrap;
-
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-
-        text-decoration: none;
-    }
-
-    .btn-propose:hover {
-        background-color: #1a3bd1;
-        color: #fff;
-    }
-
-    .btn-propose.disabled {
-        background: #e2e8f0;
-        box-shadow: none;
-        color: #64748b;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
-
-    /* =========================
-       FILTER BAR
-    ========================== */
-
-    /* =========================
-   FILTER BAR
-========================= */
-
-.filter-bar {
-    border-radius: 14px;
-    border: 1px solid #edf2f7;
-
-    padding: 12px 16px;
-    background: #fff;
-
-    box-shadow: 0 1px 2px rgba(15,23,42,0.03);
+@section Styles {
+    <link rel="stylesheet" href="~/css/topic/index.css" asp-append-version="true" />
 }
-
-/* ROW */
-.filter-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-/* LEFT SIDE */
-.filter-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    flex-wrap: nowrap;
-    overflow-x: auto;
-
-    flex: 1;
-}
-
-.filter-left::-webkit-scrollbar {
-    display: none;
-}
-
-/* SELECT */
-.filter-bar .form-select {
-    width: fit-content !important;
-    min-width: 170px !important;
-    max-width: 210px;
-
-    height: 38px;
-
-    flex: 0 0 auto !important;
-
-    border-radius: 10px;
-    border: none;
-
-    background: #f8fafc;
-
-    padding: 0 38px 0 14px;
-
-    font-size: 13px;
-    font-weight: 600;
-
-    color: #475569;
-
-    box-shadow: none;
-
-    white-space: nowrap;
-}
-
-/* =========================
-   FILTER BUTTON GROUP
-========================= */
-
-.level-filter {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    flex-wrap: nowrap;
-    flex: 0 0 auto;
-
-    background: #f8fafc;
-    border-radius: 10px;
-
-    padding: 4px 6px;
-}
-
-.level-filter::-webkit-scrollbar {
-    display: none;
-}
-
-.filter-label {
-    font-size: 11px;
-    font-weight: 700;
-
-    color: #94a3b8;
-
-    padding: 0 10px;
-
-    letter-spacing: 0.4px;
-
-    white-space: nowrap;
-}
-
-.filter-level-btn {
-    height: 34px;
-
-    padding: 0 14px;
-
-    border: none;
-    border-radius: 8px;
-
-    background: transparent;
-
-    font-size: 12.5px;
-    font-weight: 600;
-
-    color: #64748b;
-
-    transition: all 0.18s ease;
-
-    white-space: nowrap;
-
-    flex-shrink: 0;
-}
-
-.filter-level-btn.active {
-    background: #2b4eff;
-    color: #fff;
-
-    box-shadow: 0 2px 8px rgba(43,78,255,0.18);
-}
-
-.filter-level-btn:hover:not(.active) {
-    background: #eef2ff;
-    color: #2b4eff;
-}
-
-/* =========================
-   CLEAR FILTER
-========================= */
-
-.btn-clear-filter {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    font-size: 13px;
-    font-weight: 600;
-
-    color: #64748b;
-    text-decoration: none;
-
-    white-space: nowrap;
-
-    flex-shrink: 0;
-}
-
-.btn-clear-filter:hover {
-    color: #1e293b;
-}
-
-.topic-guard-alert {
-    align-items: flex-start;
-    background: #ffffff;
-    border: 1px solid #dbeafe;
-    border-left: 4px solid #2b4eff;
-    border-radius: 14px;
-    box-shadow: 0 1px 2px rgba(15,23,42,0.03);
-    color: #475569;
-    display: flex;
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 14px 16px;
-}
-
-.topic-guard-alert i {
-    align-items: center;
-    background: #eef2ff;
-    border-radius: 10px;
-    color: #2b4eff;
-    display: inline-flex;
-    flex-shrink: 0;
-    height: 34px;
-    justify-content: center;
-    width: 34px;
-}
-
-.topic-guard-alert strong {
-    color: #0f172a;
-    display: block;
-    font-size: 14px;
-    margin-bottom: 2px;
-}
-
-.topic-guard-alert span {
-    display: block;
-    font-size: 13px;
-    line-height: 1.45;
-}
-
-.topic-guard-alert a {
-    color: #2b4eff;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.topic-guard-alert a:hover {
-    text-decoration: underline;
-}
-
-.topic-empty-state {
-    align-items: center;
-    background: #ffffff;
-    border: 1px dashed #dbe4f0;
-    border-radius: 16px;
-    color: #64748b;
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-    min-height: 180px;
-    padding: 32px;
-    text-align: left;
-}
-
-.topic-empty-state i {
-    align-items: center;
-    background: #eef2ff;
-    border-radius: 16px;
-    color: #2b4eff;
-    display: flex;
-    flex-shrink: 0;
-    font-size: 24px;
-    height: 56px;
-    justify-content: center;
-    width: 56px;
-}
-
-.topic-empty-state h5 {
-    color: #1e293b;
-    font-size: 16px;
-    font-weight: 800;
-    margin: 0 0 4px;
-}
-
-.topic-empty-state p {
-    font-size: 13.5px;
-    margin: 0;
-}
-
-/* =========================
-   RESPONSIVE
-========================= */
-
-@@media (max-width: 768px) {
-
-    .filter-row {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .filter-left {
-        overflow-x: auto;
-    }
-
-    .btn-clear-filter {
-        margin-top: 8px;
-    }
-}
-</style>
 
 <!-- HEADER -->
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
-        <h2 style="font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 4px;">
+        <h2 class="topic-page-title">
             Danh sách đề tài KLTN
         </h2>
         <div class="d-flex align-items-center gap-2">
-            <span style="font-size: 17px; font-weight: 800; color: #2b4eff;">@ViewBag.TotalAvailable</span>
-            <span style="font-size: 13.5px; color: #64748b; font-weight: 500;">đề tài đang khả dụng cho học kỳ này</span>
+            <span class="topic-total-count">@ViewBag.TotalAvailable</span>
+            <span class="topic-total-label">đề tài đang khả dụng cho học kỳ này</span>
         </div>
     </div>
 </div>
@@ -747,13 +35,13 @@
 <!-- ALERTS -->
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success border-0 shadow-sm mb-3" style="font-size: 13.5px; border-radius: 12px;">
+    <div class="alert alert-success border-0 shadow-sm mb-3 topic-page-alert">
         <i class="fa-solid fa-circle-check me-2"></i>@TempData["Success"]
     </div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger border-0 shadow-sm mb-3" style="font-size: 13.5px; border-radius: 12px;">
+    <div class="alert alert-danger border-0 shadow-sm mb-3 topic-page-alert">
         <i class="fa-solid fa-circle-exclamation me-2"></i>@TempData["Error"]
     </div>
 }
@@ -851,19 +139,19 @@
            value="@Context.Request.Query["level"]" />
 
     <button type="button"
-            onclick="submitLevel('Easy')"
+            data-level-filter="Easy"
             class="filter-level-btn @(Context.Request.Query["level"] == "Easy" ? "active" : "")">
         Cơ bản
     </button>
 
     <button type="button"
-            onclick="submitLevel('Medium')"
+            data-level-filter="Medium"
             class="filter-level-btn @(Context.Request.Query["level"] == "Medium" ? "active" : "")">
         Trung bình
     </button>
 
     <button type="button"
-            onclick="submitLevel('Hard')"
+            data-level-filter="Hard"
             class="filter-level-btn @(Context.Request.Query["level"] == "Hard" ? "active" : "")">
         Nâng cao
     </button>
@@ -875,13 +163,13 @@
            value="@Context.Request.Query["type"]" />
 
     <button type="button"
-            onclick="submitType('individual')"
+            data-type-filter="individual"
             class="filter-level-btn @(Context.Request.Query["type"] == "individual" ? "active" : "")">
         Cá nhân
     </button>
 
     <button type="button"
-            onclick="submitType('group')"
+            data-type-filter="group"
             class="filter-level-btn @(Context.Request.Query["type"] == "group" ? "active" : "")">
         Đồ án nhóm
     </button>
@@ -1051,10 +339,15 @@
                     {
                         if (isGroupTopic)
                         {
-                            <a asp-action="RegisterGroup" asp-route-id="@item.Id"
-                               class="btn-register btn-group-type">
+                            <button type="button"
+                               class="btn-register btn-group-type js-open-group-register"
+                               data-topic-id="@item.Id"
+                               data-topic-title="@item.Title"
+                               data-max-students="@item.MaxStudents"
+                               data-current-members="@reserved"
+                               data-remaining-slots="@remainingSlots">
                                 <i class="fa-solid fa-users-plus"></i> Đăng ký nhóm
-                            </a>
+                            </button>
                         }
                         else
                         {
@@ -1098,6 +391,85 @@
     </div>
 }
 
+<div id="groupRegisterModal" class="group-overlay" aria-hidden="true">
+    <div class="group-modal" role="dialog" aria-modal="true" aria-labelledby="groupModalTitle">
+        <div class="group-modal-head">
+            <button type="button" class="group-modal-close js-close-group-modal" aria-label="Đóng">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="group-modal-badge">
+                <i class="fa-solid fa-users"></i>
+                Đồ án nhóm
+            </div>
+            <h3 id="groupModalTitle" class="group-modal-title">Đăng ký nhóm</h3>
+            <p class="group-modal-sub">Nhập thông tin thành viên cùng thực hiện. Trưởng nhóm là tài khoản hiện tại.</p>
+        </div>
+
+        <form asp-action="SubmitGroupRegistration" method="post" id="groupRegisterForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="topicId" id="groupTopicId" />
+            <input type="hidden" name="returnTo" value="Index" />
+
+            <div class="group-modal-body">
+                <div>
+                    <div class="group-rule-title">Quy định nhóm</div>
+                    <div class="group-rule-list">
+                        <div class="group-rule">
+                            <div class="group-rule-icon"><i class="fa-solid fa-user"></i></div>
+                            <div>
+                                <strong>Trưởng nhóm</strong>
+                                <span>Chính là tài khoản bạn đang đăng nhập.</span>
+                            </div>
+                        </div>
+                        <div class="group-rule">
+                            <div class="group-rule-icon"><i class="fa-solid fa-users"></i></div>
+                            <div>
+                                <strong>Số lượng tối đa</strong>
+                                <span id="groupRuleMax">Đề tài nhóm cần tối thiểu 2 sinh viên.</span>
+                            </div>
+                        </div>
+                        <div class="group-rule">
+                            <div class="group-rule-icon"><i class="fa-solid fa-chair"></i></div>
+                            <div>
+                                <strong>Chỗ còn lại</strong>
+                                <span id="groupRuleSlots">Đang kiểm tra số chỗ còn lại.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="group-note">
+                        <strong>Lưu ý:</strong> Sau khi gửi đăng ký, tất cả thành viên trong nhóm sẽ cùng nằm trong yêu cầu chờ giảng viên duyệt.
+                    </div>
+                </div>
+
+                <div>
+                    <div class="group-form-title">Thành viên nhóm</div>
+                    <div class="group-leader-card">
+                        <div class="group-avatar">SV</div>
+                        <div>
+                            <span>Trưởng nhóm</span>
+                            <strong>@(User.Identity?.Name ?? "Bạn") (Hiện tại)</strong>
+                        </div>
+                        <i class="fa-solid fa-circle-check ms-auto text-success"></i>
+                    </div>
+
+                    <div id="groupMemberFields"></div>
+                    <div id="groupClientError" class="group-client-error">
+                        Đề tài nhóm bắt buộc phải nhập ít nhất 1 thành viên khác.
+                    </div>
+
+                    <div class="group-modal-actions">
+                        <button type="button" class="group-btn cancel js-close-group-modal">Hủy bỏ</button>
+                        <button type="submit" class="group-btn submit">
+                            <i class="fa-solid fa-paper-plane me-1"></i>
+                            Xác nhận đăng ký nhóm
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="registerConfirm" class="confirm-overlay" aria-hidden="true">
     <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="registerConfirmTitle">
         <div class="confirm-head">
@@ -1118,68 +490,6 @@
 </div>
 
 @section Scripts {
-    <script>
-        let pendingRegisterForm = null;
-
-        function openRegisterConfirm(form) {
-            pendingRegisterForm = form;
-            const modal = document.getElementById('registerConfirm');
-            const topicBox = document.getElementById('registerConfirmTopic');
-            topicBox.textContent = form.dataset.topicTitle || 'Đề tài đã chọn';
-            modal.classList.add('open');
-            modal.setAttribute('aria-hidden', 'false');
-        }
-
-        function closeRegisterConfirm() {
-            const modal = document.getElementById('registerConfirm');
-            modal.classList.remove('open');
-            modal.setAttribute('aria-hidden', 'true');
-            pendingRegisterForm = null;
-        }
-
-        document.querySelectorAll('.topic-register-form').forEach(form => {
-            form.addEventListener('submit', event => {
-                if (form.dataset.confirmed === 'true') {
-                    return;
-                }
-
-                event.preventDefault();
-                openRegisterConfirm(form);
-            });
-        });
-
-        document.getElementById('cancelRegisterConfirm')?.addEventListener('click', closeRegisterConfirm);
-
-        document.getElementById('submitRegisterConfirm')?.addEventListener('click', () => {
-            if (!pendingRegisterForm) return;
-            pendingRegisterForm.dataset.confirmed = 'true';
-            pendingRegisterForm.submit();
-        });
-
-        document.getElementById('registerConfirm')?.addEventListener('click', event => {
-            if (event.target.id === 'registerConfirm') {
-                closeRegisterConfirm();
-            }
-        });
-
-        document.addEventListener('keydown', event => {
-            if (event.key === 'Escape') {
-                closeRegisterConfirm();
-            }
-        });
-
-        function submitLevel(val) {
-            const input = document.getElementById('levelInput');
-            input.value = (input.value === val) ? "" : val;
-            document.getElementById('filterForm').submit();
-        }
-
-        function submitType(val) {
-            const input = document.getElementById('typeInput');
-
-            input.value = (input.value === val) ? "" : val;
-
-            document.getElementById('filterForm').submit();
-        }
-    </script>
+    <script src="~/js/topic/index.js" asp-append-version="true"></script>
 }
+

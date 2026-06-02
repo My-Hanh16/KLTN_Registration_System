@@ -1,4 +1,4 @@
-﻿@model IEnumerable<KLTN_Registration_System.Models.Entities.Registration>
+@model IEnumerable<KLTN_Registration_System.Models.Entities.Registration>
 @{
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Dashboard Giảng viên";
@@ -21,72 +21,11 @@
     double resRate = total > 0 ? (100 - appRate) : 0;
 }
 
-<style>
-    .glass-effect {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-    }
+@section Styles {
+    <link rel="stylesheet" href="~/css/lecturer/index.css" asp-append-version="true" />
+}
 
-    .status-orb {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        display: inline-block;
-    }
-
-    .dashboard-alert {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        border-radius: 16px;
-        padding: 14px 16px;
-        margin-bottom: 18px;
-        font-size: 13px;
-        font-weight: 700;
-        border: 1px solid transparent;
-    }
-
-    .dashboard-alert.success {
-        background: #f0fdf4;
-        border-color: #bbf7d0;
-        color: #15803d;
-    }
-
-    .dashboard-alert.error {
-        background: #fff5f5;
-        border-color: #fecaca;
-        color: #dc2626;
-    }
-
-    .dashboard-alert.warning {
-        background: #fffbeb;
-        border-color: #fde68a;
-        color: #92400e;
-    }
-</style>
-<style>
-
-    .toast-show {
-        display: block !important;
-        animation: slideIn 0.3s ease;
-    }
-
-    @@keyframes slideIn {
-
-        from {
-            opacity: 0;
-            transform: translateX(50px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    }
-
-</style>
-
-<section class="mb-10 bg-gradient-to-br from-primary to-primary-container rounded-3xl p-8 text-on-primary flex justify-between items-center relative overflow-hidden shadow-xl">
+<section class="mb-10 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-8 text-white flex justify-between items-center relative overflow-hidden shadow-xl">
     <div class="z-10 relative">
         <h1 class="font-headline text-4xl font-extrabold mb-2">Chào buổi sáng, @ViewBag.LecturerName</h1>
         <p class="font-body opacity-90 max-w-lg">
@@ -98,10 +37,10 @@
         </div>
     </div>
     <div class="z-10 relative">
-        <button onclick="openCreateModal()"
+        <button type="button" class="js-open-create-modal bg-white text-primary font-bold px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-slate-50 transition-all shadow-lg active:scale-95 border-0 disabled:opacity-60 disabled:cursor-not-allowed"
                 disabled="@noMajorAssigned"
                 title="@(noMajorAssigned ? "Bạn cần được Admin phân công chuyên ngành trước khi tạo đề tài." : "Tạo đề tài mới")"
-                class="bg-surface-container-lowest text-primary font-bold px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-slate-50 transition-all shadow-lg active:scale-95 border-0 disabled:opacity-60 disabled:cursor-not-allowed">
+                >
 
             <span class="material-symbols-outlined">add</span>
 
@@ -110,14 +49,6 @@
     </div>
     <div class="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
 </section>
-
-@if (TempData["Success"] != null)
-{
-    <div class="dashboard-alert success">
-        <span class="material-symbols-outlined">check_circle</span>
-        <span>@TempData["Success"]</span>
-    </div>
-}
 
 @if (TempData["Error"] != null)
 {
@@ -200,7 +131,7 @@
                                     <span class="text-primary">@fillPercent%</span>
                                 </div>
                                 <div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                                    <div class="bg-primary h-full rounded-full" style="width: @fillPercent%"></div>
+                                    <div class="bg-primary h-full rounded-full topic-fill" data-fill-percent="@fillPercent"></div>
                                 </div>
                             </div>
                         </div>
@@ -238,7 +169,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-3">
-                                <form asp-action="Reject" asp-route-id="@item.Id" method="post" onsubmit="return confirm('Từ chối đăng ký này?')">
+                                <form asp-action="Reject" asp-route-id="@item.Id" method="post" class="js-confirm-submit" data-confirm-message="Từ chối đăng ký này?">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors">Từ chối</button>
                                 </form>
@@ -262,8 +193,8 @@
            - Ứng dụng (12.5%): Xám đậm (#475569 - Slate 600)
            - Nghiên cứu (87.5%): Xanh dương (#0284c7 - Sky 600) cho nổi bật
         *@
-                <div class="w-40 h-40 rounded-full flex items-center justify-center relative shadow-md"
-                     style="background: conic-gradient(#475569 0% @(appRate)%, #0284c7 @(appRate)% 100%);">
+                <div class="topic-donut w-40 h-40 rounded-full flex items-center justify-center relative shadow-md"
+                     data-app-rate="@appRate">
 
                     @* Lỗ Donut trắng ở giữa *@
                     <div class="w-[130px] h-[130px] bg-white rounded-full flex items-center justify-center shadow-inner">
@@ -367,37 +298,17 @@
 </div>
 <!-- CREATE TOPIC MODAL -->
 
-<div id="createModal"
-     style="
-        display:none;
-        position:fixed;
-        inset:0;
-        overflow-y:auto;
-        padding:20px;
-        background:rgba(0,0,0,0.5);
-        z-index:9999;
-        backdrop-filter:blur(4px);
-     ">
+<div id="createModal" class="create-modal" data-no-major-assigned="@(noMajorAssigned.ToString().ToLowerInvariant())">
 
-    <div style="
-        width:600px;
-        max-width:95%;
-        max-height:90vh;
-        overflow-y:auto;
-        background:white;
-        margin:30px auto;
-        padding:30px;
-        border-radius:24px;
-        box-shadow:0 20px 60px rgba(0,0,0,0.2);
-     ">
+    <div class="create-modal-panel">
 
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold">
                 Tạo đề tài mới
             </h2>
 
-            <button onclick="closeCreateModal()"
-                    class="border-0 bg-transparent text-2xl">
+            <button type="button"
+                    class="js-close-create-modal border-0 bg-transparent text-2xl">
                 ×
             </button>
         </div>
@@ -497,14 +408,14 @@
 
         <div class="flex justify-end gap-3 mt-8">
 
-            <button onclick="closeCreateModal()"
-                    class="px-5 py-3 rounded-xl bg-slate-100 font-semibold">
+            <button type="button"
+                    class="js-close-create-modal px-5 py-3 rounded-xl bg-slate-100 font-semibold">
                 Hủy
             </button>
 
-            <button onclick="createTopic()"
+            <button type="button" class="js-create-topic px-6 py-3 rounded-xl bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled="@noMajorAssigned"
-                    class="px-6 py-3 rounded-xl bg-primary text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                    >
                 Tạo đề tài
             </button>
 
@@ -521,128 +432,6 @@
         <span id="toastMessage">Thành công</span>
     </div>
 </div>
-<script>
-
-    function openCreateModal() {
-        if (@(noMajorAssigned.ToString().ToLowerInvariant())) {
-            showToast('Bạn chưa được Admin phân công chuyên ngành nên chưa thể tạo đề tài.', false);
-            return;
-        }
-
-        document.getElementById('createModal').style.display = 'block';
-    }
-
-    function closeCreateModal() {
-
-        document.getElementById('createModal').style.display = 'none';
-    }
-
-        async function createTopic() {
-
-        const title =
-            document.getElementById('topicTitle').value;
-
-        if (!title.trim()) {
-
-            showToast('Vui lòng nhập tên đề tài', false);
-
-            return;
-        }
-
-        const majorElement = document.getElementById('majorId');
-        const majorId = parseInt(majorElement?.value || '');
-
-        if (!majorId) {
-
-            showToast('Bạn chưa được phân công chuyên ngành để tạo đề tài.', false);
-
-            return;
-        }
-
-        const deadlineElement =
-            document.getElementById('deadline');
-
-        const topic = {
-
-            title: title,
-
-            description:
-                document.getElementById('topicDescription').value,
-
-            majorId: majorId,
-
-            deadline: deadlineElement && deadlineElement.value
-                ? deadlineElement.value
-                : undefined,
-
-            maxStudents: parseInt(
-                document.getElementById('maxMembers').value
-            ),
-
-            category:
-                document.getElementById('topicType').value
-        };
-
-        try {
-
-            const response = await fetch('/Lecturer/Create', {
-
-                method: 'POST',
-
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': document.querySelector('#createModal input[name="__RequestVerificationToken"]')?.value ?? ''
-                },
-
-                body: JSON.stringify(topic)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-
-                showToast(result.message, true);
-
-                closeCreateModal();
-
-                location.reload();
-            }
-            else {
-
-                showToast(result.message || 'Tạo đề tài thất bại', false);
-            }
-        }
-        catch (err) {
-
-            console.error(err);
-
-            showToast('Có lỗi xảy ra', false);
-        }
-    }
-        function showToast(message, isSuccess = true) {
-
-        const toast = document.getElementById('toast');
-        const text = document.getElementById('toastMessage');
-
-        text.innerText = message;
-
-        if (isSuccess) {
-
-            toast.classList.remove('bg-red-500');
-            toast.classList.add('bg-green-500');
-        }
-        else {
-
-            toast.classList.remove('bg-green-500');
-            toast.classList.add('bg-red-500');
-        }
-
-        toast.classList.add('toast-show');
-
-        setTimeout(() => {
-
-            toast.classList.remove('toast-show');
-
-        }, 3000);
-    }
-</script>
+@section Scripts {
+    <script src="~/js/lecturer/index.js" asp-append-version="true"></script>
+}

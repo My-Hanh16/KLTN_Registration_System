@@ -10,496 +10,25 @@
 }
 
 @section Styles {
-    <style>
-        /* ══════════════════════════════════════
-               PAGE HEADER
-            ══════════════════════════════════════ */
-        .page-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .page-sub {
-            font-size: 13.5px;
-            color: #94a3b8;
-            margin: 0;
-        }
-
-        /* ══════════════════════════════════════
-               STATS GRID — 6 cards
-            ══════════════════════════════════════ */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 12px;
-            margin-bottom: 22px;
-        }
-
-        .stat-card {
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            padding: 16px 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.03);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .stat-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            flex-shrink: 0;
-        }
-
-            .stat-icon.blue {
-                background: #eff6ff;
-                color: #2563eb;
-            }
-
-            .stat-icon.green {
-                background: #f0fdf4;
-                color: #16a34a;
-            }
-
-            .stat-icon.amber {
-                background: #fffbeb;
-                color: #d97706;
-            }
-
-            .stat-icon.purple {
-                background: #f5f3ff;
-                color: #7c3aed;
-            }
-
-            .stat-icon.red {
-                background: #fff5f5;
-                color: #dc2626;
-            }
-
-            .stat-icon.teal {
-                background: #f0fdfa;
-                color: #0d9488;
-            }
-
-        .stat-label {
-            font-size: 12px;
-            color: #64748b;
-            font-weight: 500;
-            margin-bottom: 3px;
-        }
-
-        .stat-number {
-            font-size: 22px;
-            font-weight: 800;
-            color: #1e293b;
-            line-height: 1;
-        }
-
-        /* ══════════════════════════════════════
-               HEADER BUTTONS
-            ══════════════════════════════════════ */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            height: 38px;
-            padding: 0 16px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            text-decoration: none;
-            white-space: nowrap;
-            transition: all .15s;
-        }
-
-        .btn-primary {
-            background: #2563eb;
-            color: #fff;
-            box-shadow: 0 3px 10px rgba(37,99,235,.25);
-        }
-
-            .btn-primary:hover {
-                background: #1d4ed8;
-                color: #fff;
-            }
-
-        .btn-ghost {
-            background: #f8fafc;
-            color: #64748b;
-            border: 1.5px solid #e2e8f0;
-        }
-
-            .btn-ghost:hover {
-                background: #f1f5f9;
-                color: #1e293b;
-            }
-
-        .btn-green {
-            background: #f0fdf4;
-            color: #16a34a;
-            border: 1.5px solid #bbf7d0;
-        }
-
-            .btn-green:hover {
-                background: #16a34a;
-                color: #fff;
-            }
-
-        /* ══════════════════════════════════════
-               TOPIC CARD
-            ══════════════════════════════════════ */
-        .topic-list {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .topic-card {
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.03);
-            overflow: hidden;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-            .topic-card:hover {
-                border-color: #c7d2fe;
-                box-shadow: 0 4px 16px rgba(0,0,0,.06);
-            }
-
-        /* Card header */
-        .topic-head {
-            padding: 20px 24px;
-            border-bottom: 1px solid #f1f5f9;
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 16px;
-        }
-
-        .topic-title {
-            font-size: 16px;
-            font-weight: 800;
-            color: #1e293b;
-            margin-bottom: 8px;
-            line-height: 1.35;
-        }
-
-        .topic-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            align-items: center;
-            margin-bottom: 14px;
-        }
-
-        .topic-meta-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 12px;
-            color: #64748b;
-            font-weight: 500;
-        }
-
-            .topic-meta-item i {
-                font-size: 11px;
-                color: #94a3b8;
-            }
-
-        .meta-sep {
-            color: #cbd5e1;
-            font-size: 10px;
-        }
-
-        .topic-code-badge {
-            font-size: 11px;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            background: #f1f5f9;
-            color: #475569;
-            border-radius: 5px;
-            padding: 2px 8px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .pending-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            font-weight: 700;
-            background: #fffbeb;
-            color: #d97706;
-            border: 1px solid #fde68a;
-            border-radius: 99px;
-            padding: 2px 9px;
-        }
-
-        /* Status badge */
-        .approved-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .4px;
-            padding: 5px 12px;
-            border-radius: 99px;
-            background: #dcfce7;
-            color: #15803d;
-            flex-shrink: 0;
-        }
-
-        /* Action buttons */
-        .topic-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .ta-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 13px;
-            border-radius: 9px;
-            font-size: 12.5px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            border: 1.5px solid;
-            text-decoration: none;
-            transition: all .15s;
-            white-space: nowrap;
-        }
-
-            .ta-btn.primary {
-                background: #eff6ff;
-                color: #2563eb;
-                border-color: #bfdbfe;
-            }
-
-                .ta-btn.primary:hover {
-                    background: #2563eb;
-                    color: #fff;
-                }
-
-            .ta-btn.default {
-                background: #f8fafc;
-                color: #64748b;
-                border-color: #e2e8f0;
-            }
-
-                .ta-btn.default:hover {
-                    background: #f1f5f9;
-                    color: #1e293b;
-                }
-
-            .ta-btn.export {
-                background: #fff7ed;
-                color: #c2410c;
-                border-color: #fed7aa;
-            }
-
-                .ta-btn.export:hover {
-                    background: #ea580c;
-                    color: #fff;
-                }
-
-            .ta-btn.chat {
-                background: #f0fdf4;
-                color: #16a34a;
-                border-color: #bbf7d0;
-            }
-
-                .ta-btn.chat:hover {
-                    background: #16a34a;
-                    color: #fff;
-                }
-
-        /* ══════════════════════════════════════
-               STUDENT GRID
-            ══════════════════════════════════════ */
-        .student-grid {
-            padding: 16px 24px 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 10px;
-        }
-
-        .student-card {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 12px 14px;
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-            border-radius: 11px;
-            transition: background .12s, border-color .12s;
-        }
-
-            .student-card:hover {
-                background: #fff;
-                border-color: #e0e7ff;
-            }
-
-        .s-avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 14px;
-            font-weight: 800;
-            flex-shrink: 0;
-        }
-
-        .s-name {
-            font-size: 13px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 2px;
-        }
-
-        .s-code {
-            font-size: 11px;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            color: #64748b;
-            margin-bottom: 5px;
-        }
-
-        .s-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .4px;
-            padding: 3px 9px;
-            border-radius: 99px;
-        }
-
-            .s-status.done {
-                background: #dcfce7;
-                color: #15803d;
-            }
-
-            .s-status.ongoing {
-                background: #eef2ff;
-                color: #4338ca;
-            }
-
-        /* No students */
-        .no-students {
-            padding: 24px;
-            text-align: center;
-            color: #94a3b8;
-            font-size: 13px;
-            background: #f8fafc;
-            margin: 0 24px 20px;
-            border-radius: 10px;
-            border: 1px dashed #e2e8f0;
-        }
-
-            .no-students i {
-                font-size: 22px;
-                display: block;
-                margin-bottom: 8px;
-                opacity: .35;
-            }
-
-        /* ══════════════════════════════════════
-               EMPTY STATE
-            ══════════════════════════════════════ */
-        .empty-state {
-            text-align: center;
-            padding: 64px 24px;
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            color: #94a3b8;
-        }
-
-            .empty-state i {
-                font-size: 36px;
-                display: block;
-                margin-bottom: 14px;
-                opacity: .3;
-            }
-
-            .empty-state h3 {
-                font-size: 15px;
-                font-weight: 700;
-                color: #475569;
-                margin-bottom: 6px;
-            }
-
-            .empty-state p {
-                font-size: 13px;
-                margin: 0;
-            }
-
-        /* Progress bar mini */
-        .slot-bar-wrap {
-            margin-top: 6px;
-        }
-
-        .slot-bar {
-            height: 4px;
-            border-radius: 99px;
-            background: #e2e8f0;
-            overflow: hidden;
-        }
-
-        .slot-fill {
-            height: 100%;
-            border-radius: 99px;
-            background: #2563eb;
-        }
-
-        .slot-text {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 3px;
-        }
-    </style>
+    <link rel="stylesheet" href="~/css/lecturer/guided-topics.css" asp-append-version="true" />
 }
 
 <!-- ════════════════════════════════
      PAGE HEADER
 ════════════════════════════════ -->
-<div class="d-flex justify-content-between align-items-start mb-4 gap-3" style="flex-wrap:wrap;">
+<div class="guided-page-header">
     <div>
         <h2 class="page-title">Đề tài hướng dẫn</h2>
         <p class="page-sub">
             Các đề tài Admin đã duyệt và sinh viên đang do bạn hướng dẫn
             @if (!string.IsNullOrEmpty(selectedPeriodName))
             {
-                <span>— đợt <strong style="color:#1e293b;">@selectedPeriodName</strong></span>
+                <span>— đợt <strong class="period-name">@selectedPeriodName</strong></span>
             }
         </p>
     </div>
 
-    <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+    <div class="guided-header-actions">
         <a asp-controller="Lecturer" asp-action="ExportRegistrations" class="btn btn-green">
             <i class="fa-solid fa-file-arrow-down"></i> Xuất SV hướng dẫn
         </a>
@@ -576,6 +105,7 @@
         <p>Chưa có đề tài nào được Admin duyệt trong học kỳ hiện tại.</p>
     </div>
 }
+
 else
 {
     <div class="topic-list">
@@ -594,7 +124,7 @@ else
             <div class="topic-card">
                 <!-- HEADER -->
                 <div class="topic-head">
-                    <div style="flex:1;min-width:0;">
+                    <div class="topic-main">
                         <div class="topic-title">@topic.Title</div>
 
                         <div class="topic-meta">
@@ -616,7 +146,7 @@ else
                             {
                                 <span class="meta-sep">·</span>
                                 <span class="pending-chip">
-                                    <i class="fa-solid fa-hourglass-half" style="font-size:9px;"></i>
+                                    <i class="fa-solid fa-hourglass-half icon-9"></i>
                                     @pendingCount chờ duyệt
                                 </span>
                             }
@@ -625,13 +155,13 @@ else
                         <!-- Slot progress bar -->
                         <div class="slot-bar-wrap">
                             <div class="slot-bar">
-                                <div class="slot-fill" style="width:@slotPct%;"></div>
+                                <div class="slot-fill" data-slot-pct="@slotPct"></div>
                             </div>
                             <div class="slot-text">@slotPct% slot đã sử dụng</div>
                         </div>
 
                         <!-- Actions -->
-                        <div class="topic-actions" style="margin-top:14px;">
+                        <div class="topic-actions">
                             <a asp-controller="Lecturer" asp-action="TopicRegistrations"
                                asp-route-id="@topic.Id" class="ta-btn primary">
                                 <i class="fa-solid fa-users"></i> Danh sách đăng ký
@@ -655,7 +185,7 @@ else
 
                     <!-- Approved badge -->
                     <span class="approved-badge">
-                        <i class="fa-solid fa-circle-check" style="font-size:10px;"></i>
+                        <i class="fa-solid fa-circle-check icon-10"></i>
                         Admin đã duyệt
                     </span>
                 </div>
@@ -678,20 +208,20 @@ else
 
                             <div class="student-card">
                                 <div class="s-avatar">@initials</div>
-                                <div style="min-width:0;">
+                                <div class="student-info">
                                     <div class="s-name">@displayName</div>
                                     <div class="s-code">@(student.UserCode ?? student.Email)</div>
                                     @if (student.HasCompletedThesis)
                                     {
                                         <span class="s-status done">
-                                            <i class="fa-solid fa-check" style="font-size:8px;"></i>
+                                            <i class="fa-solid fa-check icon-8"></i>
                                             Hoàn thành
                                         </span>
                                     }
                                     else
                                     {
                                         <span class="s-status ongoing">
-                                            <i class="fa-regular fa-clock" style="font-size:8px;"></i>
+                                            <i class="fa-regular fa-clock icon-8"></i>
                                             Đang hướng dẫn
                                         </span>
                                     }
@@ -710,4 +240,8 @@ else
             </div>
         }
     </div>
+}
+
+@section Scripts {
+    <script src="~/js/lecturer/guided-topics.js" asp-append-version="true"></script>
 }

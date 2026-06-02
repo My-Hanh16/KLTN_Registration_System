@@ -7,6 +7,8 @@
     var monthCounts  = ViewBag.MonthCounts  as IEnumerable<int?>    ?? Enumerable.Empty<int?>();
     var majorLabels  = ViewBag.MajorLabels  as IEnumerable<string>  ?? Enumerable.Empty<string>();
     var majorCounts  = ViewBag.MajorCounts  as IEnumerable<int>     ?? Enumerable.Empty<int>();
+    var topicStatusLabels = ViewBag.TopicStatusLabels as IEnumerable<string> ?? new[] { "Đã duyệt", "Chờ duyệt", "Từ chối/khác" };
+    var topicStatusCounts = ViewBag.TopicStatusCounts as IEnumerable<int> ?? Enumerable.Empty<int>();
 
     int totalStudents     = ViewBag.TotalStudents  ?? 0;
     int approvedCount     = ViewBag.ApprovedCount  ?? 0;
@@ -14,6 +16,8 @@
     int totalLecturers    = ViewBag.TotalLecturers ?? 0;
     int approvedTopics    = ViewBag.ApprovedTopics ?? 0;
     int pendingTopics     = ViewBag.PendingTopics  ?? 0;
+    int rejectedTopics    = ViewBag.RejectedTopics ?? 0;
+    int otherUnapprovedTopics = ViewBag.OtherUnapprovedTopics ?? 0;
     int registeredStudents = ViewBag.RegisteredStudents ?? 0;
     int approvedStudents = ViewBag.ApprovedStudents ?? 0;
     int unregisteredStudents = ViewBag.UnregisteredStudents ?? Math.Max(0, totalStudents - registeredStudents);
@@ -28,369 +32,7 @@
 }
 
 @section Styles {
-<style>
-    /* ══════════════════════════════════════
-       HEADER
-    ══════════════════════════════════════ */
-    .page-title {
-        font-size: 20px;
-        font-weight: 800;
-        color: #1e293b;
-        margin-bottom: 4px;
-    }
-
-    .page-sub {
-        font-size: 13.5px;
-        color: #94a3b8;
-        margin: 0;
-    }
-
-    /* Filter + export row */
-    .header-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .filter-select-inline {
-        font-size: 13px;
-        font-weight: 600;
-        border: 1.5px solid #e8edf4;
-        border-radius: 10px;
-        padding: 7px 12px;
-        background: #f8fafc;
-        color: #475569;
-        outline: none;
-        cursor: pointer;
-        transition: border-color .15s;
-    }
-
-    .filter-select-inline:focus {
-        border-color: #4f46e5;
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(79,70,229,.08);
-    }
-
-    .btn-export {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        font-weight: 700;
-        padding: 8px 18px;
-        border-radius: 10px;
-        border: 1.5px solid #c7d2fe;
-        background: #eef2ff;
-        color: #4f46e5;
-        text-decoration: none;
-        white-space: nowrap;
-        transition: all .15s;
-        cursor: pointer;
-    }
-
-    .btn-export:hover {
-        background: #4f46e5;
-        border-color: #4f46e5;
-        color: #fff;
-    }
-
-    /* ══════════════════════════════════════
-       STATS GRID
-    ══════════════════════════════════════ */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 14px;
-        margin-bottom: 20px;
-    }
-
-    @@media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-    @@media (max-width: 600px)  { .stats-grid { grid-template-columns: 1fr; } }
-
-    .stat-card {
-        background: #fff;
-        border: 1px solid #e8edf4;
-        border-radius: 14px;
-        padding: 18px 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        transition: box-shadow .2s;
-    }
-
-    .stat-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.07); }
-
-    .stat-label {
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        color: #94a3b8;
-        margin-bottom: 6px;
-    }
-
-    .stat-number {
-        font-size: 26px;
-        font-weight: 800;
-        color: #1e293b;
-        line-height: 1.1;
-        margin-bottom: 8px;
-    }
-
-    .stat-meta {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 11.5px;
-        font-weight: 600;
-    }
-
-    .stat-meta i { font-size: 11px; }
-    .stat-meta.blue   { color: #2563eb; }
-    .stat-meta.green  { color: #16a34a; }
-    .stat-meta.orange { color: #ea580c; }
-
-    /* Progress bar trong stat card */
-    .stat-progress {
-        height: 4px;
-        border-radius: 99px;
-        background: #f1f5f9;
-        overflow: hidden;
-        margin-top: 8px;
-    }
-
-    .stat-progress-fill {
-        height: 100%;
-        border-radius: 99px;
-        background: #4f46e5;
-        transition: width .6s ease;
-    }
-
-    .chart-empty {
-        height: 100%;
-        min-height: 180px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        color: #94a3b8;
-        font-size: 13px;
-        font-weight: 700;
-        border: 1px dashed #cbd5e1;
-        border-radius: 14px;
-        background: #f8fafc;
-    }
-
-    /* ══════════════════════════════════════
-       CHART GRID
-    ══════════════════════════════════════ */
-    .chart-row-top {
-        display: grid;
-        grid-template-columns: 1fr 300px;
-        gap: 16px;
-        margin-bottom: 16px;
-    }
-
-    .chart-row-bottom {
-        display: grid;
-        grid-template-columns: 1fr 220px;
-        gap: 16px;
-    }
-
-    @@media (max-width: 1024px) {
-        .chart-row-top    { grid-template-columns: 1fr; }
-        .chart-row-bottom { grid-template-columns: 1fr; }
-    }
-
-    /* Chart card */
-    .chart-card {
-        background: #fff;
-        border: 1px solid #e8edf4;
-        border-radius: 14px;
-        padding: 20px 22px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    }
-
-    .chart-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 2px;
-    }
-
-    .chart-sub {
-        font-size: 12px;
-        color: #94a3b8;
-        margin-bottom: 16px;
-    }
-
-    .chart-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 16px;
-    }
-
-    /* Realtime badge */
-    .badge-realtime {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 10px;
-        font-weight: 700;
-        background: #eff6ff;
-        color: #2563eb;
-        border-radius: 99px;
-        padding: 3px 10px;
-        letter-spacing: 0.3px;
-    }
-
-    .badge-realtime::before {
-        content: '';
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #2563eb;
-        animation: pulse-dot 1.5s infinite;
-    }
-
-    @@keyframes pulse-dot {
-        0%, 100% { opacity: 1; }
-        50%       { opacity: 0.3; }
-    }
-
-    /* Chart canvas wrapper */
-    .canvas-wrap { position: relative; }
-    .canvas-wrap-line {
-        height: 300px;
-        padding: 14px 12px 6px;
-        border-radius: 16px;
-        background:
-            linear-gradient(180deg, rgba(79,70,229,0.045), rgba(255,255,255,0) 58%),
-            repeating-linear-gradient(
-                to right,
-                rgba(148,163,184,0.06) 0,
-                rgba(148,163,184,0.06) 1px,
-                transparent 1px,
-                transparent 56px
-            );
-    }
-    .canvas-wrap-pie  { height: 220px; display: flex; align-items: center; justify-content: center; }
-    .canvas-wrap-bar  { height: 300px; }
-
-    .line-chart-summary {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: -4px 0 14px;
-    }
-
-    .line-chart-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #f8fafc;
-        border: 1px solid #edf2f7;
-        color: #64748b;
-        font-size: 11.5px;
-        font-weight: 700;
-    }
-
-    .line-chart-pill strong {
-        color: #1e293b;
-        font-size: 12px;
-    }
-
-    .line-chart-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #4f46e5;
-        box-shadow: 0 0 0 4px rgba(79,70,229,0.12);
-    }
-
-    /* Pie legend */
-    .pie-legend {
-        margin-top: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .pie-legend-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: #f8fafc;
-        border: 1px solid #f1f5f9;
-        border-radius: 9px;
-        padding: 8px 12px;
-        font-size: 12.5px;
-    }
-
-    .pie-legend-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-
-    .pie-legend-label {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        color: #475569;
-        font-weight: 500;
-    }
-
-    .pie-legend-val {
-        font-weight: 700;
-        color: #1e293b;
-        font-size: 13px;
-    }
-
-    /* ══════════════════════════════════════
-       LECTURER CARD
-    ══════════════════════════════════════ */
-    .lecturer-card {
-        background: #fff;
-        border: 1px solid #e8edf4;
-        border-radius: 14px;
-        padding: 20px 22px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-
-    .lecturer-number {
-        font-size: 36px;       /* Fix: text-5xl (~48px) → 36px */
-        font-weight: 800;
-        color: #1e293b;
-        line-height: 1.1;
-        margin: 10px 0 6px;
-    }
-
-    .lecturer-sub {
-        font-size: 12.5px;
-        color: #94a3b8;
-        line-height: 1.5;
-    }
-
-    .lecturer-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        background: #eef2ff;
-        color: #4f46e5;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        margin-top: 20px;
-    }
-</style>
+    <link rel="stylesheet" href="~/css/admin/statistics.css" asp-append-version="true" />
 }
 
 <!-- PAGE HEADER -->
@@ -404,8 +46,7 @@
     <div class="header-actions">
         <form method="get" asp-action="Statistics" asp-controller="Admin"
               id="filterForm" class="d-flex gap-2">
-            <select name="semester" class="filter-select-inline"
-                    onchange="document.getElementById('filterForm').submit()">
+            <select name="semester" class="filter-select-inline js-auto-submit">
                 @foreach (var option in semesterOptions)
                 {
                     <option value="@option" selected="@(curSemester == option)">
@@ -413,8 +54,7 @@
                     </option>
                 }
             </select>
-            <select name="year" class="filter-select-inline"
-                    onchange="document.getElementById('filterForm').submit()">
+            <select name="year" class="filter-select-inline js-auto-submit">
                 @foreach (var option in yearOptions)
                 {
                     <option value="@option" selected="@(curYear == option)">@option</option>
@@ -470,7 +110,7 @@
             @approvedStudents sinh viên đã được duyệt
         </div>
         <div class="stat-progress">
-            <div class="stat-progress-fill" style="width: @regRate%"></div>
+            <div class="stat-progress-fill" data-progress="@regRate"></div>
         </div>
     </div>
 
@@ -515,14 +155,14 @@
         <div class="pie-legend">
             <div class="pie-legend-item">
                 <div class="pie-legend-label">
-                    <div class="pie-legend-dot" style="background:#4f46e5;"></div>
+                    <div class="pie-legend-dot pie-legend-dot--primary"></div>
                     Đã đăng ký
                 </div>
                 <span class="pie-legend-val">@registeredStudents</span>
             </div>
             <div class="pie-legend-item">
                 <div class="pie-legend-label">
-                    <div class="pie-legend-dot" style="background:#e2e8f0;"></div>
+                    <div class="pie-legend-dot pie-legend-dot--gray"></div>
                     Chưa đăng ký
                 </div>
                 <span class="pie-legend-val">@unregisteredStudents</span>
@@ -544,6 +184,38 @@
         </div>
     </div>
 
+    <!-- Topic status chart -->
+    <div class="chart-card">
+        <div class="chart-title">Trạng thái đề tài</div>
+        <div class="chart-sub">Đề tài đã duyệt, chờ duyệt và chưa đạt</div>
+        <div class="canvas-wrap canvas-wrap-topic">
+            <canvas id="topicStatusChart"></canvas>
+        </div>
+        <div class="pie-legend">
+            <div class="pie-legend-item">
+                <div class="pie-legend-label">
+                    <div class="pie-legend-dot pie-legend-dot--success"></div>
+                    Đã duyệt
+                </div>
+                <span class="pie-legend-val">@approvedTopics</span>
+            </div>
+            <div class="pie-legend-item">
+                <div class="pie-legend-label">
+                    <div class="pie-legend-dot pie-legend-dot--warning"></div>
+                    Chờ duyệt
+                </div>
+                <span class="pie-legend-val">@pendingTopics</span>
+            </div>
+            <div class="pie-legend-item">
+                <div class="pie-legend-label">
+                    <div class="pie-legend-dot pie-legend-dot--danger"></div>
+                    Từ chối/khác
+                </div>
+                <span class="pie-legend-val">@(rejectedTopics + otherUnapprovedTopics)</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Lecturer card -->
     <div class="lecturer-card">
         <div>
@@ -559,164 +231,19 @@
 </div>
 
 @section Scripts {
-<script>
-    if (typeof Chart === 'undefined') {
-        document.querySelectorAll('.canvas-wrap').forEach(el => {
-            el.innerHTML = '<div class="chart-empty">Không tải được thư viện biểu đồ. Vui lòng tải lại trang.</div>';
-        });
-    } else {
-    // Dùng biến Razor đã null-safe từ đầu file
-
-    const CHART_PRIMARY = '#4f46e5';
-    const CHART_LIGHT   = 'rgba(79,70,229,0.1)';
-    const CHART_GRAY    = '#e2e8f0';
-
-    const tooltipDefaults = {
-        backgroundColor: '#1e293b',
-        padding: 12,
-        titleFont: { size: 13, family: 'Inter' },
-        bodyFont:  { size: 12, family: 'Inter' },
-        cornerRadius: 10,
-        displayColors: false,
-    };
-
-    // ── PIE CHART ──
-    new Chart(document.getElementById('pieChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Đã đăng ký', 'Chưa đăng ký'],
-            datasets: [{
-                data: [@registeredStudents, @unregisteredStudents],
-                backgroundColor: [CHART_PRIMARY, CHART_GRAY],
-                borderWidth: 0,
-                hoverOffset: 6
-            }]
-        },
-        options: {
-            cutout: '72%',
-            maintainAspectRatio: false,
-            plugins: {
-                legend:  { display: false },
-                tooltip: { ...tooltipDefaults }
-            }
-        }
-    });
-
-    // ── LINE CHART ──
-    const lineCanvas = document.getElementById('lineChart');
-    const lineCtx = lineCanvas.getContext('2d');
-    const lineGradient = lineCtx.createLinearGradient(0, 0, 0, 300);
-    lineGradient.addColorStop(0, 'rgba(79,70,229,0.28)');
-    lineGradient.addColorStop(0.45, 'rgba(99,102,241,0.10)');
-    lineGradient.addColorStop(1, 'rgba(255,255,255,0)');
-    const lineData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthCounts));
-
-    new Chart(lineCanvas, {
-        type: 'line',
-        data: {
-            labels:   @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthLabels)),
-            datasets: [{
-                label: 'Sinh viên đã đăng ký',
-                data:  lineData,
-                borderColor:     CHART_PRIMARY,
-                backgroundColor: lineGradient,
-                fill: true,
-                tension: 0.38,
-                cubicInterpolationMode: 'monotone',
-                spanGaps: false,
-                borderWidth: 3,
-                pointBackgroundColor: '#fff',
-                pointBorderColor:     '#fff',
-                pointHoverBackgroundColor: CHART_PRIMARY,
-                pointHoverBorderColor: '#fff',
-                pointBorderWidth: 0,
-                pointHoverBorderWidth: 3,
-                pointRadius: (ctx) => ctx.raw == null ? 0 : 3,
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            animation: { duration: 900, easing: 'easeOutQuart' },
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
-            plugins: {
-                legend:  { display: false },
-                tooltip: {
-                    ...tooltipDefaults,
-                    callbacks: {
-                        title: (items) => `Ngày ${items[0].label}`,
-                        label: (item) => item.raw == null
-                            ? 'Chưa tới ngày này'
-                            : `${item.raw} sinh viên đã đăng ký`
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    suggestedMax: Math.max(1, ...lineData.filter(v => v !== null)) + 1,
-                    border: { display: false },
-                    ticks: {
-                        precision: 0,
-                        color: '#94a3b8',
-                        font: { size: 11, weight: 700 },
-                        padding: 8
-                    },
-                    grid: {
-                        color: 'rgba(148,163,184,0.14)',
-                        drawTicks: false
-                    }
-                },
-                x: {
-                    border: { display: false },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 11, weight: 700 },
-                        maxRotation: 0,
-                        autoSkip: true,
-                        maxTicksLimit: 8
-                    },
-                    grid: { display: false }
-                }
-            }
-        }
-    });
-
-    // ── BAR CHART ──
-    const barCtx  = document.getElementById('majorChart');
-    const barGrad = barCtx.getContext('2d').createLinearGradient(0, 0, 0, 300);
-    barGrad.addColorStop(0, '#6366f1');
-    barGrad.addColorStop(1, '#4f46e5');
-
-    new Chart(barCtx, {
-        type: 'bar',
-        data: {
-            labels:   @Html.Raw(System.Text.Json.JsonSerializer.Serialize(majorLabels)),
-            datasets: [{
-                label: 'Số đề tài',
-                data:  @Html.Raw(System.Text.Json.JsonSerializer.Serialize(majorCounts)),
-                backgroundColor: barGrad,
-                borderRadius: 8,
-                borderSkipped: false,
-                barThickness: 36
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            animation: { duration: 1200, easing: 'easeOutQuart' },
-            plugins: {
-                legend:  { display: false },
-                tooltip: { ...tooltipDefaults }
-            },
-            scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } },
-                x: { grid: { display: false } }
-            }
-        }
-    });
-    }
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="statisticsChartData" type="application/json">
+@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new
+{
+    registeredStudents,
+    unregisteredStudents,
+    monthLabels,
+    monthCounts,
+    majorLabels,
+    majorCounts,
+    topicStatusLabels,
+    topicStatusCounts
+}))
+    </script>
+    <script src="~/js/admin/statistics.js" asp-append-version="true"></script>
 }

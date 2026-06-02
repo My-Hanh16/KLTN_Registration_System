@@ -1,0 +1,258 @@
+.lecturer-edit-page {
+    margin: 0 auto;
+    max-width: 48rem;
+    padding: 2rem 1rem;
+}
+
+.edit-heading {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.edit-back-btn {
+    align-items: center;
+    background: #f1f5f9;
+    border-radius: 0.5rem;
+    color: #475569;
+    display: inline-flex;
+    height: 2.25rem;
+    justify-content: center;
+    transition: background .15s ease, color .15s ease;
+    width: 2.25rem;
+}
+
+.edit-back-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.edit-back-btn svg {
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.edit-heading h1 {
+    color: #1e293b;
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.edit-heading p {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin: 0.15rem 0 0;
+}
+
+.edit-card {
+    background: #fff;
+    border: 1px solid #f1f5f9;
+    border-radius: 1rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+    padding: 2rem;
+}
+
+.edit-alert {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+    display: flex;
+    font-size: 0.875rem;
+    gap: 0.5rem;
+    padding: 1rem;
+}
+
+.edit-alert-danger {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
+    margin-bottom: 1rem;
+}
+
+.edit-alert-warning {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #b45309;
+}
+
+.edit-final-note {
+    margin-top: 1rem;
+}
+
+.validation-summary,
+.field-validation {
+    color: #ef4444;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.validation-summary {
+    margin-bottom: 1rem;
+}
+
+.edit-stats-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 1.5rem;
+}
+
+.edit-stat-card {
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+    padding: 1rem;
+}
+
+.edit-stat-code {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+.edit-stat-approved {
+    background: #ecfdf5;
+    border-color: #d1fae5;
+    color: #047857;
+}
+
+.edit-stat-pending {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #b45309;
+}
+
+.edit-stat-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.edit-stat-code .edit-stat-label {
+    color: #94a3b8;
+}
+
+.edit-stat-value {
+    font-size: 1.25rem;
+    font-weight: 900;
+    margin-top: 0.25rem;
+}
+
+.edit-stat-code-value {
+    color: #1e293b;
+    font-size: 0.875rem;
+}
+
+.edit-form-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.edit-two-cols {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-group label {
+    color: #334155;
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.form-group label span {
+    color: #ef4444;
+}
+
+.form-control {
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    outline: none;
+    padding: 0.625rem 0.75rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+    width: 100%;
+}
+
+.form-control:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, .18);
+}
+
+.form-control-readonly {
+    background: #f8fafc;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+textarea.form-control {
+    resize: vertical;
+}
+
+.form-help {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    margin: 0.25rem 0 0;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
+.btn-save,
+.btn-cancel {
+    align-items: center;
+    border-radius: 0.75rem;
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 700;
+    gap: 0.5rem;
+    padding: 0.625rem 1.5rem;
+    text-decoration: none;
+    transition: background .15s ease;
+}
+
+.btn-save {
+    background: #2563eb;
+    border: 0;
+    color: #fff;
+}
+
+.btn-save:hover {
+    background: #1d4ed8;
+}
+
+.btn-cancel {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.btn-cancel:hover {
+    background: #e2e8f0;
+}
+
+@media (max-width: 640px) {
+    .edit-card {
+        padding: 1.25rem;
+    }
+
+    .edit-stats-grid,
+    .edit-two-cols {
+        grid-template-columns: 1fr;
+    }
+
+    .edit-actions {
+        flex-direction: column;
+    }
+
+    .btn-save,
+    .btn-cancel {
+        justify-content: center;
+        width: 100%;
+    }
+}

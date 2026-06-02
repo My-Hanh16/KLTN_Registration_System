@@ -48,681 +48,7 @@
 }
 
 @section Styles {
-    <style>
-        /* ══════════════════════════════════════
-               PAGE HEADER
-            ══════════════════════════════════════ */
-        .page-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .page-sub {
-            font-size: 13.5px;
-            color: #94a3b8;
-            margin: 0;
-        }
-
-        /* ══════════════════════════════════════
-               ALERT BANNERS
-            ══════════════════════════════════════ */
-        .alert-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 20px;
-        }
-
-            .alert-bar.success {
-                background: #f0fdf4;
-                border: 1px solid #bbf7d0;
-                color: #15803d;
-            }
-
-            .alert-bar.error {
-                background: #fff5f5;
-                border: 1px solid #fecaca;
-                color: #dc2626;
-            }
-
-        /* ══════════════════════════════════════
-               SECTION CARD
-            ══════════════════════════════════════ */
-        .s-card {
-            background: #fff;
-            border: 1px solid #e8edf4;
-            border-radius: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.03);
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-
-            .s-card:last-child {
-                margin-bottom: 0;
-            }
-
-        .s-card-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 18px 24px;
-            border-bottom: 1px solid #f1f5f9;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .s-head-left {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .s-ico {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-
-            .s-ico.blue {
-                background: #eff6ff;
-                color: #2563eb;
-            }
-
-            .s-ico.indigo {
-                background: #eef2ff;
-                color: #4f46e5;
-            }
-
-            .s-ico.amber {
-                background: #fffbeb;
-                color: #d97706;
-            }
-
-            .s-ico.green {
-                background: #f0fdf4;
-                color: #16a34a;
-            }
-
-            .s-ico.purple {
-                background: #f5f3ff;
-                color: #7c3aed;
-            }
-
-        .s-head-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 2px;
-        }
-
-        .s-head-sub {
-            font-size: 12px;
-            color: #94a3b8;
-        }
-
-        .s-card-body {
-            padding: 24px;
-        }
-
-        /* ══════════════════════════════════════
-               TOGGLE SWITCH
-            ══════════════════════════════════════ */
-        .toggle-wrap {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-
-        .toggle-label {
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-            .toggle-label.on {
-                color: #16a34a;
-            }
-
-            .toggle-label.off {
-                color: #94a3b8;
-            }
-
-        .toggle {
-            position: relative;
-            display: inline-block;
-            width: 48px;
-            height: 26px;
-        }
-
-            .toggle input {
-                opacity: 0;
-                width: 0;
-                height: 0;
-            }
-
-        .toggle-slider {
-            position: absolute;
-            inset: 0;
-            cursor: pointer;
-            background: #e2e8f0;
-            border-radius: 99px;
-            transition: background .2s;
-        }
-
-            .toggle-slider::before {
-                content: '';
-                position: absolute;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: #fff;
-                left: 3px;
-                top: 3px;
-                box-shadow: 0 1px 4px rgba(0,0,0,.2);
-                transition: transform .2s;
-            }
-
-        .toggle input:checked + .toggle-slider {
-            background: #2563eb;
-        }
-
-            .toggle input:checked + .toggle-slider::before {
-                transform: translateX(22px);
-            }
-
-        /* Green variant */
-        .toggle.green input:checked + .toggle-slider {
-            background: #16a34a;
-        }
-
-        /* ══════════════════════════════════════
-               FORM FIELDS
-            ══════════════════════════════════════ */
-        .f-grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .f-grid-4 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-        }
-
-        .f-grid-5 {
-            display: grid;
-            grid-template-columns: 3fr 2fr 3fr 3fr 1fr;
-            gap: 10px;
-            align-items: end;
-        }
-
-        .f-field {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .f-label {
-            font-size: 10.5px;
-            font-weight: 700;
-            letter-spacing: .7px;
-            text-transform: uppercase;
-            color: #64748b;
-        }
-
-        .f-input, .f-select, .f-input-sm {
-            border: 1.5px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-size: 13.5px;
-            font-family: inherit;
-            color: #1e293b;
-            background: #fff;
-            outline: none;
-            transition: border-color .15s, box-shadow .15s;
-            width: 100%;
-        }
-
-            .f-input:focus, .f-select:focus, .f-input-sm:focus {
-                border-color: #3b82f6;
-                box-shadow: 0 0 0 3px rgba(59,130,246,.1);
-            }
-
-        .f-input-sm {
-            padding: 8px 12px;
-            font-size: 13px;
-        }
-
-        .f-select {
-            appearance: none;
-            cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            padding-right: 32px;
-        }
-
-        /* Range slider */
-        .range-wrap {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .range-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .range-value {
-            font-size: 22px;
-            font-weight: 800;
-            color: #2563eb;
-            line-height: 1;
-        }
-
-        .range-input {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 99px;
-            outline: none;
-            cursor: pointer;
-        }
-
-            .range-input::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: #2563eb;
-                cursor: pointer;
-                box-shadow: 0 2px 8px rgba(37,99,235,.35);
-                transition: transform .15s;
-            }
-
-                .range-input::-webkit-slider-thumb:hover {
-                    transform: scale(1.15);
-                }
-
-        .range-marks {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 2px;
-        }
-
-        .range-mark {
-            font-size: 10px;
-            color: #94a3b8;
-            font-weight: 600;
-        }
-
-        /* ══════════════════════════════════════
-               INFO BOX (Topic registration stats)
-            ══════════════════════════════════════ */
-        .info-box {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-
-        .info-box-left {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .info-box-title {
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 4px;
-        }
-
-        .info-box-desc {
-            font-size: 12px;
-            color: #64748b;
-            margin-bottom: 10px;
-            line-height: 1.55;
-        }
-
-        .info-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 7px;
-        }
-
-        .info-chip {
-            font-size: 11px;
-            font-weight: 700;
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            border-radius: 7px;
-            padding: 3px 10px;
-            color: #475569;
-        }
-
-        /* ══════════════════════════════════════
-               QUICK ACTION BUTTONS
-            ══════════════════════════════════════ */
-        .qa-btn {
-            width: 100%;
-            padding: 11px 16px;
-            border-radius: 10px;
-            border: none;
-            font-size: 13px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all .15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            text-decoration: none;
-        }
-
-            .qa-btn.slate {
-                background: #f8fafc;
-                color: #475569;
-                border: 1.5px solid #e2e8f0;
-            }
-
-                .qa-btn.slate:hover {
-                    background: #f1f5f9;
-                    color: #1e293b;
-                }
-
-            .qa-btn.red {
-                background: #fff5f5;
-                color: #dc2626;
-                border: 1.5px solid #fecaca;
-            }
-
-                .qa-btn.red:hover {
-                    background: #dc2626;
-                    color: #fff;
-                }
-
-        /* ══════════════════════════════════════
-               BUTTONS
-            ══════════════════════════════════════ */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            height: 40px;
-            padding: 0 18px;
-            border-radius: 10px;
-            font-size: 13.5px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            text-decoration: none;
-            white-space: nowrap;
-            transition: all .15s;
-        }
-
-        .btn-primary {
-            background: #2563eb;
-            color: #fff;
-            box-shadow: 0 3px 12px rgba(37,99,235,.28);
-        }
-
-            .btn-primary:hover {
-                background: #1d4ed8;
-            }
-
-        .btn-ghost {
-            background: #f8fafc;
-            color: #64748b;
-            border: 1.5px solid #e2e8f0;
-        }
-
-            .btn-ghost:hover {
-                background: #f1f5f9;
-                color: #1e293b;
-            }
-
-        .btn-sm {
-            height: 34px;
-            padding: 0 14px;
-            border-radius: 8px;
-            font-size: 12.5px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            transition: all .15s;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            text-decoration: none;
-            white-space: nowrap;
-        }
-
-            .btn-sm.dark {
-                background: #1e293b;
-                color: #fff;
-            }
-
-                .btn-sm.dark:hover {
-                    background: #0f172a;
-                }
-
-            .btn-sm.ghost {
-                background: #f8fafc;
-                color: #64748b;
-                border: 1.5px solid #e2e8f0;
-            }
-
-                .btn-sm.ghost:hover {
-                    background: #f1f5f9;
-                }
-
-            .btn-sm.danger {
-                background: #fff5f5;
-                color: #dc2626;
-                border: 1.5px solid #fecaca;
-            }
-
-                .btn-sm.danger:hover {
-                    background: #dc2626;
-                    color: #fff;
-                }
-
-            .btn-sm.blue {
-                background: #2563eb;
-                color: #fff;
-            }
-
-            .btn-sm.blue:hover {
-                background: #1d4ed8;
-            }
-
-            .btn-sm[disabled] {
-                opacity: .7;
-                cursor: not-allowed;
-                box-shadow: none;
-            }
-
-        /* ══════════════════════════════════════
-               MAJOR TABLE
-            ══════════════════════════════════════ */
-        .major-head {
-            display: grid;
-            grid-template-columns: 3fr 1.2fr 2fr 2.5fr 1fr 160px;
-            gap: 10px;
-            padding: 10px 16px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .7px;
-            text-transform: uppercase;
-            color: #94a3b8;
-        }
-
-        .major-row {
-            display: grid;
-            grid-template-columns: 3fr 1.2fr 2fr 2.5fr 1fr 160px;
-            gap: 10px;
-            align-items: center;
-            padding: 12px 16px;
-            background: #fff;
-            border: 1px solid #f1f5f9;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            transition: border-color .15s, box-shadow .15s;
-        }
-
-            .major-row:hover {
-                border-color: #bfdbfe;
-                box-shadow: 0 2px 8px rgba(37,99,235,.06);
-            }
-
-            .major-row:last-child {
-                margin-bottom: 0;
-            }
-
-            .major-row input[type=text] {
-                border: 1.5px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 7px 10px;
-                font-size: 13px;
-                font-family: inherit;
-                color: #1e293b;
-                background: #f8fafc;
-                outline: none;
-                width: 100%;
-                transition: border-color .15s, box-shadow .15s;
-            }
-
-                .major-row input[type=text]:focus {
-                    border-color: #3b82f6;
-                    background: #fff;
-                    box-shadow: 0 0 0 3px rgba(59,130,246,.08);
-                }
-
-        /* Status toggle in row */
-        .major-status {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11.5px;
-            font-weight: 700;
-        }
-
-        .status-pip {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-            .status-pip.active {
-                background: #16a34a;
-            }
-
-            .status-pip.hidden {
-                background: #94a3b8;
-            }
-
-        .major-status-txt.active {
-            color: #16a34a;
-        }
-
-        .major-status-txt.hidden {
-            color: #94a3b8;
-        }
-
-        .major-row-actions {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            justify-content: flex-end;
-        }
-
-        /* Add major form */
-        .add-major-row {
-            background: #f8fafc;
-            border: 1.5px dashed #e2e8f0;
-            border-radius: 12px;
-            padding: 16px;
-            display: grid;
-            grid-template-columns: 3fr 1.2fr 2fr 2.5fr 1fr 160px;
-            gap: 10px;
-            align-items: end;
-            margin-bottom: 16px;
-        }
-
-        .add-major-label {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .7px;
-            text-transform: uppercase;
-            color: #64748b;
-            margin-bottom: 5px;
-            display: block;
-        }
-
-        /* Empty state */
-        .empty-major {
-            text-align: center;
-            padding: 40px 20px;
-            border: 1.5px dashed #e2e8f0;
-            border-radius: 12px;
-            color: #94a3b8;
-            font-size: 13px;
-        }
-
-        /* Checkbox custom */
-        .chk-wrap {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            cursor: pointer;
-        }
-
-            .chk-wrap input[type=checkbox] {
-                width: 16px;
-                height: 16px;
-                accent-color: #2563eb;
-                cursor: pointer;
-                border-radius: 4px;
-            }
-
-        .chk-lbl {
-            font-size: 12.5px;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        /* Divider */
-        .section-divider {
-            height: 1px;
-            background: #f1f5f9;
-            margin: 4px 0 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="~/css/admin/settings.css" asp-append-version="true" />
 }
 
 <!-- ════════════════════════════════
@@ -754,6 +80,10 @@
     </div>
 </div>
 
+@section Scripts {
+    <script src="~/js/admin/settings.js" asp-append-version="true"></script>
+}
+
 <div class="s-card">
     <div class="s-card-head">
         <div class="s-head-left">
@@ -762,16 +92,16 @@
                 <div class="s-head-title">Đợt đăng ký khóa luận</div>
                 <div class="s-head-sub">
                     Đợt hiện hành:
-                    <b style="color:#1e293b;">@(activePeriod?.Name ?? "Chưa có")</b>
+                    <b class="strong-text">@(activePeriod?.Name ?? "Chưa có")</b>
                 </div>
             </div>
         </div>
-        <span style="font-size:12.5px;color:#94a3b8;">
-            <b style="color:#1e293b;">@periods.Count()</b> đợt
+        <span class="s-head-count">
+            <b>@periods.Count()</b> đợt
         </span>
     </div>
     <div class="s-card-body">
-        <form asp-action="CreateRegistrationPeriod" method="post" style="margin-bottom:16px;">
+        <form asp-action="CreateRegistrationPeriod" method="post" class="period-create-form">
             @Html.AntiForgeryToken()
             <div class="f-grid-5">
                 <div class="f-field">
@@ -796,11 +126,11 @@
                     <input type="datetime-local" name="registrationCloseAt" class="f-input-sm" required
                            value="@DateTime.Today.AddDays(30).ToString("yyyy-MM-ddTHH:mm")" />
                 </div>
-                <div style="display:flex;align-items:end;">
+                <div class="form-bottom-cell">
                     <input type="hidden" name="semesterStart" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
                     <input type="hidden" name="semesterEnd" value="@DateTime.Today.AddMonths(4).ToString("yyyy-MM-dd")" />
                     <input type="hidden" name="setActive" value="true" />
-                    <button type="submit" class="btn btn-primary" style="height:36px;width:100%;font-size:12.5px;">
+                    <button type="submit" class="btn btn-primary btn-create-period">
                         <i class="fa-solid fa-plus"></i> Tạo
                     </button>
                 </div>
@@ -809,7 +139,7 @@
 
         @if (periods.Any())
         {
-            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <div class="period-list">
                 @foreach (var period in periods)
                 {
                     <form asp-action="SetActiveRegistrationPeriod" method="post">
@@ -817,7 +147,7 @@
                     <input type="hidden" name="id" value="@period.Id" />
                         <button type="submit"
                                 disabled="@period.IsActive"
-                                onclick="return confirm('Chuyển đợt hiện hành sang @period.Name? Các trang quản lý sẽ dùng dữ liệu của đợt này.');"
+                                data-confirm-message="Chuyển đợt hiện hành sang @period.Name? Các trang quản lý sẽ dùng dữ liệu của đợt này."
                                 class="btn-sm @(period.IsActive ? "blue" : "ghost")">
                             @(period.IsActive ? "Đang dùng: " : "")@period.Name
                         </button>
@@ -834,7 +164,7 @@
     <!-- ════════════════════════════════
          ROW 1: Portal + Account
     ════════════════════════════════ -->
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;margin-bottom:20px;align-items:start;">
+    <div class="settings-grid">
 
         <!-- CARD 1: Cổng đăng ký -->
         <div class="s-card">
@@ -857,7 +187,7 @@
                         <input type="hidden" name="values_IsPortalOpen" value="false" />
                         <input type="checkbox" name="values_IsPortalOpen" value="true"
                                @(portalOpen ? "checked" : "")
-                               onchange="this.closest('.toggle-wrap').querySelector('.toggle-label').textContent = this.checked ? 'ĐANG MỞ' : 'ĐANG ĐÓNG'; this.closest('.toggle-wrap').querySelector('.toggle-label').className = 'toggle-label ' + (this.checked ? 'on' : 'off');" />
+                               class="js-toggle-status" />
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
@@ -865,7 +195,7 @@
 
             <div class="s-card-body">
                 <!-- Info box: mở đăng ký đề tài -->
-                <div class="info-box" style="margin-bottom:20px;">
+                <div class="info-box info-box--spaced">
                     <div class="info-box-left">
                         <div class="info-box-title">Mở đăng ký đề tài hàng loạt</div>
                         <div class="info-box-desc">Khi bật, hệ thống mở đăng ký cho các đề tài đã duyệt và chưa đủ sinh viên.</div>
@@ -886,14 +216,14 @@
                             <input type="hidden" name="values_IsTopicRegistrationOpen" value="false" />
                             <input type="checkbox" name="values_IsTopicRegistrationOpen" value="true"
                                    @(topicRegOpen ? "checked" : "")
-                                   onchange="this.closest('.toggle-wrap').querySelector('.toggle-label').textContent = this.checked ? 'ĐANG MỞ' : 'ĐANG ĐÓNG'; this.closest('.toggle-wrap').querySelector('.toggle-label').className = 'toggle-label ' + (this.checked ? 'on' : 'off');" />
+                                   class="js-toggle-status" />
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
                 </div>
 
                 <!-- Date fields -->
-                <div class="f-grid-2" style="margin-bottom:16px;">
+                <div class="f-grid-2 form-section-spaced">
                     <div class="f-field">
                         <label class="f-label">Ngày bắt đầu học kỳ</label>
                         <input type="hidden" name="names" value="Semester_Start" />
@@ -921,7 +251,7 @@
                 </div>
 
                 <!-- Save button -->
-                <div style="display:flex;justify-content:flex-end;">
+                <div class="form-actions-right">
                     <button type="submit" class="btn btn-primary">
                         <i class="fa-solid fa-floppy-disk"></i> Lưu tất cả thay đổi
                     </button>
@@ -930,7 +260,7 @@
         </div>
 
         <!-- CARD 2: Sidebar (Account + Constraints) -->
-        <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="settings-sidebar">
 
             <!-- Quick actions -->
             <div class="s-card">
@@ -942,7 +272,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="s-card-body" style="display:flex;flex-direction:column;gap:10px;">
+                <div class="s-card-body quick-actions-body">
                     <a asp-action="StudentManagement" asp-controller="Admin" class="qa-btn slate">
                         <i class="fa-solid fa-users-gear"></i> Quản lý sinh viên
                     </a>
@@ -967,7 +297,7 @@
                         <div class="range-header">
                             <div>
                                 <div class="f-label">Sinh viên tối đa / đề tài</div>
-                                <div style="font-size:11.5px;color:#94a3b8;margin-top:2px;">Giới hạn số SV trong một nhóm đề tài</div>
+                                <div class="range-desc">Giới hạn số SV trong một nhóm đề tài</div>
                             </div>
                             <div class="range-value" id="rangeVal">@GetVal("Max_Student_Per_Topic", "3")</div>
                         </div>
@@ -975,8 +305,7 @@
                         <input type="range" name="values_Max_Student_Per_Topic"
                                min="1" max="5"
                                value="@GetVal("Max_Student_Per_Topic", "3")"
-                               class="range-input" id="rangeInput"
-                               oninput="document.getElementById('rangeVal').textContent = this.value" />
+                               class="range-input" id="rangeInput" />
                         <div class="range-marks">
                             <span class="range-mark">1</span>
                             <span class="range-mark">2</span>
@@ -1003,8 +332,8 @@
                 <div class="s-head-sub">Các chuyên ngành dùng để lọc đề tài, hồ sơ sinh viên và import dữ liệu.</div>
             </div>
         </div>
-        <span style="font-size:12.5px;color:#94a3b8;">
-            <b style="color:#1e293b;">@majors.Count()</b> chuyên ngành
+        <span class="s-head-count">
+            <b>@majors.Count()</b> chuyên ngành
         </span>
     </div>
 
@@ -1015,14 +344,14 @@
             @Html.AntiForgeryToken()
             <div class="add-major-row">
                 <div>
-                    <label class="add-major-label">Tên chuyên ngành <span style="color:#ef4444;">*</span></label>
+                    <label class="add-major-label">Tên chuyên ngành <span class="required-mark">*</span></label>
                     <input type="text" name="name" required maxlength="150" class="f-input-sm"
                            placeholder="Công nghệ phần mềm" />
                 </div>
                 <div>
                     <label class="add-major-label">Mã</label>
-                    <input type="text" name="majorCode" maxlength="30" class="f-input-sm"
-                           placeholder="CNPM" style="text-transform:uppercase;" />
+                    <input type="text" name="majorCode" maxlength="30" class="f-input-sm text-uppercase"
+                           placeholder="CNPM" />
                 </div>
                 <div>
                     <label class="add-major-label">Khoa</label>
@@ -1035,8 +364,8 @@
                            placeholder="Ghi chú ngắn (tuỳ chọn)" />
                 </div>
                 <div></div>
-                <div style="display:flex;align-items:flex-end;">
-                    <button type="submit" class="btn btn-primary" style="width:100%;height:36px;font-size:13px;">
+                <div class="form-bottom-cell">
+                    <button type="submit" class="btn btn-primary btn-add-major">
                         <i class="fa-solid fa-plus"></i> Thêm
                     </button>
                 </div>
@@ -1052,7 +381,7 @@
                 <div>Khoa</div>
                 <div>Mô tả</div>
                 <div>Trạng thái</div>
-                <div style="text-align:right;">Thao tác</div>
+                <div class="text-right">Thao tác</div>
             </div>
 
             @foreach (var major in majors)
@@ -1065,7 +394,7 @@
                            required maxlength="150" placeholder="Tên chuyên ngành" />
 
                     <input type="text" name="majorCode" value="@major.MajorCode"
-                           maxlength="30" placeholder="Mã" style="text-transform:uppercase;" />
+                           maxlength="30" placeholder="Mã" class="text-uppercase" />
 
                     <input type="text" name="facultyName" value="@major.FacultyName"
                            maxlength="150" placeholder="Khoa" />
@@ -1095,9 +424,9 @@
                             @(major.IsActive ? "Ẩn" : "Bật")
                         </button>
                         <button type="submit" formaction="@Url.Action("DeleteMajor", "Admin")"
-                                onclick="return confirm('Xóa chuyên ngành «@major.Name»? Nếu đã có dữ liệu liên quan, hệ thống sẽ chỉ ẩn.')"
+                                data-confirm-message="Xóa chuyên ngành «@major.Name»? Nếu đã có dữ liệu liên quan, hệ thống sẽ chỉ ẩn."
                                 class="btn-sm danger" title="Xóa">
-                            <i class="fa-solid fa-trash" style="font-size:11px;"></i>
+                            <i class="fa-solid fa-trash delete-icon"></i>
                         </button>
                     </div>
                 </form>
@@ -1106,9 +435,10 @@
         else
         {
             <div class="empty-major">
-                <i class="fa-regular fa-folder-open" style="font-size:28px;display:block;margin-bottom:10px;opacity:.3;"></i>
+                <i class="fa-regular fa-folder-open empty-major-icon"></i>
                 Chưa có chuyên ngành nào. Thêm chuyên ngành đầu tiên ở trên.
             </div>
         }
     </div>
 </div>
+
