@@ -22,7 +22,6 @@
     int topicRegistrationOpen = ViewBag.TopicRegistrationOpen ?? 0;
     int topicRegistrationReady = ViewBag.TopicRegistrationReady ?? 0;
     int eligibleStudentCount = ViewBag.EligibleStudentCount ?? 0;
-    bool portalOpen = GetVal("IsPortalOpen") == "true";
     bool topicRegOpen = GetVal("IsTopicRegistrationOpen", "false") == "true";
     string SuggestNextAcademicYear()
     {
@@ -49,25 +48,6 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/admin/settings.css" asp-append-version="true" />
-}
-
-<!-- ════════════════════════════════
-     ALERTS
-════════════════════════════════ -->
-@if (TempData["Success"] != null)
-{
-    <div class="alert-bar success">
-        <i class="fa-solid fa-circle-check"></i>
-        <span>@TempData["Success"]</span>
-    </div>
-}
-
-@if (TempData["Error"] != null)
-{
-    <div class="alert-bar error">
-        <i class="fa-solid fa-circle-exclamation"></i>
-        <span>@TempData["Error"]</span>
-    </div>
 }
 
 <!-- ════════════════════════════════
@@ -103,7 +83,7 @@
     <div class="s-card-body">
         <form asp-action="CreateRegistrationPeriod" method="post" class="period-create-form">
             @Html.AntiForgeryToken()
-            <div class="f-grid-5">
+            <div class="period-create-grid">
                 <div class="f-field">
                     <label class="f-label">Năm học</label>
                     <input type="text" name="academicYear" class="f-input-sm" required value="@nextAcademicYear" placeholder="2026-2027" />
@@ -116,19 +96,7 @@
                         <option value="HK3">HK3</option>
                     </select>
                 </div>
-                <div class="f-field">
-                    <label class="f-label">Mở đăng ký</label>
-                    <input type="datetime-local" name="registrationOpenAt" class="f-input-sm" required
-                           value="@DateTime.Today.ToString("yyyy-MM-ddTHH:mm")" />
-                </div>
-                <div class="f-field">
-                    <label class="f-label">Đóng đăng ký</label>
-                    <input type="datetime-local" name="registrationCloseAt" class="f-input-sm" required
-                           value="@DateTime.Today.AddDays(30).ToString("yyyy-MM-ddTHH:mm")" />
-                </div>
                 <div class="form-bottom-cell">
-                    <input type="hidden" name="semesterStart" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
-                    <input type="hidden" name="semesterEnd" value="@DateTime.Today.AddMonths(4).ToString("yyyy-MM-dd")" />
                     <input type="hidden" name="setActive" value="true" />
                     <button type="submit" class="btn btn-primary btn-create-period">
                         <i class="fa-solid fa-plus"></i> Tạo
@@ -161,40 +129,20 @@
 <form asp-action="SaveSettings" method="post" id="settingsForm">
     @Html.AntiForgeryToken()
 
-    <!-- ════════════════════════════════
-         ROW 1: Portal + Account
-    ════════════════════════════════ -->
     <div class="settings-grid">
 
-        <!-- CARD 1: Cổng đăng ký -->
         <div class="s-card">
             <div class="s-card-head">
                 <div class="s-head-left">
                     <div class="s-ico blue"><i class="fa-solid fa-door-open"></i></div>
                     <div>
-                        <div class="s-head-title">Quản lý cổng đăng ký</div>
-                        <div class="s-head-sub">Kiểm soát trạng thái mở / đóng của cổng portal</div>
+                        <div class="s-head-title">Quản lý đăng ký đề tài</div>
+                        <div class="s-head-sub">Kiểm soát thời gian và trạng thái mở / đóng đăng ký đề tài</div>
                     </div>
-                </div>
-
-                <!-- Toggle Portal Open -->
-                <div class="toggle-wrap">
-                    <span class="toggle-label @(portalOpen ? "on" : "off")">
-                        @(portalOpen ? "ĐANG MỞ" : "ĐANG ĐÓNG")
-                    </span>
-                    <label class="toggle">
-                        <input type="hidden" name="names" value="IsPortalOpen" />
-                        <input type="hidden" name="values_IsPortalOpen" value="false" />
-                        <input type="checkbox" name="values_IsPortalOpen" value="true"
-                               @(portalOpen ? "checked" : "")
-                               class="js-toggle-status" />
-                        <span class="toggle-slider"></span>
-                    </label>
                 </div>
             </div>
 
             <div class="s-card-body">
-                <!-- Info box: mở đăng ký đề tài -->
                 <div class="info-box info-box--spaced">
                     <div class="info-box-left">
                         <div class="info-box-title">Mở đăng ký đề tài hàng loạt</div>
@@ -222,7 +170,6 @@
                     </div>
                 </div>
 
-                <!-- Date fields -->
                 <div class="f-grid-2 form-section-spaced">
                     <div class="f-field">
                         <label class="f-label">Ngày bắt đầu học kỳ</label>
@@ -250,7 +197,6 @@
                     </div>
                 </div>
 
-                <!-- Save button -->
                 <div class="form-actions-right">
                     <button type="submit" class="btn btn-primary">
                         <i class="fa-solid fa-floppy-disk"></i> Lưu tất cả thay đổi
@@ -259,10 +205,7 @@
             </div>
         </div>
 
-        <!-- CARD 2: Sidebar (Account + Constraints) -->
         <div class="settings-sidebar">
-
-            <!-- Quick actions -->
             <div class="s-card">
                 <div class="s-card-head">
                     <div class="s-head-left">
@@ -281,48 +224,10 @@
                     </a>
                 </div>
             </div>
-
-            <!-- Constraints -->
-            <div class="s-card">
-                <div class="s-card-head">
-                    <div class="s-head-left">
-                        <div class="s-ico amber"><i class="fa-solid fa-sliders"></i></div>
-                        <div>
-                            <div class="s-head-title">Quy định & Ràng buộc</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="s-card-body">
-                    <div class="range-wrap">
-                        <div class="range-header">
-                            <div>
-                                <div class="f-label">Sinh viên tối đa / đề tài</div>
-                                <div class="range-desc">Giới hạn số SV trong một nhóm đề tài</div>
-                            </div>
-                            <div class="range-value" id="rangeVal">@GetVal("Max_Student_Per_Topic", "3")</div>
-                        </div>
-                        <input type="hidden" name="names" value="Max_Student_Per_Topic" />
-                        <input type="range" name="values_Max_Student_Per_Topic"
-                               min="1" max="5"
-                               value="@GetVal("Max_Student_Per_Topic", "3")"
-                               class="range-input" id="rangeInput" />
-                        <div class="range-marks">
-                            <span class="range-mark">1</span>
-                            <span class="range-mark">2</span>
-                            <span class="range-mark">3</span>
-                            <span class="range-mark">4</span>
-                            <span class="range-mark">5</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </form>
 
-<!-- ════════════════════════════════
-     CARD: Quản lý chuyên ngành
-════════════════════════════════ -->
 <div class="s-card">
     <div class="s-card-head">
         <div class="s-head-left">
@@ -339,7 +244,6 @@
 
     <div class="s-card-body">
 
-        <!-- ADD ROW -->
         <form asp-action="CreateMajor" method="post">
             @Html.AntiForgeryToken()
             <div class="add-major-row">
@@ -372,7 +276,6 @@
             </div>
         </form>
 
-        <!-- TABLE HEADER -->
         @if (majors.Any())
         {
             <div class="major-head">

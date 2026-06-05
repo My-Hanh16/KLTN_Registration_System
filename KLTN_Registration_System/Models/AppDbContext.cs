@@ -1,7 +1,4 @@
-﻿// ============================================================
-// FILE: Models/AppDbContext.cs
-// ============================================================
-using KLTN_Registration_System.Models.Entities;
+﻿using KLTN_Registration_System.Models.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 

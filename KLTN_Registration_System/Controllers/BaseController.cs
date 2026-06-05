@@ -1,4 +1,4 @@
-using KLTN_Registration_System.Models;
+﻿using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
 
 using Microsoft.AspNetCore.Http;
@@ -69,7 +69,6 @@ namespace KLTN_Registration_System.Controllers
             }
             catch
             {
-                // Tránh crash layout nếu DB lỗi
                 ViewBag.UnreadCount = 0;
             }
 

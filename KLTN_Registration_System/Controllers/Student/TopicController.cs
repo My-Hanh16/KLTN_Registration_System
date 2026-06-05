@@ -1,7 +1,4 @@
-﻿// ============================================================
-// FILE: Controllers/TopicController.cs
-// ============================================================
-using KLTN_Registration_System.Models;
+﻿using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
 using KLTN_Registration_System.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -27,10 +24,6 @@ namespace KLTN_Registration_System.Controllers
             _context = context;
         }
 
-        // ============================================================
-        // DANH SÁCH ĐỀ TÀI  →  /Topic/Index
-        // View: Views/Topic/Index.cshtml  (@model IPagedList<Topic>)
-        // ============================================================
         [Authorize(Roles = "Admin,Student,Lecturer")]
         public async Task<IActionResult> Index(
     int? page,
@@ -98,26 +91,14 @@ namespace KLTN_Registration_System.Controllers
                 }
             }
 
-            // =========================
-            // FILTER MAJOR
-            // =========================
-
             if (majorId.HasValue)
                 query = query.Where(t => t.MajorId == majorId);
-
-            // =========================
-            // FILTER LEVEL
-            // =========================
 
             if (!string.IsNullOrEmpty(level)
                 && Enum.TryParse<TopicLevel>(level, out var lvl))
             {
                 query = query.Where(t => t.Level == lvl);
             }
-
-            // =========================
-            // FILTER TYPE
-            // =========================
 
             if (!string.IsNullOrEmpty(type))
             {
@@ -131,10 +112,6 @@ namespace KLTN_Registration_System.Controllers
                 }
             }
 
-            // =========================
-            // FILTER STATUS
-            // =========================
-
             if (status == "available")
             {
                 query = query.Where(t =>
@@ -147,10 +124,6 @@ namespace KLTN_Registration_System.Controllers
                     t.Registrations!.Count(r => r.Status == "Pending" || r.Status == "Approved") >= t.MaxStudents);
             }
 
-            // =========================
-            // SEARCH
-            // =========================
-
             if (!string.IsNullOrWhiteSpace(search))
             {
                 query = query.Where(t =>
@@ -159,10 +132,6 @@ namespace KLTN_Registration_System.Controllers
                     (t.Lecturer != null && t.Lecturer.FullName!.Contains(search)) ||
                     (t.TopicCode != null && t.TopicCode.Contains(search)));
             }
-
-            // =========================
-            // VIEWBAG
-            // =========================
 
             ViewBag.Search = search;
 
@@ -236,10 +205,6 @@ namespace KLTN_Registration_System.Controllers
             return View(topics);
         }
 
-        // ============================================================
-        // CHI TIẾT ĐỀ TÀI  →  /Topic/Details/{id}
-        // View: Views/Topic/Details.cshtml  (@model Topic)
-        // ============================================================
         [AllowAnonymous]
         public async Task<IActionResult> Details(int id)
         {
@@ -295,10 +260,6 @@ namespace KLTN_Registration_System.Controllers
             return View(topic);
         }
 
-        // ============================================================
-        // MANAGE (Giảng viên xem danh sách đăng ký)  →  /Topic/Manage
-        // View: Views/Topic/Manage.cshtml  (@model List<Registration>)
-        // ============================================================
         [Authorize(Roles = "Lecturer,Admin")]
         public async Task<IActionResult> Manage()
         {
@@ -330,10 +291,6 @@ namespace KLTN_Registration_System.Controllers
             return View(registrations);
         }
 
-        // ============================================================
-        // DUYỆT ĐĂNG KÝ  →  POST /Topic/Approve/{id}
-        // Được gọi từ Approval.cshtml (asp-controller="Topic")
-        // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Lecturer,Admin")]
         public async Task<IActionResult> Approve(int id, string? returnTo = null)
@@ -349,11 +306,9 @@ namespace KLTN_Registration_System.Controllers
 
             var topic = reg.Topic!;
 
-            // Chỉ GV của đề tài hoặc Admin mới được duyệt
             if (topic.LecturerId != uid && !User.IsInRole("Admin"))
                 return Forbid();
 
-            // Kiểm tra số lượng slot
             int approvedCount = await _context.Registrations
                 .CountAsync(r => r.TopicId == topic.Id && r.Status == "Approved");
 
@@ -363,12 +318,10 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectAfterTopicDecision(returnTo);
             }
 
-            // Duyệt đăng ký này
             reg.Status = "Approved";
             reg.ApprovedBy = uid;
             reg.UpdatedAt = DateTime.Now;
 
-            // Từ chối tất cả Pending khác của cùng sinh viên này
             var otherPending = await _context.Registrations
                 .Where(r => r.StudentId == reg.StudentId && r.Id != reg.Id && r.Status == "Pending")
                 .ToListAsync();
@@ -378,7 +331,6 @@ namespace KLTN_Registration_System.Controllers
                 other.UpdatedAt = DateTime.Now;
             }
 
-            // Đóng đề tài khi đủ slot
             if (approvedCount + 1 >= topic.MaxStudents)
             {
                 topic.Status = TopicStatus.Full;
@@ -396,10 +348,6 @@ namespace KLTN_Registration_System.Controllers
             return RedirectAfterTopicDecision(returnTo);
         }
 
-        // ============================================================
-        // TỪ CHỐI ĐĂNG KÝ  →  POST /Topic/Reject/{id}
-        // Được gọi từ Approval.cshtml (asp-controller="Topic")
-        // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Lecturer,Admin")]
         public async Task<IActionResult> Reject(int id, string? feedback = null, string? returnTo = null)
@@ -431,9 +379,6 @@ namespace KLTN_Registration_System.Controllers
             return RedirectAfterTopicDecision(returnTo);
         }
 
-        // ============================================================
-        // SINH VIÊN ĐĂNG KÝ CÁ NHÂN  →  POST /Topic/Register
-        // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> Register(int topicId)
@@ -506,12 +451,6 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(RegisterGroup), new { id = topicId });
             }
 
-            if (topic.Deadline > DateTime.MinValue && now > topic.Deadline)
-            {
-                TempData["Error"] = "Đề tài đã hết hạn đăng ký!";
-                return RedirectToAction(nameof(Index));
-            }
-
             int currentCount = topic.Registrations!
                 .Count(r => r.Status == "Pending" || r.Status == "Approved");
 
@@ -542,10 +481,6 @@ namespace KLTN_Registration_System.Controllers
             return RedirectToAction("Home", "Student");
         }
 
-        // ============================================================
-        // ĐĂNG KÝ NHÓM — mở trang  →  GET /Topic/RegisterGroup/{id}
-        // View: Views/Topic/RegisterGroup.cshtml  (@model Topic)
-        // ============================================================
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> RegisterGroup(int id)
         {
@@ -575,7 +510,6 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Nếu đề tài 1 người → chuyển về đăng ký cá nhân
             if (topic.MaxStudents <= 1) return RedirectToAction(nameof(Index));
 
             if (!topic.IsApproved || !topic.IsRegistrationOpen || topic.IsStudentProposed)
@@ -588,12 +522,6 @@ namespace KLTN_Registration_System.Controllers
             if (windowError != null)
             {
                 TempData["Error"] = windowError;
-                return RedirectToAction(nameof(Index));
-            }
-
-            if (topic.Deadline > DateTime.MinValue && DateTime.Now > topic.Deadline)
-            {
-                TempData["Error"] = "Đề tài đã hết hạn đăng ký!";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -628,9 +556,6 @@ namespace KLTN_Registration_System.Controllers
             return View(topic);
         }
 
-        // ============================================================
-        // XỬ LÝ ĐĂNG KÝ NHÓM  →  POST /Topic/SubmitGroupRegistration
-        // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> SubmitGroupRegistration(int topicId, List<string>? memberEmails, string? returnTo = null)
@@ -683,12 +608,6 @@ namespace KLTN_Registration_System.Controllers
             if (windowError != null)
             {
                 TempData["Error"] = windowError;
-                return RedirectToAction(nameof(Index));
-            }
-
-            if (topic.Deadline > DateTime.MinValue && now > topic.Deadline)
-            {
-                TempData["Error"] = "Đề tài đã hết hạn đăng ký!";
                 return RedirectToAction(nameof(Index));
             }
 

@@ -1,8 +1,4 @@
-﻿// ============================================================
-// FILE: Controllers/Student/StudentController.cs
-// Cập nhật: map đầy đủ các field mới trong HomeStudent ViewModel
-// ============================================================
-using KLTN_Registration_System.Models;
+﻿using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
 using KLTN_Registration_System.Models.Enums;
 using KLTN_Registration_System.Models.ViewModels.Student;
@@ -34,9 +30,6 @@ namespace KLTN_Registration_System.Controllers.Student
             _notificationService = notificationService;
         }
 
-        // ============================================================
-        // TRANG CHỦ  →  /Student/Home
-        // ============================================================
         public async Task<IActionResult> Home()
         {
             await SetStudentLayoutData();
@@ -45,7 +38,6 @@ namespace KLTN_Registration_System.Controllers.Student
             var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
             bool isEligible = await IsStudentEligibleForPeriodAsync(user.Id, activePeriod.Id);
 
-            // ── 1. Thời gian đăng ký từ Settings ───────────────────
             var settings = await _context.Settings.ToListAsync();
             var startStr = settings.FirstOrDefault(s => s.Name == "Registration_Start")?.Value;
             var endStr = settings.FirstOrDefault(s => s.Name == "Registration_End")?.Value;
@@ -59,7 +51,6 @@ namespace KLTN_Registration_System.Controllers.Student
             bool isOpening = isPortalOpen && now >= startDate && now <= endDate;
             int daysLeft = Math.Max(0, (endDate - now).Days);
 
-            // ── 2. Đăng ký hiện tại ────────────────────────────────
             var registration = await FilterRegistrationsByActivePeriod(_context.Registrations.Include(r => r.Topic), activePeriod)
                 .FirstOrDefaultAsync(r => r.StudentId == user.Id &&
                     (r.Status == "Pending" || r.Status == "Approved"));
@@ -70,7 +61,7 @@ namespace KLTN_Registration_System.Controllers.Student
 
             ViewBag.ActiveTopicId = registration?.TopicId;
 
-            // ── 3. Đề tài gợi ý (2 mới nhất phù hợp khoa/chuyên ngành) ──────────────
+            
             var topicQuery = _context.Topics
                 .Include(t => t.Lecturer)
                 .Include(t => t.Major)
@@ -119,7 +110,6 @@ namespace KLTN_Registration_System.Controllers.Student
                     "Medium" => "Trung bình",
                     _ => "Cơ bản"
                 },
-                // BadgeClass để View dùng trực tiếp mà không cần switch lại
                 BadgeClass = t.Level.ToString() switch
                 {
                     "Hard" => "bg-level-hard",
@@ -134,7 +124,6 @@ namespace KLTN_Registration_System.Controllers.Student
                 MaxStudents = t.MaxStudents
             }).ToList();
 
-            // ── 4. Thông báo (3 mới nhất) ──────────────────────────
             var notifications = await _context.Notifications
                 .Where(n => n.UserId == user.Id)
                 .OrderByDescending(n => n.CreatedAt)
@@ -149,7 +138,6 @@ namespace KLTN_Registration_System.Controllers.Student
                 RedirectUrl = n.RedirectUrl
             }).ToList();
 
-            // ── 5. Mốc thời gian quan trọng từ Timelines ───────────
             var timelines = await FilterTimelinesByActivePeriod(_context.Timelines, activePeriod)
                 .Where(t => t.Date >= now && t.IsActive)
                 .OrderBy(t => t.Date)
@@ -162,11 +150,9 @@ namespace KLTN_Registration_System.Controllers.Student
                 Month = t.Date.Month.ToString("00"),
                 Content = t.Title,
                 SubContent = t.Description ?? "",
-                // Đánh dấu khẩn nếu còn dưới 3 ngày
                 IsUrgent = (t.Date - now).TotalDays <= 3
             }).ToList();
 
-            // ── 6. Build ViewModel ──────────────────────────────────
             var model = new HomeStudent
             {
                 StudentName = !string.IsNullOrEmpty(user.FullName) ? user.FullName : (user.Email ?? "Sinh viên"),
@@ -198,9 +184,6 @@ namespace KLTN_Registration_System.Controllers.Student
             return View(model);
         }
 
-        // ============================================================
-        // ĐĂNG KÝ ĐỀ TÀI  →  POST /Student/Register
-        // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> Register(int topicId)
@@ -304,9 +287,6 @@ namespace KLTN_Registration_System.Controllers.Student
             return RedirectToAction(nameof(Home));
         }
 
-        // ============================================================
-        // ĐĂNG KÝ CỦA TÔI  →  /Student/MyRegistration
-        // ============================================================
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> MyRegistration()
         {
@@ -335,7 +315,6 @@ namespace KLTN_Registration_System.Controllers.Student
             ViewBag.CanParticipateInCurrentPeriod = canParticipate;
             ViewBag.ActivePeriodName = activePeriod.Name;
 
-            // CHAT MENU
             var approvedRegistration = await FilterRegistrationsByActivePeriod(
                     _context.Registrations.Include(r => r.Topic),
                     activePeriod)
@@ -346,9 +325,6 @@ namespace KLTN_Registration_System.Controllers.Student
             return View(myRegistrations);
         }
 
-        // ============================================================
-        // HỦY ĐĂNG KÝ  →  POST /Student/CancelRegistration/{id}
-        // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> CancelRegistration(int id)
@@ -385,9 +361,6 @@ namespace KLTN_Registration_System.Controllers.Student
             return RedirectToAction(nameof(MyRegistration));
         }
 
-        // ============================================================
-        // THÔNG BÁO  →  /Student/Notifications
-        // ============================================================
         public async Task<IActionResult> Notifications(int? page)
         {
             await SetStudentLayoutData();
@@ -420,16 +393,12 @@ namespace KLTN_Registration_System.Controllers.Student
                      || n.Type == "Topic"
                      || (n.Title != null && (n.Title.Contains("duyệt") || n.Title.Contains("từ chối")))));
 
-            // phân trang
             var pagedNotifications =
                 query.ToPagedList(pageNumber, pageSize);
 
             return View(pagedNotifications);
         }
 
-        // ============================================================
-        // ĐÁNH DẤU ĐÃ ĐỌC (AJAX)  →  POST /Student/MarkAllRead
-        // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> MarkAllRead()
         {
@@ -478,9 +447,6 @@ namespace KLTN_Registration_System.Controllers.Student
             return Redirect(redirectUrl);
         }
 
-        // ============================================================
-        // HELPER
-        // ============================================================
         private async Task AddNotification(
             string userId, string title, string content,
             string type, string redirectUrl = "")
@@ -504,7 +470,6 @@ namespace KLTN_Registration_System.Controllers.Student
                 "XMLHttpRequest",
                 StringComparison.OrdinalIgnoreCase);
         }
-        // GET /Student/UnreadCount  — trả JSON cho AJAX
         [HttpGet]
         public async Task<IActionResult> UnreadCount()
         {
@@ -516,7 +481,6 @@ namespace KLTN_Registration_System.Controllers.Student
 
             return Json(new { count });
         }
-        // ── 1. HỒ SƠ SINH VIÊN ──────────────────────────────────────
 
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> Profile()
@@ -571,7 +535,6 @@ namespace KLTN_Registration_System.Controllers.Student
             return RedirectToAction(nameof(Profile));
         }
 
-        // ── 2. ĐỀ XUẤT ĐỀ TÀI (SINH VIÊN TỰ TẠO) ──────────────────
 
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> ProposeTopic()
@@ -597,7 +560,6 @@ namespace KLTN_Registration_System.Controllers.Student
                 return RedirectToAction(nameof(MyRegistration));
             }
 
-            // Đề xuất hiện tại của sinh viên này
             var myProposals = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .Include(t => t.Lecturer)
                 .Where(t => t.CreatedByStudentId == user.Id && t.IsStudentProposed)
@@ -608,7 +570,6 @@ namespace KLTN_Registration_System.Controllers.Student
             var facultyNames = await GetStudentFacultyNamesAsync(user.Id);
             ViewBag.PrimaryMajor = await ResolveStudentPrimaryMajorAsync(user.Id);
 
-            // Danh sách giảng viên để chọn GVHD mong muốn
             ViewBag.Lecturers = await GetLecturersByFacultyAsync(facultyNames);
 
             return View();
@@ -670,7 +631,6 @@ namespace KLTN_Registration_System.Controllers.Student
                 }
             }
 
-            // Giới hạn tối đa 3 đề xuất đang chờ
             int pendingProposals = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
                 .CountAsync(t => t.CreatedByStudentId == user.Id
                               && t.IsStudentProposed
@@ -695,7 +655,7 @@ namespace KLTN_Registration_System.Controllers.Student
                 MajorId = primaryMajor.Id,
                 DepartmentName = primaryMajor.Name,
                 Faculty = primaryMajor.FacultyName,
-                LecturerId = preferredLecturerId,   // GV mong muốn
+                LecturerId = preferredLecturerId,   
                 CreatedByStudentId = user.Id,
                 IsStudentProposed = true,
                 IsApproved = false,
@@ -738,7 +698,6 @@ namespace KLTN_Registration_System.Controllers.Student
             return RedirectToAction(nameof(ProposeTopic));
         }
 
-        // ── 3. HỦY ĐỀ XUẤT ĐỀ TÀI ──────────────────────────────────
 
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Student")]

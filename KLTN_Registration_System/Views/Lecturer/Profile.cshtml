@@ -3,7 +3,6 @@
     ViewData["Title"] = "Thông tin cá nhân";
     Layout = "~/Views/Shared/_LayoutDashboard.cshtml";
 
-    // Initials
     string initials = "GV";
     if (!string.IsNullOrEmpty(Model.FullName))
     {
@@ -24,7 +23,6 @@
     <link rel="stylesheet" href="~/css/lecturer/profile.css" asp-append-version="true" />
 }
 
-<!-- PAGE TITLE -->
 <div class="profile-page-title">
     <h2>Thông tin cá nhân</h2>
     <p>Cập nhật thông tin hồ sơ giảng viên của bạn.</p>
@@ -32,7 +30,6 @@
 
 <div class="profile-wrap">
 
-    <!-- SIDEBAR -->
     <div class="profile-sidebar">
 
         <div class="profile-avatar">@initials</div>
@@ -95,7 +92,6 @@
 
     </div>
 
-    <!-- FORM CARD -->
     <div class="profile-form-card">
 
         <div class="form-card-title">
@@ -106,7 +102,6 @@
         <form asp-action="UpdateProfile" asp-controller="Lecturer" method="post">
             @Html.AntiForgeryToken()
 
-            <!-- Họ tên -->
             <div class="form-group">
                 <label class="form-label">
                     Họ và tên <span class="required">*</span>
@@ -122,7 +117,6 @@
             </div>
 
             <div class="form-grid-2">
-                <!-- Email readonly -->
                 <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="text" value="@Model.Email"
@@ -133,7 +127,6 @@
                     </div>
                 </div>
 
-                <!-- Mã GV readonly -->
                 <div class="form-group">
                     <label class="form-label">Mã giảng viên</label>
                     <input type="text" value="@Model.UserCode"
@@ -146,7 +139,6 @@
             </div>
 
             <div class="form-grid-2">
-                <!-- Khoa -->
                 <div class="form-group">
                     <label class="form-label">Khoa / Bộ môn</label>
                     <input type="text"
@@ -155,7 +147,6 @@
                            class="form-control-custom" />
                 </div>
 
-                <!-- Học vị -->
                 <div class="form-group">
                     <label class="form-label">Học vị / Học hàm</label>
                     <input type="text"
@@ -166,7 +157,7 @@
             </div>
 
             <div class="form-grid-2">
-                <!-- Chức vụ -->
+
                 <div class="form-group">
                     <label class="form-label">Chức vụ</label>
                     <input type="text"
@@ -175,7 +166,6 @@
                            class="form-control-custom" />
                 </div>
 
-                <!-- SĐT -->
                 <div class="form-group">
                     <label class="form-label">Số điện thoại</label>
                     <input type="tel" name="phoneNumber"

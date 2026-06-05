@@ -9,6 +9,16 @@
     string selectedSemester = Context.Request.Query["semester"].ToString();
     string selectedYear = Context.Request.Query["year"].ToString();
     string selectedPeriodName = ViewBag.SelectedPeriodName as string ?? "";
+    string search = ViewBag.Search as string ?? Context.Request.Query["search"].ToString();
+    string selectedFaculty = ViewBag.FacultyFilter as string ?? Context.Request.Query["faculty"].ToString();
+    int? selectedMajorId = ViewBag.MajorFilter as int?;
+    if (!selectedMajorId.HasValue && int.TryParse(Context.Request.Query["majorId"], out var queryMajorId))
+    {
+        selectedMajorId = queryMajorId;
+    }
+    var faculties = ViewBag.Faculties as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var majors = ViewBag.Majors as IEnumerable<KLTN_Registration_System.Models.Entities.Major>
+                 ?? Enumerable.Empty<KLTN_Registration_System.Models.Entities.Major>();
 
     // Filter model theo status
     var filtered = Model.Where(r =>
@@ -64,23 +74,61 @@
 
     <!-- Fix: filter tabs dùng href thay vì button thuần -->
     <div class="filter-tabs">
-        <a href="@Url.Action("Approval", "Admin", new { status = "Pending", semester = selectedSemester, year = selectedYear })"
+        <a href="@Url.Action("Approval", "Admin", new { status = "Pending", semester = selectedSemester, year = selectedYear, search, faculty = selectedFaculty, majorId = selectedMajorId })"
            class="filter-tab @(currentStatus == "Pending" ? "active" : "")">
             Chờ duyệt
             <span class="tab-count">@Model.Count(r => r.Status == "Pending")</span>
         </a>
-        <a href="@Url.Action("Approval", "Admin", new { status = "Approved", semester = selectedSemester, year = selectedYear })"
+        <a href="@Url.Action("Approval", "Admin", new { status = "Approved", semester = selectedSemester, year = selectedYear, search, faculty = selectedFaculty, majorId = selectedMajorId })"
            class="filter-tab @(currentStatus == "Approved" ? "active" : "")">
             Đã duyệt
             <span class="tab-count">@Model.Count(r => r.Status == "Approved")</span>
         </a>
-        <a href="@Url.Action("Approval", "Admin", new { status = "Rejected", semester = selectedSemester, year = selectedYear })"
+        <a href="@Url.Action("Approval", "Admin", new { status = "Rejected", semester = selectedSemester, year = selectedYear, search, faculty = selectedFaculty, majorId = selectedMajorId })"
            class="filter-tab @(currentStatus == "Rejected" ? "active" : "")">
             Từ chối
             <span class="tab-count">@Model.Count(r => r.Status == "Rejected")</span>
         </a>
     </div>
 </div>
+
+<form method="get" asp-action="Approval" asp-controller="Admin" class="approval-filter-bar">
+    <input type="hidden" name="status" value="@currentStatus" />
+    <input type="hidden" name="semester" value="@selectedSemester" />
+    <input type="hidden" name="year" value="@selectedYear" />
+
+    <div class="approval-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" name="search" value="@search" placeholder="Tìm sinh viên, MSSV, đề tài..." />
+    </div>
+
+    <select name="faculty" class="approval-filter-select js-approval-auto-submit">
+        <option value="">Tất cả khoa</option>
+        @foreach (var faculty in faculties)
+        {
+            <option value="@faculty" selected="@(selectedFaculty == faculty)">@faculty</option>
+        }
+    </select>
+
+    <select name="majorId" class="approval-filter-select js-approval-auto-submit">
+        <option value="">Tất cả chuyên ngành</option>
+        @foreach (var major in majors)
+        {
+            <option value="@major.Id" selected="@(selectedMajorId == major.Id)">
+                @major.Name
+            </option>
+        }
+    </select>
+
+    <button type="submit" class="btn-filter-apply">
+        <i class="fa-solid fa-filter"></i>
+        Lọc
+    </button>
+    <a href="@Url.Action("Approval", "Admin", new { status = currentStatus, semester = selectedSemester, year = selectedYear })"
+       class="btn-filter-reset">
+        <i class="fa-solid fa-rotate-left"></i>
+    </a>
+</form>
 
 <!-- STATS -->
 <div class="stats-grid">
@@ -139,6 +187,9 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="semester" value="@selectedSemester" />
                     <input type="hidden" name="year" value="@selectedYear" />
+                    <input type="hidden" name="search" value="@search" />
+                    <input type="hidden" name="faculty" value="@selectedFaculty" />
+                    <input type="hidden" name="majorId" value="@selectedMajorId" />
                     <button type="submit" class="btn-approve-all">
                         <i class="fa-solid fa-check-double"></i>
                         Duyệt tất cả
@@ -181,6 +232,11 @@
                         <tr>
                             <td>
                                 <div class="topic-name">@group.Topic?.Title</div>
+                                <div class="topic-meta-line">
+                                    <span>@(group.Topic?.Major?.FacultyName ?? group.Topic?.Faculty ?? "Chưa có khoa")</span>
+                                    <span>•</span>
+                                    <span>@(group.Topic?.Major?.Name ?? group.Topic?.DepartmentName ?? "Chưa có ngành")</span>
+                                </div>
                                 <div class="group-summary">
                                     <span class="group-badge @(isGroup ? "group-badge--team" : "group-badge--single")">
                                         <i class="fa-solid @(isGroup ? "fa-users" : "fa-user")"></i>
@@ -212,6 +268,13 @@
                                             {
                                                 <span class="mssv-badge">@item.Student.UserCode</span>
                                             }
+                                            <span class="student-major-badge">
+                                                @(item.Student?.Faculty ?? item.Student?.Major?.FacultyName ?? "Chưa có khoa")
+                                                @if (!string.IsNullOrWhiteSpace(item.Student?.Major?.Name))
+                                                {
+                                                    <span>• @item.Student.Major.Name</span>
+                                                }
+                                            </span>
                                         </div>
                                     }
                                 </div>
@@ -231,6 +294,9 @@
                                             <input type="hidden" name="semester" value="@selectedSemester" />
                                             <input type="hidden" name="year" value="@selectedYear" />
                                             <input type="hidden" name="status" value="@currentStatus" />
+                                            <input type="hidden" name="search" value="@search" />
+                                            <input type="hidden" name="faculty" value="@selectedFaculty" />
+                                            <input type="hidden" name="majorId" value="@selectedMajorId" />
                                             <button type="submit" class="btn-approve" title="Duyệt cả nhóm">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
@@ -241,6 +307,9 @@
                                             <input type="hidden" name="semester" value="@selectedSemester" />
                                             <input type="hidden" name="year" value="@selectedYear" />
                                             <input type="hidden" name="status" value="@currentStatus" />
+                                            <input type="hidden" name="search" value="@search" />
+                                            <input type="hidden" name="faculty" value="@selectedFaculty" />
+                                            <input type="hidden" name="majorId" value="@selectedMajorId" />
                                             <button type="submit" class="btn-reject" title="Từ chối cả nhóm">
                                                 <i class="fa-solid fa-xmark"></i>
                                             </button>

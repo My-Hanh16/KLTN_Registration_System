@@ -36,7 +36,6 @@
                 Chào mừng bạn, <span>@pageModel.StudentName</span>.
             </h1>
 
-            @* --- LOGIC KIỂM TRA THỜI GIAN ĐĂNG KÝ --- *@
             @if (hasCompletedThesis)
             {
                 <p class="mb-0 opacity-90">
@@ -53,7 +52,6 @@
             }
             else if (isOpening)
             {
-                @* TRƯỜNG HỢP 1: ĐANG MỞ *@
                 <p class="mb-0 opacity-75">
                     Hệ thống đang mở cổng đăng ký! Hạn đăng ký còn
                     <span class="fw-bold text-decoration-underline @(pageModel.DaysLeft <= 3 ? "text-warning" : "")">
@@ -84,7 +82,6 @@
                 }
                 else
                 {
-                    @* Nếu DaysLeft <= 0 => Đã quá hạn *@
                     <p class="mb-0 fw-bold">
                         <i class="fa-solid fa-circle-xmark me-1"></i>
                         Đã kết thúc thời gian đăng ký đề tài trực tuyến.
@@ -115,7 +112,7 @@
 
                 @{
                     string statusValue = pageModel.Status ?? "Chưa có";
-                    // 1. Định nghĩa tên tiếng Việt
+
                     string statusVietnamese = statusValue switch
                     {
                         "Approved" => "ĐÃ DUYỆT",
@@ -124,7 +121,6 @@
                         _ => statusValue.ToUpper()
                     };
 
-                    // 2. Định nghĩa class CSS (Đây là phần bạn đang thiếu)
                     string statusClass = statusValue switch
                     {
                         "Approved" => "status-approved",

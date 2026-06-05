@@ -93,7 +93,6 @@ namespace KLTN_Registration_System.Controllers
                     .Select(r => r.Topic!)
                     .ToListAsync();
 
-                // unread từ lecturer/admin gửi cho student
                 var topicIds = topics.Select(t => t.Id).ToList();
 
                 var unreadMap = await _db.TopicComments
@@ -119,9 +118,6 @@ namespace KLTN_Registration_System.Controllers
             return RedirectToAction("Index", "Home");
         }
 
-        // =====================================================
-        // CHAT ROOM
-        // =====================================================
         public async Task<IActionResult> Topic(int topicId)
         {
             await SetStudentLayoutData();
@@ -139,9 +135,6 @@ namespace KLTN_Registration_System.Controllers
 
             if (topic == null) return NotFound();
 
-            // =================================================
-            // CHECK PERMISSION
-            // =================================================
             bool isLecturer =
                 roles.Contains("Lecturer") &&
                 topic.LecturerId == user.Id;
@@ -156,9 +149,6 @@ namespace KLTN_Registration_System.Controllers
             if (!isLecturer && !isStudent)
                 return Forbid();
 
-            // =================================================
-            // LOAD MESSAGES (LAST 50)
-            // =================================================
             var messages = await _db.TopicComments
                 .Where(c => c.TopicId == topicId && !c.IsDeleted)
                 .Include(c => c.Sender)
@@ -189,9 +179,6 @@ namespace KLTN_Registration_System.Controllers
                 })
                 .ToListAsync();
 
-            // =================================================
-            // MARK AS READ
-            // =================================================
             var unread = await _db.TopicComments
                 .Where(c =>
                     c.TopicId == topicId &&
@@ -206,9 +193,6 @@ namespace KLTN_Registration_System.Controllers
             if (unread.Count > 0)
                 await _db.SaveChangesAsync();
 
-            // =================================================
-            // VIEWBAG
-            // =================================================
             ViewBag.TopicId = topicId;
             ViewBag.TopicTitle = topic.Title;
             ViewBag.CurrentUserId = user.Id;
@@ -218,9 +202,6 @@ namespace KLTN_Registration_System.Controllers
             return View(topic);
         }
 
-        // =====================================================
-        // LOAD MORE
-        // =====================================================
         [HttpGet]
         public async Task<IActionResult> LoadMore(int topicId, int beforeId)
         {
@@ -283,9 +264,6 @@ namespace KLTN_Registration_System.Controllers
             return Json(messages);
         }
 
-        // =====================================================
-        // UPLOAD FILE
-        // =====================================================
         [HttpPost, ValidateAntiForgeryToken]
         [RequestSizeLimit(10 * 1024 * 1024)]
         public async Task<IActionResult> UploadFile(IFormFile file, int topicId)
@@ -422,9 +400,6 @@ namespace KLTN_Registration_System.Controllers
         }
     }
 
-    // =========================================================
-    // VIEWMODEL
-    // =========================================================
     public class ChatMessageVM
     {
         public int Id { get; set; }

@@ -16,11 +16,9 @@ namespace KLTN_Registration_System.Controllers
 
         public IActionResult Index()
         {
-            // Chưa đăng nhập
             if (User.Identity?.IsAuthenticated != true)
                 return RedirectToAction("Login", "Account");
 
-            // Điều hướng theo role
             if (User.IsInRole("Admin"))
                 return RedirectToAction("Statistics", "Admin");
 
@@ -30,7 +28,6 @@ namespace KLTN_Registration_System.Controllers
             if (User.IsInRole("Student"))
                 return RedirectToAction("Home", "Student");
 
-            // fallback
             return RedirectToAction("Login", "Account");
         }
 

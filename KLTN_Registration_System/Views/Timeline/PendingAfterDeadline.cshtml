@@ -28,9 +28,6 @@
     <link rel="stylesheet" href="~/css/timeline/pending-after-deadline.css" asp-append-version="true" />
 }
 
-<!-- ════════════════════════════════
-     PAGE HEADER
-════════════════════════════════ -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="page-title">Bài chờ duyệt quá hạn</h2>
@@ -45,9 +42,6 @@
     </a>
 </div>
 
-<!-- ════════════════════════════════
-     STATS ROW
-════════════════════════════════ -->
 <div class="stats-row">
     <div class="stat-card">
         <div class="stat-top">
@@ -78,7 +72,6 @@
     </div>
 </div>
 
-<!-- WARNING BANNER — chỉ hiện khi có dữ liệu -->
 @if (totalOverdue > 0)
 {
     <div class="warn-banner">
@@ -91,12 +84,8 @@
     </div>
 }
 
-<!-- ════════════════════════════════
-     MAIN CARD
-════════════════════════════════ -->
 <div class="main-card">
 
-    <!-- CARD HEAD: filter + count -->
     <div class="card-head">
         <div class="card-head-left">
             <h3 class="card-head-title">
@@ -129,7 +118,6 @@
         </span>
     </div>
 
-    <!-- TABLE -->
     <div class="table-scroll">
         @if (!overdueSubmissions.Any())
         {
@@ -166,7 +154,6 @@
                                 ? "SV"
                                 : studentName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Last()[..1].ToUpperInvariant();
 
-                            // Tính số ngày trễ
                             string lateDays = "—";
                             if (item.Timeline?.ReviewDeadline.HasValue == true)
                             {

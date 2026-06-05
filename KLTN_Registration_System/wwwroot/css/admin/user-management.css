@@ -51,17 +51,23 @@
     ══════════════════════════════════════ */
     .toast {
         position: fixed; top: 24px; right: 24px; z-index: 9999;
-        width: 400px; background: #fff; border-radius: 16px;
-        overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.14);
+        display: block; opacity: 1;
+        width: min(360px, calc(100vw - 32px)); background: #fff; border-radius: 14px;
+        overflow: hidden; box-shadow: 0 18px 46px rgba(15,23,42,.16);
         animation: toastIn .3s ease;
     }
 
-    .toast-body { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; }
+    .toast:not(.show) {
+        display: block;
+        opacity: 1;
+    }
+
+    .toast-body { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; }
 
     .toast-icon {
-        width: 44px; height: 44px; border-radius: 12px;
+        width: 38px; height: 38px; border-radius: 11px;
         display: flex; align-items: center; justify-content: center;
-        font-size: 20px; flex-shrink: 0;
+        font-size: 17px; flex-shrink: 0;
     }
 
     .toast-icon.green { background: #dcfce7; color: #16a34a; }
@@ -80,13 +86,14 @@
     .toast-pwd-box {
         display: flex; align-items: center; gap: 10px;
         background: #f0fdf4; border: 1px solid #bbf7d0;
-        border-radius: 10px; padding: 10px 14px; margin-top: 10px;
+        border-radius: 9px; padding: 8px 10px; margin-top: 8px;
     }
 
     .toast-pwd {
         font-family: 'Courier New', monospace;
-        font-size: 20px; font-weight: 800;
-        letter-spacing: 3px; color: #15803d; flex: 1;
+        font-size: 16px; font-weight: 800;
+        letter-spacing: 1.5px; color: #15803d; flex: 1;
+        overflow-wrap: anywhere;
     }
 
     .btn-copy {
@@ -528,4 +535,115 @@
 
 .lock-success {
     color: #16a34a;
+}
+
+.reset-mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.reset-mode-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color .15s, background .15s, box-shadow .15s;
+}
+
+.reset-mode-card:hover {
+    border-color: #93c5fd;
+    background: #f8fbff;
+}
+
+.reset-mode-card.checked {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+}
+
+.reset-mode-card input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.reset-mode-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid #94a3b8;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.reset-mode-card.checked .reset-mode-dot {
+    border-color: #2563eb;
+}
+
+.reset-mode-card.checked .reset-mode-dot::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2563eb;
+    position: absolute;
+    inset: 0;
+    margin: auto;
+}
+
+.reset-mode-card strong {
+    display: block;
+    color: #0f172a;
+    font-size: 14px;
+}
+
+.reset-mode-card small {
+    display: block;
+    color: #94a3b8;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.reset-custom-password.is-hidden,
+.reset-result.is-hidden {
+    display: none;
+}
+
+.reset-warning {
+    margin-bottom: 14px;
+}
+
+.reset-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1.5px solid #bbf7d0;
+    background: #f0fdf4;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+.reset-result span {
+    display: block;
+    color: #16a34a;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+}
+
+.reset-result strong {
+    display: block;
+    color: #0f172a;
+    font-family: "Consolas", "SFMono-Regular", monospace;
+    font-size: 15px;
+    margin-top: 3px;
 }

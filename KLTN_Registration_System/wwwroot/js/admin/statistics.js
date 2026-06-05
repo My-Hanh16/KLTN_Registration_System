@@ -36,6 +36,22 @@
         });
     }
 
+    function bindTimeGreeting() {
+        const greeting = document.getElementById('timeGreeting');
+        if (!greeting) return;
+
+        const hour = new Date().getHours();
+        if (hour < 11) {
+            greeting.textContent = 'Xin chào buổi sáng';
+        } else if (hour < 14) {
+            greeting.textContent = 'Xin chào buổi trưa';
+        } else if (hour < 18) {
+            greeting.textContent = 'Xin chào buổi chiều';
+        } else {
+            greeting.textContent = 'Xin chào buổi tối';
+        }
+    }
+
     function applyProgressBars() {
         document.querySelectorAll('.stat-progress-fill[data-progress]').forEach(bar => {
             const value = Math.min(100, Math.max(0, Number(bar.dataset.progress || 0)));
@@ -75,34 +91,45 @@
 
         const ctx = canvas.getContext('2d');
         const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(79,70,229,0.28)');
-        gradient.addColorStop(0.45, 'rgba(99,102,241,0.10)');
+        gradient.addColorStop(0, 'rgba(37,99,235,0.24)');
+        gradient.addColorStop(0.5, 'rgba(96,165,250,0.08)');
         gradient.addColorStop(1, 'rgba(255,255,255,0)');
 
-        const lineData = data.monthCounts || [];
-        const numericData = lineData.filter(v => v !== null && v !== undefined);
+        const allLabels = data.monthLabels || [];
+        const allCounts = data.monthCounts || [];
+        const sliceRange = range => {
+            const start = Math.max(0, allLabels.length - range);
+            return {
+                labels: allLabels.slice(start),
+                counts: allCounts.slice(start)
+            };
+        };
+        const initialRange = sliceRange(7);
+        const numericData = allCounts.filter(v => v !== null && v !== undefined);
 
-        new Chart(canvas, {
+        const chart = new Chart(canvas, {
             type: 'line',
             data: {
-                labels: data.monthLabels || [],
+                labels: initialRange.labels,
                 datasets: [{
                     label: 'Sinh viên đã đăng ký',
-                    data: lineData,
-                    borderColor: CHART_PRIMARY,
+                    data: initialRange.counts,
+                    borderColor: '#2563eb',
                     backgroundColor: gradient,
                     fill: true,
-                    tension: 0.38,
+                    tension: 0.46,
                     cubicInterpolationMode: 'monotone',
                     spanGaps: false,
-                    borderWidth: 3,
+                    borderWidth: 4,
+                    borderCapStyle: 'round',
+                    borderJoinStyle: 'round',
                     pointBackgroundColor: '#fff',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: CHART_PRIMARY,
+                    pointBorderColor: '#2563eb',
+                    pointHoverBackgroundColor: '#2563eb',
                     pointHoverBorderColor: '#fff',
                     pointBorderWidth: 0,
                     pointHoverBorderWidth: 3,
-                    pointRadius: ctx => ctx.raw == null ? 0 : 3,
+                    pointRadius: 0,
                     pointHoverRadius: 6
                 }]
             },
@@ -137,7 +164,7 @@
                             padding: 8
                         },
                         grid: {
-                            color: 'rgba(148,163,184,0.14)',
+                            color: 'rgba(148,163,184,0.10)',
                             drawTicks: false
                         }
                     },
@@ -150,10 +177,28 @@
                             autoSkip: true,
                             maxTicksLimit: 8
                         },
-                        grid: { display: false }
+                        grid: {
+                            display: true,
+                            color: 'rgba(148,163,184,0.18)',
+                            drawTicks: false
+                        }
                     }
                 }
             }
+        });
+
+        document.querySelectorAll('[data-line-range]').forEach(button => {
+            button.addEventListener('click', () => {
+                const range = Number(button.dataset.lineRange || 7);
+                const next = sliceRange(range);
+                chart.data.labels = next.labels;
+                chart.data.datasets[0].data = next.counts;
+                chart.update();
+
+                document.querySelectorAll('[data-line-range]').forEach(item => {
+                    item.classList.toggle('active', item === button);
+                });
+            });
         });
     }
 
@@ -184,10 +229,35 @@
         });
     }
 
+    function shortenFacultyName(name) {
+        const normalized = (name || '').trim().toLocaleLowerCase('vi-VN');
+        const map = {
+            'công nghệ thông tin': 'CNTT',
+            'dien tu vien thong': 'DTVT',
+            'điện tử viễn thông': 'ĐTVT',
+            'kinh tế': 'KT',
+            'ngoại ngữ': 'NN',
+            'báo chí': 'BC'
+        };
+
+        if (map[normalized]) return map[normalized];
+
+        const words = (name || '')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+
+        return words.length > 1
+            ? words.map(word => word[0]).join('').toUpperCase()
+            : (name || '');
+    }
+
     function initMajorChart(data) {
         const canvas = document.getElementById('majorChart');
         if (!canvas) return;
 
+        const fullLabels = data.majorLabels || [];
+        const shortLabels = fullLabels.map(shortenFacultyName);
         const gradient = canvas.getContext('2d').createLinearGradient(0, 0, 0, 300);
         gradient.addColorStop(0, '#6366f1');
         gradient.addColorStop(1, '#4f46e5');
@@ -195,7 +265,7 @@
         new Chart(canvas, {
             type: 'bar',
             data: {
-                labels: data.majorLabels || [],
+                labels: shortLabels,
                 datasets: [{
                     label: 'Số đề tài',
                     data: data.majorCounts || [],
@@ -210,7 +280,13 @@
                 animation: { duration: 1200, easing: 'easeOutQuart' },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { ...tooltipDefaults }
+                    tooltip: {
+                        ...tooltipDefaults,
+                        callbacks: {
+                            ...(tooltipDefaults.callbacks || {}),
+                            title: items => fullLabels[items[0]?.dataIndex] || items[0]?.label || ''
+                        }
+                    }
                 },
                 scales: {
                     y: {
@@ -225,6 +301,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        bindTimeGreeting();
         bindFilterSubmit();
         applyProgressBars();
 

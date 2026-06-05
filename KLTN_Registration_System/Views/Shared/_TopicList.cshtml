@@ -11,7 +11,7 @@
     int totalTopics = ViewBag.TotalTopics ?? Model.Count();
     int openTopics = ViewBag.OpenTopics ?? Model.Count(t => t.IsApproved && t.IsRegistrationOpen);
     int fullTopics = ViewBag.FullTopics ?? Model.Count(t => t.Status == TopicStatus.Full || (t.IsApproved && !t.IsRegistrationOpen && !string.IsNullOrWhiteSpace(t.CreatedByStudentId)));
-    int closedTopics = ViewBag.ClosedTopics ?? Model.Count(t => t.Status == TopicStatus.Closed && string.IsNullOrWhiteSpace(t.CreatedByStudentId));
+    int closedTopics = ViewBag.ClosedTopics ?? Model.Count(t => t.Status == TopicStatus.Closed || t.Status == TopicStatus.Full || (t.IsApproved && !t.IsRegistrationOpen && !string.IsNullOrWhiteSpace(t.CreatedByStudentId)));
     int readyTopics = ViewBag.ReadyTopics ?? Model.Count(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
 }
 

@@ -19,7 +19,6 @@
     <link rel="stylesheet" href="~/css/topic/index.css" asp-append-version="true" />
 }
 
-<!-- HEADER -->
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="topic-page-title">
@@ -32,7 +31,6 @@
     </div>
 </div>
 
-<!-- ALERTS -->
 @if (TempData["Success"] != null)
 {
     <div class="alert alert-success border-0 shadow-sm mb-3 topic-page-alert">
@@ -78,17 +76,14 @@
     </div>
 }
 
-<!-- FILTER BAR -->
 <form asp-action="Index" method="get" id="filterForm">
 
     <div class="filter-bar mb-4">
 
         <div class="filter-row">
 
-            <!-- LEFT -->
             <div class="filter-left">
 
-                <!-- Bộ môn -->
                 <select name="majorId"
                         class="form-select"
                         onchange="this.form.submit()">
@@ -107,7 +102,6 @@
                     }
                 </select>
 
-                <!-- Trạng thái -->
                 <select name="status"
                         class="form-select"
                         onchange="this.form.submit()">
@@ -126,13 +120,10 @@
 
                 </select>
 
-                <!-- Level -->
-                <!-- FILTER TAG -->
 <div class="level-filter">
 
     <span class="filter-label">LOẠI:</span>
 
-    <!-- LEVEL -->
     <input type="hidden"
            name="level"
            id="levelInput"
@@ -156,7 +147,6 @@
         Nâng cao
     </button>
 
-    <!-- TYPE -->
     <input type="hidden"
            name="type"
            id="typeInput"
@@ -178,7 +168,6 @@
 
             </div>
 
-            <!-- RIGHT -->
             <a asp-action="Index" class="btn-clear-filter">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
                 Xoá bộ lọc
@@ -190,7 +179,6 @@
 
 </form>
 
-<!-- TOPIC LIST -->
 <div class="topic-container">
     @if (!Model.Any())
     {
@@ -214,8 +202,6 @@
             var remainingSlots = Math.Max(0, item.MaxStudents - reserved);
             var isFull = fullTopicIds.Contains(item.Id) || reserved >= item.MaxStudents;
             var isNotOpen = !item.IsRegistrationOpen;
-            var isExpired = DateTime.Now > item.Deadline;
-            var isClosed = isExpired;
             var isGroupTopic = item.MaxStudents > 1;
             var hasEnoughSlotsForGroup = !isGroupTopic || remainingSlots >= 2;
 
@@ -231,7 +217,7 @@
                 levelColorClass = "tag-medium";
             }
 
-            <div class="topic-item @(isFull || isExpired ? "topic-full" : "")">
+            <div class="topic-item @(isFull ? "topic-full" : "")">
             <div class="topic-info">
 
                 <!-- Hàng badge / bộ môn -->
@@ -302,10 +288,6 @@
                         <button class="btn-full" disabled title="Đề tài này đã đủ số lượng đăng ký/chờ duyệt">
                             <i class="fa-solid fa-lock me-1"></i> Đã đủ
                         </button>
-                    }
-                    else if (isClosed)
-                    {
-                        <button class="btn-full" disabled>Đã hết hạn</button>
                     }
                     else if (isNotOpen)
                     {

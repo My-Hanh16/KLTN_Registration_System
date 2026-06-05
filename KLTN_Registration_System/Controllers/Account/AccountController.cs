@@ -30,9 +30,6 @@ namespace KLTN_Registration_System.Controllers.Account
             _memoryCache = memoryCache;
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // LOGIN
-        // ─────────────────────────────────────────────────────────────
         [AllowAnonymous]
         public IActionResult Login(string? returnUrl = null)
         {
@@ -112,9 +109,6 @@ namespace KLTN_Registration_System.Controllers.Account
             return View();
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // LOGOUT
-        // ─────────────────────────────────────────────────────────────
         [HttpPost, Authorize, ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
@@ -124,17 +118,9 @@ namespace KLTN_Registration_System.Controllers.Account
             return RedirectToAction("Login");
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // ACCESS DENIED
-        // ─────────────────────────────────────────────────────────────
         [AllowAnonymous]
         public IActionResult AccessDenied() => View();
 
-        // ─────────────────────────────────────────────────────────────
-        // QUÊN MẬT KHẨU
-        // GET  /Account/ForgotPassword
-        // POST /Account/ForgotPassword
-        // ─────────────────────────────────────────────────────────────
         [AllowAnonymous]
         [HttpGet]
         public IActionResult ForgotPassword() => View();
@@ -374,11 +360,6 @@ namespace KLTN_Registration_System.Controllers.Account
             return RedirectToAction(nameof(Login));
         }
 
-        // ─────────────────────────────────────────────────────────────
-        // ĐỔI MẬT KHẨU
-        // GET  /Account/ChangePassword
-        // POST /Account/ChangePassword
-        // ─────────────────────────────────────────────────────────────
         [Authorize]
         [HttpGet]
         public IActionResult ChangePassword() => View();
@@ -389,7 +370,6 @@ namespace KLTN_Registration_System.Controllers.Account
             string newPassword,
             string confirmPassword)
         {
-            // ── Validate input ──────────────────────────────────────
             if (string.IsNullOrWhiteSpace(currentPassword))
             {
                 TempData["Error"] = "Vui lòng nhập mật khẩu hiện tại.";
@@ -414,7 +394,6 @@ namespace KLTN_Registration_System.Controllers.Account
                 return View();
             }
 
-            // ── Thực hiện đổi ─────────────────────────────────────
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToAction("Login");
 
@@ -422,16 +401,14 @@ namespace KLTN_Registration_System.Controllers.Account
 
             if (result.Succeeded)
             {
-                // Làm mới security stamp → kick session cũ trên thiết bị khác
                 await _userManager.UpdateSecurityStampAsync(user);
-                // Giữ session hiện tại vẫn đăng nhập
+
                 await _signInManager.RefreshSignInAsync(user);
 
                 TempData["Success"] = "Đổi mật khẩu thành công!";
                 return RedirectToAction("ChangePassword");
             }
 
-            // Lỗi từ Identity (sai mật khẩu hiện tại, không đủ độ phức tạp...)
             var errors = result.Errors.Select(e => e.Description).ToList();
             TempData["Error"] = errors.FirstOrDefault()
                 ?? "Đổi mật khẩu thất bại. Kiểm tra lại mật khẩu hiện tại.";

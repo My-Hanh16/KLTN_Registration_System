@@ -206,17 +206,22 @@
 
     .hero-title {
         font-family: 'Sora', sans-serif;
-        font-size: clamp(38px, 4.5vw, 58px);
+        font-size: clamp(42px, 4.1vw, 64px);
         font-weight: 800;
-        line-height: 1.12;
-        letter-spacing: -1.5px;
+        line-height: 1.08;
+        letter-spacing: 0;
         color: #fff;
         margin-bottom: 20px;
         animation: fadeUp .55s ease both .2s;
     }
 
+        .hero-title .title-line {
+            display: block;
+        }
+
         .hero-title .hi {
             color: #60a5fa;
+            white-space: nowrap;
         }
 
     .hero-desc {

@@ -29,7 +29,6 @@ namespace KLTN_Registration_System.Controllers.Admin
             _hubContext = hubContext;
         }
 
-        // GET /Admin/Broadcast
         [HttpGet]
         public async Task<IActionResult> Index(string? semester = null, string? year = null)
         {
@@ -59,7 +58,6 @@ namespace KLTN_Registration_System.Controllers.Admin
         x.Type
     })
     .CountAsync();
-            // Lịch sử 10 thông báo gần nhất
             var history = await _context.Notifications
     .Where(n => n.Type == "System"
              || n.Type == "SystemAlert"
@@ -86,13 +84,12 @@ namespace KLTN_Registration_System.Controllers.Admin
             return View("~/Views/Admin/Broadcast/Index.cshtml");
         }
 
-        // POST /Admin/Broadcast/Send
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Send(
             string title,
             string content,
-            string target,      // "all" | "student" | "lecturer"
-            string type,        // "System" | "SystemAlert" | "Deadline"
+            string target,    
+            string type,   
             string? redirectUrl)
         {
             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(content))
@@ -122,7 +119,6 @@ namespace KLTN_Registration_System.Controllers.Admin
             content = content.Trim();
             var safeRedirectUrl = NotificationService.NormalizeRedirectUrl(redirectUrl);
 
-            // Lấy danh sách userId theo target
             List<string> userIds;
             if (target == "student")
             {
@@ -134,7 +130,7 @@ namespace KLTN_Registration_System.Controllers.Admin
                 var lecturers = await _userManager.GetUsersInRoleAsync("Lecturer");
                 userIds = lecturers.Select(u => u.Id).ToList();
             }
-            else // "all"
+            else 
             {
                 var selectedPeriod = await GetSelectedPeriodAsync();
                 var studentIds = await GetEligibleStudentIdsAsync(selectedPeriod);
@@ -156,7 +152,6 @@ namespace KLTN_Registration_System.Controllers.Admin
                 return RedirectToAction(nameof(Index));
             }
 
-            // Tạo thông báo hàng loạt
             var notifications = userIds.Select(uid => new Notification
             {
                 UserId = uid,
@@ -255,7 +250,6 @@ namespace KLTN_Registration_System.Controllers.Admin
                 .ToListAsync();
         }
 
-        // POST /Admin/Broadcast/DeleteAll  — Xóa thông báo hệ thống cũ
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteOld(int daysOld = 30)
         {

@@ -1,8 +1,4 @@
-﻿@* ============================================================
-   FILE: Views/Admin/Broadcast/Index.cshtml
-   LAYOUT: _LayoutDashboard  ← giữ nguyên, KHÔNG Layout = null
-   ============================================================ *@
-@{
+﻿@{
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Broadcast thông báo";
     string selectedPeriodName = ViewBag.SelectedPeriodName?.ToString() ?? ViewBag.AdminSelectedPeriodName?.ToString() ?? "đợt đang mở";
@@ -267,7 +263,6 @@
             </div>
         </div>
 
-        <!-- Danger zone -->
         <div class="danger-zone">
             <div class="danger-title">
                 <i class="fa-solid fa-trash-can danger-title-icon"></i>
@@ -291,8 +286,8 @@
             </form>
         </div>
 
-    </div><!-- /sidebar -->
-</div><!-- /bc-grid -->
+    </div>
+</div>
 @section Scripts {
     <script id="broadcastFlash" type="application/json">
 @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new

@@ -1,8 +1,4 @@
-﻿@* ============================================================
-   FILE: Views/Admin/StudentProposals.cshtml
-   MODEL: IEnumerable<Topic>
-   ============================================================ *@
-@using KLTN_Registration_System.Models.Entities
+﻿@using KLTN_Registration_System.Models.Entities
 @model IEnumerable<Topic>
 @{
     Layout = "_LayoutDashboard";
@@ -23,12 +19,9 @@
     <link rel="stylesheet" href="~/css/admin/student-proposals.css" asp-append-version="true" />
 }
 
-<!-- ════════════════════════════════
-     ALERTS
-════════════════════════════════ -->
 @if (TempData["Success"] != null)
 {
-    <div class="alert-bar success">
+    <div class="proposal-toast proposal-toast--success" role="status" aria-live="polite">
         <i class="fa-solid fa-circle-check"></i>
         <span>@TempData["Success"]</span>
     </div>
@@ -36,25 +29,19 @@
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert-bar error">
+    <div class="proposal-toast proposal-toast--error" role="alert" aria-live="assertive">
         <i class="fa-solid fa-circle-exclamation"></i>
         <span>@TempData["Error"]</span>
     </div>
 }
 
-<!-- ════════════════════════════════
-     PAGE HEADER
-════════════════════════════════ -->
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="page-title">Đề xuất đề tài từ sinh viên</h2>
-        <p class="page-sub">Duyệt hoặc từ chối đề tài do sinh viên tự đề xuất, phân công giảng viên hướng dẫn.</p>
+        <p class="page-sub">Duyệt đề tài đã được giảng viên đồng ý hoặc phân công giảng viên khác cho đề xuất đang chờ xử lý.</p>
     </div>
 </div>
 
-<!-- ════════════════════════════════
-     STATS ROW
-════════════════════════════════ -->
 <div class="stats-row">
     <div class="stat-card">
         <div class="stat-icon blue"><i class="fa-solid fa-lightbulb"></i></div>
@@ -77,18 +64,8 @@
             <div class="stat-number">@approvedCount</div>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon red"><i class="fa-solid fa-ban"></i></div>
-        <div>
-            <div class="stat-label">Đã từ chối</div>
-            <div class="stat-number">@rejectedCount</div>
-        </div>
-    </div>
 </div>
 
-<!-- ════════════════════════════════
-     FILTER TABS
-════════════════════════════════ -->
 <div class="filter-tabs">
     <a asp-action="StudentProposals"
        class="filter-tab all @(statusFilter == null ? "active" : "")">
@@ -108,16 +85,8 @@
         Đã duyệt
         <span class="tab-count green">@approvedCount</span>
     </a>
-    <a asp-action="StudentProposals" asp-route-status="rejected"
-       class="filter-tab @(statusFilter == "rejected" ? "active" : "")">
-        Đã từ chối
-        <span class="tab-count red">@rejectedCount</span>
-    </a>
 </div>
 
-<!-- ════════════════════════════════
-     PROPOSAL LIST
-════════════════════════════════ -->
 @if (!Model.Any())
 {
     <div class="empty-state">
@@ -175,7 +144,6 @@ else
             <div class="proposal-card">
                 <div class="proposal-body">
 
-                    <!-- LEFT: Info -->
                     <div class="prop-info">
                         <div class="prop-badges">
                             <span class="s-badge @badgeCls">
@@ -226,7 +194,6 @@ else
                         }
                     </div>
 
-                    <!-- RIGHT: Actions (chỉ khi pending) -->
                     @if (isPending && !adminRejected)
                     {
                         <div class="prop-actions">
@@ -252,52 +219,35 @@ else
                                 </div>
                             }
 
-                            <!-- Phân công GV khác -->
-                            <div class="action-group">
-                                <div class="action-group-label">
-                                    <i class="fa-solid fa-rotate action-icon action-icon--blue"></i>
-                                    Phân công giảng viên khác
-                                </div>
-                                <form asp-action="ReassignStudentProposal" asp-controller="Admin"
-                                      method="post" class="action-form">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="topicId" value="@topic.Id" />
-                                    <input type="hidden" name="status" value="@statusFilter" />
-                                    <select name="assignLecturerId" required class="act-select">
-                                        <option value="">-- Chọn giảng viên cùng khoa --</option>
-                                        @foreach (var lec in eligibleLecturers)
+                            else
+                            {
+                                <div class="action-group">
+                                    <div class="action-group-label">
+                                        <i class="fa-solid fa-rotate action-icon action-icon--blue"></i>
+                                        Phân công giảng viên khác
+                                    </div>
+                                    <form asp-action="ReassignStudentProposal" asp-controller="Admin"
+                                          method="post" class="action-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="topicId" value="@topic.Id" />
+                                        <input type="hidden" name="status" value="@statusFilter" />
+                                        <select name="assignLecturerId" required class="act-select">
+                                            <option value="">-- Chọn giảng viên cùng khoa --</option>
+                                            @foreach (var lec in eligibleLecturers)
+                                            {
+                                                <option value="@lec.Id">@lec.FullName</option>
+                                            }
+                                        </select>
+                                        @if (!eligibleLecturers.Any())
                                         {
-                                            <option value="@lec.Id">@lec.FullName</option>
+                                            <div class="empty-lecturer-note">Không có giảng viên phù hợp với khoa/chuyên ngành này.</div>
                                         }
-                                    </select>
-                                    @if (!eligibleLecturers.Any())
-                                    {
-                                        <div class="empty-lecturer-note">Không có giảng viên phù hợp với khoa/chuyên ngành này.</div>
-                                    }
-                                    <button type="submit" class="act-btn blue" @(!eligibleLecturers.Any() ? "disabled" : "")>
-                                        <i class="fa-solid fa-rotate"></i> Phân công GV
-                                    </button>
-                                </form>
-                            </div>
-
-                            <!-- Từ chối -->
-                            <div class="action-group action-group--danger">
-                                <div class="action-group-label action-group-label--danger">
-                                    <i class="fa-solid fa-xmark action-icon"></i>
-                                    Từ chối đề xuất
+                                        <button type="submit" class="act-btn blue" @(!eligibleLecturers.Any() ? "disabled" : "")>
+                                            <i class="fa-solid fa-rotate"></i> Phân công GV
+                                        </button>
+                                    </form>
                                 </div>
-                                <form asp-action="RejectStudentProposal" asp-controller="Admin"
-                                      method="post" class="action-form">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="topicId" value="@topic.Id" />
-                                    <input type="hidden" name="status" value="@statusFilter" />
-                                    <input type="text" name="reason" class="act-input"
-                                           placeholder="Nhập lý do từ chối..." required minlength="5" />
-                                    <button type="submit" class="act-btn red-outline">
-                                        <i class="fa-solid fa-xmark"></i> Từ chối đề xuất
-                                    </button>
-                                </form>
-                            </div>
+                            }
 
                         </div>
                     }

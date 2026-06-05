@@ -22,7 +22,6 @@
 
     <div class="chat-wrapper">
 
-        <!-- HEADER -->
         <div class="chat-header">
             <a href="javascript:history.back()" class="chat-header-back" title="Quay lại">
                 <i class="fa-solid fa-arrow-left"></i>
@@ -42,7 +41,6 @@
             </span>
         </div>
 
-        <!-- MESSAGES -->
         <div id="chat-messages">
 
             @if (!messages.Any())
@@ -116,10 +114,8 @@
             }
         </div>
 
-        <!-- TYPING -->
         <div id="typing-indicator"></div>
 
-        <!-- INPUT AREA -->
         <div class="chat-input-area">
             @Html.AntiForgeryToken()
 

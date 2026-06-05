@@ -1,9 +1,4 @@
-﻿@* ============================================================
-   FILE: Views/Topic/Details.cshtml
-   ROUTE: /Topic/Details/{id}
-   MODEL: KLTN_Registration_System.Models.Entities.Topic
-   ============================================================ *@
-@model KLTN_Registration_System.Models.Entities.Topic
+﻿@model KLTN_Registration_System.Models.Entities.Topic
 @{
     Layout = User.IsInRole("Admin") || User.IsInRole("Lecturer")
         ? "_LayoutDashboard"
@@ -23,7 +18,7 @@
     string participationMessage = ViewBag.StudentParticipationMessage as string ?? "";
     string activePeriodName = ViewBag.ActivePeriodName as string ?? Model.Semester ?? "";
     bool isSystemTopic = !Model.IsStudentProposed && Model.CreatedByStudentId == null;
-    bool isTopicOpenForStudent = isSystemTopic && Model.IsApproved && Model.IsRegistrationOpen && DateTime.Now <= Model.Deadline && remaining > 0;
+    bool isTopicOpenForStudent = isSystemTopic && Model.IsApproved && Model.IsRegistrationOpen && remaining > 0;
 
     string levelLabel = Model.Level.ToString() switch
     {
@@ -55,14 +50,12 @@
 
 <div class="max-w-5xl mx-auto px-4 py-6">
 
-    @* ── Breadcrumb ── *@
     <nav class="flex items-center gap-2 text-sm text-slate-400 mb-6">
         <a href="/Topic/Index" class="hover:text-blue-600 transition-colors no-underline">Danh sách đề tài</a>
         <span class="material-symbols-outlined text-base">chevron_right</span>
         <span class="text-slate-700 font-medium truncate max-w-xs">@Model.Title</span>
     </nav>
 
-    @* ── Alert messages ── *@
     @if (TempData["Success"] != null)
     {
         <div class="mb-4 flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 rounded-xl px-5 py-3 text-sm font-medium">
@@ -80,12 +73,8 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        @* ══════════════════════════════════════════════════════
-           CỘT TRÁI: Nội dung chính
-           ══════════════════════════════════════════════════════ *@
         <div class="lg:col-span-2 space-y-5">
 
-            @* Card thông tin tổng quan *@
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="bg-gradient-to-r from-blue-600 to-blue-500 px-7 py-6">
                     <div class="flex flex-wrap items-center gap-2 mb-3">
@@ -134,7 +123,6 @@
                 }
             </div>
 
-            @* Card Giảng viên hướng dẫn *@
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
                 <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">
                     <span class="material-symbols-outlined text-base align-middle mr-1">person</span>Giảng viên hướng dẫn
@@ -165,7 +153,6 @@
                 }
             </div>
 
-            @* Danh sách sinh viên đã được duyệt (chỉ hiện với Admin/Lecturer) *@
             @if (User.IsInRole("Admin") || User.IsInRole("Lecturer"))
             {
                 var approved = Model.Registrations?.Where(r => r.Status == "Approved").ToList();
@@ -200,12 +187,8 @@
             }
         </div>
 
-        @* ══════════════════════════════════════════════════════
-           CỘT PHẢI: Sidebar thông tin & hành động
-           ══════════════════════════════════════════════════════ *@
         <div class="space-y-5">
 
-            @* Thống kê nhanh *@
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
                 <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Thông tin đăng ký</h3>
 
@@ -236,7 +219,6 @@
                     </div>
                 }
 
-                @* Thanh tiến trình *@
                 <div class="mt-1">
                     <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
                         @{
@@ -270,7 +252,6 @@
                 </div>
             </div>
 
-            @* Nút hành động dành cho Sinh viên *@
             @if (User.IsInRole("Student"))
             {
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
@@ -369,7 +350,6 @@
                 </div>
             }
 
-            @* Nút quay lại & hành động Admin/Lecturer *@
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-2">
                 <a href="/Topic/Index"
                    class="flex items-center gap-2 w-full py-2.5 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors no-underline">

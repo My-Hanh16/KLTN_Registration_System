@@ -22,9 +22,9 @@
     <link rel="stylesheet" href="~/css/lecturer/index.css" asp-append-version="true" />
 }
 
-<section class="mb-10 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-3xl p-8 text-white flex justify-between items-center relative overflow-hidden shadow-xl">
+<section class="lecturer-welcome-banner mb-10 rounded-3xl p-8 text-white flex justify-between items-center relative overflow-hidden shadow-xl">
     <div class="z-10 relative">
-        <h1 class="font-headline text-4xl font-extrabold mb-2">Chào buổi sáng, @ViewBag.LecturerName</h1>
+        <h1 class="font-headline text-4xl font-extrabold mb-2"><span id="lecturerGreeting">Chào buổi sáng</span>, @ViewBag.LecturerName</h1>
         <p class="font-body opacity-90 max-w-lg">
             Bạn có <b>@ViewBag.TotalPending</b> yêu cầu mới cần xem xét và <b>@upcomingSchedules.Count</b> buổi hẹn hướng dẫn hôm nay.
         </p>

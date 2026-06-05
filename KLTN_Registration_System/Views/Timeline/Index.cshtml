@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="~/css/timeline/index.css" asp-append-version="true" />
 }
 
-<!-- PAGE HEADER -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h2 class="page-title">Mốc thời gian</h2>
@@ -25,7 +24,6 @@
     }
 </div>
 
-<!-- LEGEND -->
 <div class="legend-bar">
     <span class="legend-title">Trạng thái deadline:</span>
     <div class="legend-item"><span class="legend-dot legend-dot--ok"></span> Còn hạn</div>
@@ -34,7 +32,6 @@
     <div class="legend-item"><span class="legend-dot legend-dot--none"></span> Chưa cấu hình</div>
 </div>
 
-<!-- TIMELINE LIST -->
 <div class="tl-list-card">
 
     @if (!timelines.Any())
@@ -55,7 +52,6 @@
             string boxClass = isPast ? "past" : isUrgent ? "urgent" : "normal";
             int daysLeft = (int)Math.Ceiling((tl.Date - now).TotalDays);
 
-            // ── Submission Deadline state
             string subDlClass = "dl-none";
             string subDlText = "Chưa cấu hình";
             if (tl.SubmissionDeadline.HasValue)
@@ -78,7 +74,6 @@
                 }
             }
 
-            // ── Review Deadline state
             string revDlClass = "dl-none";
             string revDlText = "Chưa cấu hình";
             if (tl.ReviewDeadline.HasValue)
@@ -234,9 +229,6 @@
 
 </div>
 
-<!-- ══════════════════════════════════════
-     MODAL: THÊM MỐC
-══════════════════════════════════════ -->
 @if (canManageTimeline)
 {
 <div id="modalAdd" class="modal-overlay js-modal-overlay">
@@ -254,7 +246,6 @@
 
             <div class="modal-body">
 
-                <!-- SECTION 1: Thông tin cơ bản -->
                 <div class="modal-section">
                     <div class="modal-section-title">
                         <i class="fa-solid fa-circle-info"></i> Thông tin cơ bản
@@ -297,7 +288,6 @@
                     </div>
                 </div>
 
-                <!-- SECTION 2: Deadline SV nộp -->
                 <div class="modal-section">
                     <div class="modal-section-title">
                         <i class="fa-regular fa-clock"></i> Deadline sinh viên nộp bài
@@ -327,7 +317,6 @@
                     </label>
                 </div>
 
-                <!-- SECTION 3: Deadline GV duyệt -->
                 <div class="modal-section">
                     <div class="modal-section-title">
                         <i class="fa-solid fa-user-check"></i> Deadline giảng viên duyệt
@@ -352,7 +341,6 @@
                     </div>
                 </div>
 
-                <!-- SECTION 4: Hiển thị -->
                 <div class="modal-section">
                     <div class="modal-section-title">
                         <i class="fa-regular fa-eye"></i> Hiển thị
@@ -376,9 +364,6 @@
     </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     MODAL: CHỈNH SỬA
-══════════════════════════════════════ -->
 <div id="modalEdit" class="modal-overlay js-modal-overlay">
     <div class="modal-box">
 

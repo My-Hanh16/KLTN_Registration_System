@@ -40,9 +40,6 @@ public class TimelineController : BaseController
             public DateTime? ThesisCompletedAt { get; set; }
         }
 
-        // ══════════════════════════════════════
-        // VIEW TIMELINE (Admin + Lecturer)
-        // ══════════════════════════════════════
         [Authorize(Roles = "Admin,Lecturer")]
         public async Task<IActionResult> Index(string? semester = null, string? year = null)
         {
@@ -61,10 +58,6 @@ public class TimelineController : BaseController
             ViewBag.SelectedPeriodName = selectedPeriod?.Name ?? GetAdminSelectedPeriodName();
             return View(timelines);
         }
-
-        // ══════════════════════════════════════
-        // ADMIN: CRUD TIMELINE
-        // ══════════════════════════════════════
 
         [Authorize(Roles = "Admin")]
         [HttpPost, ValidateAntiForgeryToken]
@@ -217,15 +210,6 @@ public class TimelineController : BaseController
             return RedirectToAction(nameof(Index));
         }
 
-        // ══════════════════════════════════════
-        // ADMIN: TỔNG HỢP KẾT QUẢ
-        // Chỉ xem + export, KHÔNG duyệt/từ chối
-        // ══════════════════════════════════════
-
-        /// <summary>
-        /// Trang tổng hợp tất cả submission đã được Lecturer duyệt (Approved).
-        /// Admin dùng để xem kết quả cuối và export danh sách.
-        /// </summary>
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ApprovedSubmissions(
             string? keyword,
@@ -377,10 +361,6 @@ public class TimelineController : BaseController
             return null;
         }
 
-        /// <summary>
-        /// Tổng hợp các submission còn Pending sau khi ReviewDeadline đã qua.
-        /// Admin chỉ xem để biết GV nào chưa duyệt — KHÔNG có action duyệt.
-        /// </summary>
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PendingAfterDeadline(int? timelineId, string? semester = null, string? year = null)
         {
@@ -429,7 +409,6 @@ public class TimelineController : BaseController
             ViewBag.Semester = selectedPeriod?.SemesterCode;
             ViewBag.Year = selectedPeriod?.AcademicYear;
 
-            // Thống kê nhanh cho Admin
             ViewBag.TotalOverdue = overdue.Count;
             var overdueStudentIds = overdue
                 .Where(s => !string.IsNullOrEmpty(s.StudentId))
@@ -1003,19 +982,12 @@ public class TimelineController : BaseController
             return View(submission);
         }
 
-        /// <summary>
-        /// Export danh sách kết quả đã duyệt ra file Excel/CSV.
-        /// Admin dùng để tổng hợp cuối kỳ.
-        /// </summary>
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ExportApproved(int? timelineId, string? semester = null, string? year = null)
         {
             return await ExportApprovedSubmissions(null, timelineId?.ToString(), semester, year);
         }
 
-        // ══════════════════════════════════════
-        // STUDENT: NỘP BÀI
-        // ══════════════════════════════════════
         [Authorize(Roles = "Student")]
         [HttpPost, ValidateAntiForgeryToken]
         [RequestSizeLimit(20 * 1024 * 1024)]
@@ -1028,7 +1000,6 @@ public class TimelineController : BaseController
 
             if (tl == null) return NotFound();
 
-            // Guard 1: mốc có cho nộp không
             if (!tl.IsActive || !tl.AllowSubmission)
             {
                 TempData["Error"] = "Mốc này không cho phép nộp bài.";
@@ -1075,7 +1046,6 @@ public class TimelineController : BaseController
                 return RedirectToAction("Timeline", "Student");
             }
 
-            // Tìm submission hiện tại
             var existing = await _context.TimelineSubmissions
                 .Include(s => s.Versions)
                 .Where(s =>
@@ -1084,8 +1054,7 @@ public class TimelineController : BaseController
                 .OrderByDescending(s => s.SubmittedAt)
                 .FirstOrDefaultAsync();
 
-            // Guard 2: còn trong SubmissionDeadline không.
-            // Nếu bài mới nhất bị từ chối, sinh viên được nộp lại bản chỉnh sửa.
+            
             bool isRejectedResubmission = existing?.Status == SubmissionStatus.Rejected;
             if (tl.SubmissionDeadline.HasValue
                 && now > tl.SubmissionDeadline.Value
@@ -1104,7 +1073,6 @@ public class TimelineController : BaseController
                 return RedirectToAction("Timeline", "Student");
             }
 
-            // Lưu file
             var uploadsDir = Path.Combine(
                 Directory.GetCurrentDirectory(), "wwwroot", "uploads", "timeline");
             Directory.CreateDirectory(uploadsDir);
@@ -1122,7 +1090,6 @@ public class TimelineController : BaseController
 
             if (existing != null)
             {
-                // Nộp lại sau khi bị từ chối
                 existing.FilePath = fileUrl;
                 existing.FileName = Path.GetFileName(file.FileName);
                 existing.SubmittedAt = now;
@@ -1136,7 +1103,6 @@ public class TimelineController : BaseController
             }
             else
             {
-                // Nộp lần đầu
                 _context.TimelineSubmissions.Add(new TimelineSubmission
                 {
                     TimelineId = timelineId,
@@ -1167,25 +1133,17 @@ public class TimelineController : BaseController
             return RedirectToAction("Timeline", "Student");
         }
 
-        // ══════════════════════════════════════
-        // LECTURER: QUẢN LÝ TIMELINE
-        // ══════════════════════════════════════
         [Authorize(Roles = "Lecturer")]
         public IActionResult TimelineManagement()
         {
             return RedirectToAction("TimelineManagement", "Lecturer");
         }
 
-        // ══════════════════════════════════════
-        // LECTURER: DUYỆT / TỪ CHỐI SUBMISSION
-        // Chỉ Lecturer mới có quyền này
-        // ══════════════════════════════════════
-
-        [Authorize(Roles = "Lecturer")]  // Admin KHÔNG được gọi action này
+        [Authorize(Roles = "Lecturer")]  
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> ReviewSubmission(
             int submissionId,
-            string action,       // "approve" | "reject"
+            string action,       
             string? comment,
             double? score)
         {
@@ -1204,7 +1162,6 @@ public class TimelineController : BaseController
                 return RedirectToLecturerTimeline();
             }
 
-            // Guard 1: còn trong ReviewDeadline không
             if (submission.Timeline.ReviewDeadline.HasValue
                 && now > submission.Timeline.ReviewDeadline.Value)
             {
@@ -1214,14 +1171,12 @@ public class TimelineController : BaseController
                 return RedirectToLecturerTimeline();
             }
 
-            // Guard 2: chỉ xử lý bản Pending
             if (submission.Status != SubmissionStatus.Pending)
             {
                 TempData["Error"] = "Bài này đã được xử lý trước đó.";
                 return RedirectToLecturerTimeline();
             }
 
-            // Guard 3: GV chỉ duyệt SV thuộc đề tài mình
             var lecturerId = _userManager.GetUserId(User);
             if (string.IsNullOrEmpty(lecturerId) || string.IsNullOrEmpty(submission.StudentId))
             {
@@ -1300,7 +1255,6 @@ public class TimelineController : BaseController
                     CreatedAt = now
                 });
 
-                // Thông báo có thể nộp lại không
                 bool canResubmit =
                     !submission.Timeline.SubmissionDeadline.HasValue ||
                     now <= submission.Timeline.SubmissionDeadline.Value;

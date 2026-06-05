@@ -1,3 +1,8 @@
+.lecturer-welcome-banner {
+    background: linear-gradient(135deg, #2b4eff 0%, #5a7bff 100%);
+    box-shadow: 0 10px 25px rgba(43, 78, 255, .2);
+}
+
 .glass-effect {
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(10px);

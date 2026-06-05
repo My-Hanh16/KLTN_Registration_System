@@ -11,7 +11,6 @@
 }
 
 <div class="lecturer-create-page">
-    @* Breadcrumb *@
     <nav class="create-breadcrumb">
         <a href="/Lecturer/ThesisManagement">Quản lý đề tài</a>
         <span>/</span>
@@ -43,14 +42,12 @@
             }
 
             <div class="create-grid">
-                @* Tên đề tài *@
                 <div class="form-group full-span">
                     <label>Tên đề tài</label>
                     <input asp-for="Title" class="form-control" placeholder="Ví dụ: Hệ thống quản lý bãi xe thông minh..." required />
                     <span asp-validation-for="Title" class="field-validation"></span>
                 </div>
 
-                @* Chuyên ngành & Học kỳ *@
                 <div class="form-group">
                     <label>Bộ môn / Chuyên ngành</label>
                     <select asp-for="MajorId" asp-items="ViewBag.MajorId" disabled="@noMajorAssigned" class="form-control">
@@ -64,7 +61,6 @@
                     <p class="form-help">Đề tài sẽ được gắn tự động vào đợt đang mở.</p>
                 </div>
 
-                @* Số lượng sinh viên tối đa *@
                 <div class="form-group">
                     <label>Số lượng SV tối đa</label>
                     <input asp-for="MaxStudents" type="number" min="1" max="3" class="form-control" required />
@@ -96,7 +92,6 @@
                     <input asp-for="Deadline" type="datetime-local" value="@Model.Deadline.ToString("yyyy-MM-ddTHH:mm")" class="form-control" />
                 </div>
 
-                @* Mô tả ngắn gọn *@
                 <div class="form-group full-span">
                     <label>Mô tả đề tài</label>
                     <textarea asp-for="Description" rows="4" class="form-control" placeholder="Yêu cầu kỹ thuật, mục tiêu đề tài..." required></textarea>

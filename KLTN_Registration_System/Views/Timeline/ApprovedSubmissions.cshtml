@@ -131,14 +131,12 @@
 
 <div class="main-card">
 
-    <!-- TOOLBAR -->
     <div class="toolbar">
         <form method="get" action="@Url.Action("ApprovedSubmissions", "Timeline")"
               class="toolbar-left" id="filterForm">
             <input type="hidden" name="semester" value="@selectedSemester" />
             <input type="hidden" name="year" value="@selectedYear" />
 
-            <!-- Search -->
             <div class="search-wrap">
                 <i class="fa-solid fa-magnifying-glass search-ico"></i>
                 <input type="text" name="keyword" value="@keyword"
@@ -146,7 +144,6 @@
                        placeholder="Tìm tên sinh viên, mã SV..." />
             </div>
 
-            <!-- Timeline filter -->
             <select name="timelineId" class="f-select js-auto-submit">
                 <option value="">-- Chọn mốc thời gian --</option>
                 @foreach (var tl in timelines)
@@ -357,7 +354,6 @@
             </div>
 
             <div class="paging-btns">
-                @* Prev *@
                 @if (currentPage > 1)
                 {
                     <a href="@Url.Action("ApprovedSubmissions", "Timeline", new { page = currentPage - 1, keyword, timelineId = selectedTlId.GetValueOrDefault(), semester = selectedSemester, year = selectedYear, faculty = selectedFaculty, majorId = selectedMajorId })"
@@ -366,7 +362,6 @@
                     </a>
                 }
 
-                @* Pages *@
                 @for (int i = 1; i <= totalPages; i++)
                 {
                     if (i == 1 || i == totalPages || (i >= currentPage - 2 && i <= currentPage + 2))
@@ -382,7 +377,6 @@
                     }
                 }
 
-                @* Next *@
                 @if (currentPage < totalPages)
                 {
                     <a href="@Url.Action("ApprovedSubmissions", "Timeline", new { page = currentPage + 1, keyword, timelineId = selectedTlId.GetValueOrDefault(), semester = selectedSemester, year = selectedYear, faculty = selectedFaculty, majorId = selectedMajorId })"

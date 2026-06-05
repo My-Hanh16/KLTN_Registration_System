@@ -31,6 +31,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.js-approval-auto-submit').forEach(select => {
+            select.addEventListener('change', () => {
+                select.closest('form')?.submit();
+            });
+        });
+
         bindConfirm('.js-approve-all-form', {
             icon: 'question',
             title: 'Duyệt tất cả đăng ký?',

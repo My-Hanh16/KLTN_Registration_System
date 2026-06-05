@@ -30,9 +30,6 @@ namespace KLTN_Registration_System.Hubs
             _logger = logger;
         }
 
-        // =====================================================
-        // JOIN ROOM
-        // =====================================================
         public async Task JoinTopicRoom(int topicId)
         {
             if (topicId <= 0) return;
@@ -55,9 +52,6 @@ namespace KLTN_Registration_System.Hubs
                 $"topic-{topicId}");
         }
 
-        // =====================================================
-        // TYPING
-        // =====================================================
         public async Task Typing(int topicId)
         {
             var user = await _userManager.GetUserAsync(Context.User!);
@@ -69,9 +63,6 @@ namespace KLTN_Registration_System.Hubs
                 .SendAsync("UserTyping", name);
         }
 
-        // =====================================================
-        // SEND MESSAGE
-        // =====================================================
         public async Task SendMessage(
             int topicId,
             string? content,

@@ -1,10 +1,6 @@
-﻿// ============================================================
-// FILE: Program.cs  —  HOÀN CHỈNH
-// Thêm: Seed Admin, Settings, Timelines, HomeController route
-// ============================================================
-using KLTN_Registration_System.Models;
+﻿using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
-using KLTN_Registration_System.Services; // 👈 Thêm cái này
+using KLTN_Registration_System.Services; 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Authorization;
@@ -15,28 +11,22 @@ using KLTN_Registration_System.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ================= DATABASE =================
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ================= IDENTITY =================
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    // Cấu hình password tối thiểu cho tài khoản hệ thống.
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequireUppercase = true;
     options.Password.RequireLowercase = true;
-    // Lockout
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.Lockout.AllowedForNewUsers = true;
 })
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
-// ================= HANGFIRE (BỔ SUNG) =================
-// 👈 Cấu hình Hangfire sử dụng SQL Server làm nơi lưu trữ Job
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -44,10 +34,7 @@ builder.Services.AddHangfire(configuration => configuration
     .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHangfireServer();
-builder.Services.AddSignalR(); // Chạy bộ máy xử lý ngầm
-
-// ================= CUSTOM SERVICES (BỔ SUNG) =================
-// 👈 Đăng ký các dịch vụ bạn vừa tạo
+builder.Services.AddSignalR();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ReminderWorker>();
@@ -65,7 +52,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
-// ================= SESSION =================
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
@@ -75,7 +61,6 @@ builder.Services.AddSession(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
-// ================= MVC =================
 
 builder.Services.AddControllersWithViews(options =>
 {
@@ -89,7 +74,6 @@ builder.Services.AddControllersWithViews(options =>
 
 var app = builder.Build();
 
-// ================= MIDDLEWARE =================
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -120,7 +104,6 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = new[] { new HangfireAdminAuthorizationFilter() }
 });
 
-// ================= ROUTE =================
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
@@ -128,26 +111,27 @@ app.MapControllerRoute(
 app.MapHub<NotificationHub>("/hubs/notification");
 app.MapHub<ChatHub>("/hubs/chat");
 
-// ================= SET HANGFIRE JOBS (BỔ SUNG) =================
-// 👈 Thiết lập nhắc nhở tự động chạy lúc 8 giờ sáng mỗi ngày
-using (var scope = app.Services.CreateScope())
+try
 {
-    var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
+    using var scope = app.Services.CreateScope();
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
-    // Khai báo múi giờ Việt Nam
     var vietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
 
     recurringJobManager.AddOrUpdate<ReminderWorker>(
         "Auto-Remind-Students",
         worker => worker.CheckAndSendReminders(),
-        "0 8 * * *", // 8 giờ sáng
+        "0 8 * * *", 
         new RecurringJobOptions
         {
-            TimeZone = vietnamTimeZone // Chốt cứng múi giờ Việt Nam
+            TimeZone = vietnamTimeZone
         }
     );
 }
-// ================= SEED =================
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Khong the dang ky Hangfire recurring job. Kiem tra ket noi SQL Server/Hangfire storage.");
+}
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -155,7 +139,6 @@ using (var scope = app.Services.CreateScope())
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
     var context = services.GetRequiredService<AppDbContext>();
 
-    // ── 1. Seed Roles ──────────────────────────────────────────
     string[] roles = { "Admin", "Student", "Lecturer" };
     foreach (var role in roles)
     {

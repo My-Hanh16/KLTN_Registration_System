@@ -1,8 +1,4 @@
-﻿@* ============================================================
-   FILE: Views/Student/ProposeTopic.cshtml
-   LAYOUT: _LayoutStudent
-   ============================================================ *@
-@{
+﻿@{
     Layout = "_LayoutStudent";
     ViewData["Title"] = "Đề xuất đề tài";
 
@@ -28,9 +24,6 @@
     <link rel="stylesheet" href="~/css/student/propose-topic.css" asp-append-version="true" />
 }
 
-<!-- ════════════════════════════════
-     PAGE HEADER
-════════════════════════════════ -->
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="page-title">Đề xuất đề tài</h2>
@@ -38,7 +31,6 @@
     </div>
 </div>
 
-<!-- ALERTS -->
 @if (TempData["Error"] != null)
 {
     <div class="alert-bar error">
@@ -63,7 +55,6 @@
     </div>
 }
 
-<!-- STATS -->
 <div class="stats-row">
     <div class="stat-card">
         <div class="stat-icon blue"><i class="fa-solid fa-lightbulb"></i></div>
@@ -90,12 +81,8 @@
     </div>
 </div>
 
-<!-- ════════════════════════════════
-     MAIN GRID
-════════════════════════════════ -->
 <div class="pt-grid">
 
-    <!-- ══ LEFT: FORM ══ -->
     <div class="form-locked-wrap">
 
                 @if (!canPropose)
@@ -126,7 +113,6 @@
                       id="proposeForm" novalidate>
                     @Html.AntiForgeryToken()
 
-                    <!-- Tên đề tài -->
                     <div class="f-section">
                         <label class="f-label">Tên đề tài <span class="req">*</span></label>
                         <div class="f-wrap">
@@ -143,7 +129,6 @@
                         </div>
                     </div>
 
-                    <!-- Mô tả ý tưởng -->
                     <div class="f-section">
                         <label class="f-label">Mô tả ý tưởng <span class="req">*</span></label>
                         <div class="f-wrap f-wrap-ta">
@@ -160,7 +145,6 @@
                         </div>
                     </div>
 
-                    <!-- Chuyên ngành (hiển thị, không chỉnh) -->
                     <div class="f-section">
                         <label class="f-label">Chuyên ngành của bạn</label>
                         @if (primaryMajor != null)
@@ -192,7 +176,6 @@
                         }
                     </div>
 
-                    <!-- Lĩnh vực — chip selector -->
                     <div class="f-section">
                         <label class="f-label">Lĩnh vực</label>
                         <input type="hidden" name="category" id="catInput" />
@@ -218,7 +201,6 @@
                         </div>
                     </div>
 
-                    <!-- GV mong muốn -->
                     <div class="f-section">
                         <label class="f-label">
                             Giảng viên mong muốn
@@ -240,7 +222,6 @@
                         </div>
                     </div>
 
-                    <!-- Footer -->
                     <div class="f-foot">
                         <button type="reset" class="btn btn-ghost" id="resetBtn"
                                 @(!canPropose ? "disabled" : "")>
@@ -258,10 +239,8 @@
         </div>
     </div>
 
-    <!-- ══ RIGHT: SIDEBAR ══ -->
     <div class="sidebar-stack">
 
-        <!-- Đề xuất của tôi -->
         <div class="pt-card">
             <div class="pt-head">
                 <div>
@@ -270,7 +249,6 @@
                 </div>
             </div>
             <div class="pt-body pt-body--compact">
-                <!-- Quota bar -->
                 <div class="quota-bar-wrap">
                     <div class="quota-bar @(pendingCount >= 3 ? "full" : "")"
                          data-quota-progress="@(myProposals.Count > 0 ? pendingCount * 100 / 3 : 0)"></div>
@@ -341,7 +319,6 @@
             </div>
         </div>
 
-        <!-- Lưu ý -->
         <div class="notes-card">
             <div class="notes-title">
                 <i class="fa-solid fa-circle-info notes-title-icon"></i>

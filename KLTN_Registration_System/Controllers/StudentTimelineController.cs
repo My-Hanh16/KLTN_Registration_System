@@ -22,9 +22,6 @@ namespace KLTN_Registration_System.Controllers
             _context = context;
         }
 
-        // =========================
-        // DANH SÁCH TIMELINE
-        // =========================
         public async Task<IActionResult> Index()
         {
             var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -43,7 +40,6 @@ namespace KLTN_Registration_System.Controllers
                     r.StudentId == studentId &&
                     r.Status == "Approved");
 
-            // Submission của sinh viên hiện tại
             var timelineIds = timelines.Select(t => t.Id).ToList();
             var submissions = await _context.TimelineSubmissions
                 .Include(x => x.Versions)
@@ -63,9 +59,6 @@ namespace KLTN_Registration_System.Controllers
             return View(timelines);
         }
 
-        // =========================
-        // NỘP BÁO CÁO
-        // =========================
         [HttpPost, ValidateAntiForgeryToken]
         [RequestSizeLimit(20 * 1024 * 1024)]
         public async Task<IActionResult> Submit(
@@ -118,7 +111,6 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Tìm submission cũ
             var submission = await _context.TimelineSubmissions
                 .Include(x => x.Versions)
                 .Where(x =>
@@ -171,7 +163,6 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Nếu chưa có thì tạo mới
             if (submission == null)
             {
                 submission = new TimelineSubmission
@@ -187,12 +178,10 @@ namespace KLTN_Registration_System.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Update nội dung mới nhất
             submission.ProgressDescription = content?.Trim();
 
             submission.SubmittedAt = now;
 
-            // Reset review
             submission.Status = SubmissionStatus.Pending;
 
             submission.Comment = null;

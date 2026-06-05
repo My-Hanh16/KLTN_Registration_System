@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="~/css/chat/lecturer-topics.css" asp-append-version="true" />
 }
 
-<!-- HEADER -->
 <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
     <div>
         <h2 class="page-title">
@@ -32,7 +31,6 @@
     </div>
 </div>
 
-<!-- TOPIC GRID -->
 @if (Model != null && Model.Any())
 {
     <div class="topic-grid" id="topicGrid">
@@ -42,7 +40,6 @@
             int unread = unreadMap != null && unreadMap.ContainsKey(item.Id)
                 ? unreadMap[item.Id] : 0;
 
-            // Fix: lấy tất cả sinh viên approved, không chỉ 1
             var approvedStudents = item.Registrations?
                 .Where(r => r.Status == "Approved")
                 .Select(r => r.Student)

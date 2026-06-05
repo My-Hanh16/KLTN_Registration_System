@@ -36,7 +36,6 @@
 
 <div class="container-fluid px-0">
 
-    <!-- PAGE HEADER -->
     <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
             <h2 class="page-title">Duyệt tiến độ sinh viên</h2>
@@ -67,7 +66,6 @@
         </div>
     }
 
-    <!-- STATS -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -168,7 +166,6 @@
         }
     </div>
 
-    <!-- ══ TIMELINE SECTIONS ══ -->
     @foreach (var timeline in Model)
     {
         var submissions = timeline.TimelineSubmissions
@@ -187,11 +184,6 @@
 
         int pendingCount = groupedSubmissions.Count(g => g.LatestSub!.Status == SubmissionStatus.Pending);
 
-        /*
-        * ReviewDeadline  — hạn giảng viên phải duyệt xong (cần thêm field này vào model Timeline)
-        * SubmissionDeadline — hạn sinh viên nộp bài (đã có)
-        * Nếu chưa có ReviewDeadline, fallback = SubmissionDeadline - 2 ngày
-        */
         DateTime? reviewDeadline = timeline.ReviewDeadline
         ?? (timeline.SubmissionDeadline.HasValue
         ? timeline.SubmissionDeadline.Value.AddDays(-2)
@@ -237,7 +229,6 @@
         string sectionId = $"tl-body-{timeline.Id}";
         string btnId = $"tl-btn-{timeline.Id}";
 
-        // Chuỗi JS-safe cho deadline
         string deadlineDisplay = reviewDeadline.HasValue
         ? FormatReviewDeadline(reviewDeadline.Value)
         : "";
@@ -383,7 +374,6 @@
                                     </div>
                                     <div class="stu-meta">Nộp lúc: @sub.SubmittedAt.ToString("dd/MM/yyyy HH:mm")</div>
 
-                                    @* Hiển thị lý do từ chối ngay trên giao diện *@
                                     @if (sub.Status == SubmissionStatus.Rejected
                                                             && !string.IsNullOrWhiteSpace(sub.LecturerComment))
                                     {
@@ -439,9 +429,6 @@
 
 </div>
 
-<!-- ════════════════════════════════
-     MODAL: DUYỆT
-════════════════════════════════ -->
 <div id="approveModal" class="modal-overlay js-modal-overlay">
     <div class="modal-box">
 
@@ -478,9 +465,6 @@
     </div>
 </div>
 
-<!-- ════════════════════════════════
-     MODAL: TỪ CHỐI — lý do bắt buộc
-════════════════════════════════ -->
 <div id="rejectModal" class="modal-overlay js-modal-overlay">
     <div class="modal-box">
 

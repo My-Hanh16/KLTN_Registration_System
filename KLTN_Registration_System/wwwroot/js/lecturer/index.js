@@ -38,6 +38,22 @@
         getModal()?.classList.remove('is-open');
     }
 
+    function bindLecturerGreeting() {
+        const greeting = document.getElementById('lecturerGreeting');
+        if (!greeting) return;
+
+        const hour = new Date().getHours();
+        if (hour < 11) {
+            greeting.textContent = 'Chào buổi sáng';
+        } else if (hour < 14) {
+            greeting.textContent = 'Chào buổi trưa';
+        } else if (hour < 18) {
+            greeting.textContent = 'Chào buổi chiều';
+        } else {
+            greeting.textContent = 'Chào buổi tối';
+        }
+    }
+
     async function createTopic() {
         const titleInput = document.getElementById('topicTitle');
         const title = titleInput?.value || '';
@@ -91,6 +107,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        bindLecturerGreeting();
+
         document.querySelectorAll('.topic-fill[data-fill-percent]').forEach(function (bar) {
             const percent = Math.max(0, Math.min(100, Number(bar.dataset.fillPercent || 0)));
             bar.style.width = percent + '%';

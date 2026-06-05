@@ -26,9 +26,6 @@
     <link rel="stylesheet" href="~/css/timeline/defense-eligibility.css" asp-append-version="true" />
 }
 
-<!-- ════════════════════════════════
-     PAGE HEADER
-════════════════════════════════ -->
 <div class="d-flex justify-content-between align-items-start mb-4 gap-3 page-header-row">
     <div>
         <h2 class="page-title">Điều kiện báo cáo khóa luận</h2>
@@ -41,7 +38,6 @@
         </p>
     </div>
 
-    <!-- Export buttons -->
     <div class="export-actions">
         <a asp-controller="Timeline" asp-action="ExportDefenseEligibility"
            asp-route-status="all" asp-route-keyword="@keyword"
@@ -64,9 +60,6 @@
     </div>
 </div>
 
-<!-- ════════════════════════════════
-     STATS ROW
-════════════════════════════════ -->
 <div class="stats-row">
     <div class="stat-card">
         <div class="stat-top">
@@ -108,9 +101,6 @@
     </div>
 </div>
 
-<!-- ════════════════════════════════
-     FILTER TABS
-════════════════════════════════ -->
 <div class="filter-tabs">
     <a asp-controller="Timeline" asp-action="DefenseEligibility"
        asp-route-status="all" asp-route-keyword="@keyword"
@@ -132,9 +122,6 @@
     </a>
 </div>
 
-<!-- ════════════════════════════════
-     FILTER CARD
-════════════════════════════════ -->
 <form method="get" class="filter-card">
     <input type="hidden" name="semester" value="@ViewBag.Semester" />
     <input type="hidden" name="year"     value="@ViewBag.Year" />
@@ -180,9 +167,6 @@
     </button>
 </form>
 
-<!-- ════════════════════════════════
-     TABLE CARD
-════════════════════════════════ -->
 <div class="main-card">
     <div class="card-head">
         <div class="card-head-title">

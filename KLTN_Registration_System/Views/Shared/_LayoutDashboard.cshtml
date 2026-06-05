@@ -35,7 +35,6 @@
         var action = ViewContext.RouteData.Values["action"]?.ToString();
         var currentUser = await UserManager.GetUserAsync(User);
 
-        // Initials
         string initials = "AD";
         if (!string.IsNullOrEmpty(currentUser?.FullName))
         {
@@ -50,12 +49,10 @@
         }
 
         string displayName = currentUser?.FullName ?? currentUser?.UserName ?? User.Identity?.Name ?? "Người dùng";
-        // Fix: bỏ lặp nghĩa "LECTURER • Giảng viên" → chọn 1 cách hiển thị
         bool isAdmin = User.IsInRole("Admin");
         string roleLabel = isAdmin ? "Quản trị viên" : "Giảng viên";
         string avatarClass = isAdmin ? "admin" : "lecturer";
 
-        // Fix: helper active dùng tag helpers thay vì href hardcode
         Func<string, string, string> IsActive = (c, a) =>
         string.Equals(ctrl, c, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(action, a, StringComparison.OrdinalIgnoreCase)
@@ -68,7 +65,6 @@
 
     <div class="sidebar-backdrop" data-close-sidebar></div>
 
-    <!-- SIDEBAR -->
     <nav class="sidebar">
 
         <div class="sidebar-brand">
@@ -259,10 +255,8 @@
 
     </nav>
 
-    <!-- MAIN -->
     <div class="main-wrapper">
 
-        <!-- TOPBAR -->
         <header class="topbar">
             <button type="button" class="mobile-menu-btn" id="dashboardMenuBtn" aria-label="Mở menu">
                 <i class="fa-solid fa-bars"></i>
@@ -304,7 +298,6 @@
                         <div class="u-name">
                             @(displayName.Length > 20 ? displayName[..20] + "…" : displayName)
                         </div>
-                        <!-- Fix: bỏ lặp nghĩa, chỉ hiện role label -->
                         <div class="u-role">@roleLabel</div>
                     </div>
                 </a>
@@ -312,7 +305,6 @@
             </div>
         </header>
 
-        <!-- PAGE CONTENT -->
         <main class="page-content">
 
             @if (TempData["ResetSuccess"] != null)
@@ -334,7 +326,6 @@
 
     </div>
 
-    <!-- TOAST -->
     <div class="toast-wrap" id="toastWrap">
 
         @if (TempData["Success"] != null)

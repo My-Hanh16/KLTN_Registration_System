@@ -49,7 +49,6 @@
 
     <div class="sidebar-backdrop" data-close-sidebar></div>
 
-    <!-- ═══════════════ SIDEBAR ═══════════════ -->
     <nav class="sidebar">
 
         <div class="sidebar-brand">
@@ -145,10 +144,8 @@
 
     </nav>
 
-    <!-- ═══════════════ MAIN ═══════════════ -->
     <div class="main-wrapper">
 
-        <!-- TOPBAR -->
         <header class="topbar">
             <button type="button" class="mobile-menu-btn" id="studentMenuBtn" aria-label="Mở menu">
                 <i class="fa-solid fa-bars"></i>
@@ -164,7 +161,6 @@
 
             <div class="topbar-right">
 
-                <!-- Thông báo -->
                 <a asp-controller="Student" asp-action="Notifications"
                    class="topbar-icon-btn" title="Thông báo">
                     <i class="fa-regular fa-bell"></i>
@@ -174,7 +170,6 @@
 
                 <div class="topbar-divider"></div>
 
-                <!-- User chip -->
                 <a asp-controller="Student" asp-action="Profile" class="user-chip text-decoration-none">
                     <div class="user-avatar">@initials</div>
                     <div class="user-info-text">
@@ -188,14 +183,12 @@
             </div>
         </header>
 
-        <!-- PAGE CONTENT -->
         <main class="page-content">
             @RenderBody()
         </main>
 
     </div>
 
-    <!-- ═══════════════ TOAST ═══════════════ -->
     <div class="toast-wrap" id="toastWrap">
 
         @if (TempData["Success"] != null)

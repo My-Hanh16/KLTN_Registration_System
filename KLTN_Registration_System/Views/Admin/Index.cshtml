@@ -12,7 +12,6 @@
 }
 
 <div class="admin-dashboard">
-    @* --- 1. Banner chào mừng --- *@
     <section class="welcome-banner">
         <div class="welcome-content">
             <h2 class="welcome-title">Xin chào buổi sáng, Quản trị viên!</h2>
@@ -31,9 +30,7 @@
         <div class="welcome-shape"></div>
     </section>
 
-    @* --- 2. Thẻ KPI (4 cột) --- *@
     <div class="kpi-grid">
-        @* Thẻ 1: Tổng số đề tài *@
         <div class="kpi-card">
             <div class="kpi-head">
                 <div class="kpi-icon kpi-icon--blue"><span class="material-symbols-outlined fill-1">book</span></div>
@@ -43,7 +40,6 @@
             <h3 class="kpi-value">@Model.TotalTopics.ToString("N0")</h3>
         </div>
 
-        @* Thẻ 2: Tỉ lệ đăng ký *@
         <div class="kpi-card">
             <div class="kpi-head">
                 <div class="kpi-icon kpi-icon--purple"><span class="material-symbols-outlined fill-1">groups</span></div>
@@ -53,7 +49,6 @@
             <h3 class="kpi-value">@Model.RegistrationRate%</h3>
         </div>
 
-        @* Thẻ 3: Chờ phê duyệt *@
         <div class="kpi-card kpi-card--alert">
             <div class="kpi-head">
                 <div class="kpi-icon kpi-icon--red"><span class="material-symbols-outlined fill-1">pending_actions</span></div>
@@ -63,7 +58,6 @@
             <h3 class="kpi-value kpi-value--red">@Model.PendingApprovals</h3>
         </div>
 
-        @* Thẻ 4: Giảng viên *@
         <div class="kpi-card">
             <div class="kpi-head">
                 <div class="kpi-icon kpi-icon--orange"><span class="material-symbols-outlined fill-1">school</span></div>
@@ -73,14 +67,10 @@
         </div>
     </div>
 
-    @* --- 3. Bố cục chính (Grid 12 cột) --- *@
     <div class="dashboard-grid">
 
-        @* CỘT TRÁI (8 cột): Chuyên chứa các biểu đồ thống kê *@
         <div class="dashboard-main">
             
-
-            @* 3b. Biểu đồ đường: Tiến độ đăng ký *@
             <div class="dashboard-panel">
                 <div class="panel-head">
                     <div>
@@ -95,10 +85,8 @@
                     <canvas id="registrationLineChart"></canvas>
                 </div>
             </div>
-            @* 3c. Đề tài mới gửi *@
             <section class="dashboard-panel dashboard-panel--flush">
 
-                <!-- HEADER -->
                 <div class="table-panel-head">
                     <div>
                         <h4 class="table-panel-title">
@@ -115,25 +103,20 @@
                     </button>
                 </div>
 
-                <!-- TABLE -->
                 <div>
                     <table class="topic-table">
 
-                        <!-- THEAD -->
                         <thead>
                             <tr>
 
-                                <!-- TÊN -->
                                 <th class="topic-col-name">
                                     Tên đề tài
                                 </th>
 
-                                <!-- TRẠNG THÁI -->
                                 <th class="topic-col-status">
                                     Trạng thái
                                 </th>
 
-                                <!-- THAO TÁC -->
                                 <th class="topic-col-action">
                                     Thao tác
                                 </th>
@@ -141,7 +124,6 @@
                             </tr>
                         </thead>
 
-                        <!-- BODY -->
                         <tbody>
 
                             @foreach (var topic in Model.NewTopics.Take(3))
@@ -220,9 +202,7 @@
             </section>
         </div>
 
-        @* CỘT PHẢI (4 cột): Thao tác nhanh & Hoạt động gần đây *@
         <aside class="dashboard-side">
-            @* 3c. Thao tác nhanh (Khối tối màu như Ảnh 1) *@
             <div class="quick-panel">
                 <h4 class="quick-title">Thao tác nhanh</h4>
                 <div class="quick-list">
@@ -246,7 +226,6 @@
                 </button>
             </div>
 
-            @* 3d. Hoạt động gần đây (Đúng vị trí như Ảnh 1) *@
             <div class="dashboard-panel">
                 <div class="activity-head">
                     <h4 class="activity-title">Hoạt động gần đây</h4>
