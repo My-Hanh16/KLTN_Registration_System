@@ -299,10 +299,52 @@
             color: #475569;
         }
 
+        .student-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
             .student-chip i {
                 font-size: 10px;
                 color: #94a3b8;
             }
+
+        .group-summary {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .group-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .group-badge--team {
+            background: #eef2ff;
+            color: #4f46e5;
+            border: 1px solid #c7d2fe;
+        }
+
+        .group-badge--single {
+            background: #f8fafc;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .slot-text {
+            font-size: 11.5px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
 
         /* Email / MSSV */
         .email-badge {
@@ -330,6 +372,19 @@
             padding: 2px 8px;
             margin-top: 4px;
             font-family: 'Courier New', monospace;
+        }
+
+        .student-contact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .student-contact {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
         }
 
         /* Date */

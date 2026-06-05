@@ -14,6 +14,18 @@
     var filtered = Model.Where(r =>
         string.Equals(r.Status, currentStatus, StringComparison.OrdinalIgnoreCase)
     ).ToList();
+
+    var groupedRegistrations = filtered
+        .GroupBy(r => new { r.TopicId, r.CreatedAt })
+        .Select(g => new
+        {
+            TopicId = g.Key.TopicId,
+            CreatedAt = g.Key.CreatedAt,
+            Topic = g.First().Topic,
+            Items = g.OrderBy(r => r.Id).ToList()
+        })
+        .OrderByDescending(g => g.CreatedAt)
+        .ToList();
 }
 
 @section Styles {
@@ -133,7 +145,7 @@
                     </button>
                 </form>
             }
-            <span class="table-meta">@filtered.Count mục</span>
+            <span class="table-meta">@groupedRegistrations.Count nhóm / @filtered.Count sinh viên</span>
         </div>
     </div>
 
@@ -141,14 +153,14 @@
         <table class="approval-table">
             <thead>
                 <tr>
-                    <th class="topic-col">Đề tài & Sinh viên</th>
-                    <th>Email / MSSV</th>
+                    <th class="topic-col">Đề tài & Nhóm sinh viên</th>
+                    <th>Thông tin sinh viên</th>
                     <th>Ngày đăng ký</th>
                     <th class="text-end action-col">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
-                @if (!filtered.Any())
+                @if (!groupedRegistrations.Any())
                 {
                     <tr>
                         <td colspan="4">
@@ -161,58 +173,75 @@
                 }
                 else
                 {
-                    @foreach (var item in filtered)
+                    @foreach (var group in groupedRegistrations)
                     {
-                        <tr>
-                            <!-- Đề tài & Sinh viên -->
-                            <td>
-                                <div class="topic-name">@item.Topic?.Title</div>
-                                <!-- Fix: dùng FullName thay vì UserName -->
-                                <div class="student-chip">
-                                    <i class="fa-regular fa-user"></i>
-                                    @(item.Student?.FullName ?? item.Student?.UserName ?? "N/A")
-                                </div>
-                            </td>
+                        var firstItem = group.Items.First();
+                        bool isGroup = group.Items.Count > 1;
 
-                            <!-- Email / MSSV -->
+                        <tr>
                             <td>
-                                <div class="d-flex flex-column gap-1">
-                                    <span class="email-badge">@(item.Student?.Email ?? "—")</span>
-                                    @if (!string.IsNullOrEmpty(item.Student?.UserCode))
+                                <div class="topic-name">@group.Topic?.Title</div>
+                                <div class="group-summary">
+                                    <span class="group-badge @(isGroup ? "group-badge--team" : "group-badge--single")">
+                                        <i class="fa-solid @(isGroup ? "fa-users" : "fa-user")"></i>
+                                        @(isGroup ? $"Nhóm {group.Items.Count} sinh viên" : "Đăng ký cá nhân")
+                                    </span>
+                                    @if (group.Topic?.MaxStudents > 1)
                                     {
-                                        <span class="mssv-badge">@item.Student.UserCode</span>
+                                        <span class="slot-text">@group.Items.Count / @group.Topic.MaxStudents chỗ</span>
+                                    }
+                                </div>
+                                <div class="student-list">
+                                    @foreach (var item in group.Items)
+                                    {
+                                        <div class="student-chip">
+                                            <i class="fa-regular fa-user"></i>
+                                            @(item.Student?.FullName ?? item.Student?.UserName ?? "N/A")
+                                        </div>
                                     }
                                 </div>
                             </td>
 
-                            <!-- Ngày -->
                             <td>
-                                <span class="date-text">@item.CreatedAt.ToString("dd/MM/yyyy")</span>
+                                <div class="student-contact-list">
+                                    @foreach (var item in group.Items)
+                                    {
+                                        <div class="student-contact">
+                                            <span class="email-badge">@(item.Student?.Email ?? "—")</span>
+                                            @if (!string.IsNullOrEmpty(item.Student?.UserCode))
+                                            {
+                                                <span class="mssv-badge">@item.Student.UserCode</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
                             </td>
 
-                            <!-- Thao tác -->
+                            <td>
+                                <span class="date-text">@group.CreatedAt.ToString("dd/MM/yyyy")</span>
+                            </td>
+
                             <td class="text-end row-action-cell">
                                 @if (currentStatus == "Pending")
                                 {
                                     <div class="d-flex justify-content-end align-items-center gap-2">
-                                        <!-- Fix: thêm AntiForgeryToken, sửa controller đúng Admin -->
                                         <form asp-controller="Admin" asp-action="ApproveRegistration"
-                                              asp-route-id="@item.Id" method="post" class="m-0">
+                                              asp-route-id="@firstItem.Id" method="post" class="m-0">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="semester" value="@selectedSemester" />
                                             <input type="hidden" name="year" value="@selectedYear" />
                                             <input type="hidden" name="status" value="@currentStatus" />
-                                            <button type="submit" class="btn-approve" title="Duyệt">
+                                            <button type="submit" class="btn-approve" title="Duyệt cả nhóm">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
                                         </form>
                                         <form asp-controller="Admin" asp-action="RejectRegistration"
-                                              asp-route-id="@item.Id" method="post" class="m-0 js-reject-registration-form">
+                                              asp-route-id="@firstItem.Id" method="post" class="m-0 js-reject-registration-form">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="semester" value="@selectedSemester" />
                                             <input type="hidden" name="year" value="@selectedYear" />
                                             <input type="hidden" name="status" value="@currentStatus" />
-                                            <button type="submit" class="btn-reject" title="Từ chối">
+                                            <button type="submit" class="btn-reject" title="Từ chối cả nhóm">
                                                 <i class="fa-solid fa-xmark"></i>
                                             </button>
                                         </form>
@@ -233,7 +262,7 @@
     </div>
 
     <div class="table-footer">
-        Hiển thị @filtered.Count / @Model.Count() yêu cầu
+        Hiển thị @groupedRegistrations.Count nhóm / @filtered.Count sinh viên
         — Trạng thái: <strong>@currentStatus</strong>
     </div>
 

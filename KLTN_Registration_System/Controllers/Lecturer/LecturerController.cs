@@ -1,14 +1,4 @@
-﻿// ============================================================
-// FILE: Controllers/Lecturer/LecturerController.cs
-// THAY THẾ HOÀN TOÀN file cũ
-// Bổ sung so với bản gốc:
-//   1. Edit (GET) → trả View đúng thay vì View("_TopicList")
-//   2. ExportRegistrations → xuất Excel SV đã duyệt
-//   3. Profile (GET + POST) → xem / cập nhật thông tin GV
-//   4. GetTopicStats → AJAX thống kê cho dashboard
-//   5. Dashboard Index → đọc schedule thực từ DB Timelines
-// ============================================================
-using ClosedXML.Excel;
+﻿using ClosedXML.Excel;
 using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
 using Microsoft.AspNetCore.Authorization;

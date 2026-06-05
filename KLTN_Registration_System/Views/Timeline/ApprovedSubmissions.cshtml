@@ -35,10 +35,6 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/timeline/approved-submissions.css" asp-append-version="true" />
 }
-
-<!-- ═══════════════════════════════════
-     ALERTS
-═══════════════════════════════════ -->
 @if (TempData["Success"] != null)
 {
     <div class="alert-bar success">
@@ -54,9 +50,6 @@
     </div>
 }
 
-<!-- ═══════════════════════════════════
-     PAGE HEADER
-═══════════════════════════════════ -->
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="page-title">Tổng hợp bài đã duyệt</h2>
@@ -80,9 +73,6 @@
     }
 </div>
 
-<!-- ═══════════════════════════════════
-     STATS ROW
-═══════════════════════════════════ -->
 <div class="stats-row">
 
     <div class="stat-card">
@@ -139,9 +129,6 @@
 
 </div>
 
-<!-- ═══════════════════════════════════
-     MAIN CARD
-═══════════════════════════════════ -->
 <div class="main-card">
 
     <!-- TOOLBAR -->
@@ -215,7 +202,6 @@
 
         </form>
 
-        <!-- Right: record count -->
         <div class="toolbar-right">
             @if (selectedTlId.HasValue && approvedSubmissions.Any())
             {
@@ -226,7 +212,6 @@
         </div>
     </div>
 
-    <!-- HINT khi chưa chọn mốc -->
     @if (!selectedTlId.HasValue)
     {
         <div class="hint-banner">
@@ -238,7 +223,6 @@
         </div>
     }
 
-    <!-- TABLE -->
     <div class="table-wrap">
         @if (!selectedTlId.HasValue)
         {

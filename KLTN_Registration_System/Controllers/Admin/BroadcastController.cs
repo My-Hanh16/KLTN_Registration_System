@@ -1,9 +1,4 @@
-﻿// ============================================================
-// FILE: Controllers/Admin/BroadcastController.cs  — TẠO MỚI
-// CHỨC NĂNG: Gửi thông báo hàng loạt đến tất cả / nhóm người dùng
-// ROUTE: /Admin/Broadcast/*
-// ============================================================
-using KLTN_Registration_System.Models;
+﻿using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
 using KLTN_Registration_System.Hubs;
 using KLTN_Registration_System.Services;

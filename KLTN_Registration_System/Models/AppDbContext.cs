@@ -51,19 +51,16 @@ namespace KLTN_Registration_System.Models
                  .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // ── Registration ──────────────────────────────────────────
             builder.Entity<Registration>(e =>
             {
                 e.Property(r => r.Status).HasDefaultValue("Pending");
                 e.Property(r => r.Priority).HasDefaultValue(1);
 
-                // Student → Cascade (xóa user thì xóa luôn đăng ký)
                 e.HasOne(r => r.Student)
                  .WithMany(u => u.Registrations)
                  .HasForeignKey(r => r.StudentId)
                  .OnDelete(DeleteBehavior.Restrict);
 
-                // Topic → Cascade
                 e.HasOne(r => r.Topic)
                  .WithMany(t => t.Registrations)
                  .HasForeignKey(r => r.TopicId)
@@ -75,26 +72,22 @@ namespace KLTN_Registration_System.Models
                  .OnDelete(DeleteBehavior.SetNull);
             });
 
-            // ── Topic ─────────────────────────────────────────────────
             builder.Entity<Topic>(e =>
             {
                 e.Property(t => t.IsApproved).HasDefaultValue(false);
                 e.Property(t => t.IsRegistrationOpen).HasDefaultValue(true);
                 e.Property(t => t.IsStudentProposed).HasDefaultValue(false);
 
-                // Lecturer → SetNull (tránh multiple cascade paths)
                 e.HasOne(t => t.Lecturer)
                  .WithMany()
                  .HasForeignKey(t => t.LecturerId)
                  .OnDelete(DeleteBehavior.Restrict);
 
-                // CreatedByStudent → SetNull
                 e.HasOne(t => t.Student)
                  .WithMany()
                  .HasForeignKey(t => t.CreatedByStudentId)
                  .OnDelete(DeleteBehavior.SetNull);
 
-                // Major → SetNull
                 e.HasOne(t => t.Major)
                  .WithMany(m => m.Topics)
                  .HasForeignKey(t => t.MajorId)
@@ -105,7 +98,6 @@ namespace KLTN_Registration_System.Models
                  .HasForeignKey(t => t.RegistrationPeriodId)
                  .OnDelete(DeleteBehavior.SetNull);
 
-                // EF lưu enum TopicStatus và TopicLevel dưới dạng string
                 e.Property(t => t.Status)
                  .HasConversion<string>();
 
@@ -113,7 +105,6 @@ namespace KLTN_Registration_System.Models
                  .HasConversion<string>();
             });
 
-            // ── Notification ──────────────────────────────────────────
             builder.Entity<Notification>(e =>
             {
                 e.Property(n => n.Priority).HasDefaultValue(0);
@@ -130,7 +121,6 @@ namespace KLTN_Registration_System.Models
                  .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // ── ApplicationUser → Major ───────────────────────────────
             builder.Entity<ApplicationUser>(e =>
             {
                 e.HasOne(u => u.Major)
@@ -139,7 +129,6 @@ namespace KLTN_Registration_System.Models
                  .OnDelete(DeleteBehavior.SetNull);
             });
 
-            // ── Major defaults ────────────────────────────────────────
             builder.Entity<Major>(e =>
             {
                 e.Property(m => m.IsActive).HasDefaultValue(true);

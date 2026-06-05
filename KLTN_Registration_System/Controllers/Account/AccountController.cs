@@ -1,10 +1,4 @@
-﻿// ============================================================
-// FILE: Controllers/Account/AccountController.cs
-// THAY THẾ HOÀN TOÀN file cũ
-// Bổ sung: ChangePassword (GET + POST) đầy đủ logic
-// Giữ nguyên: Login, Logout, AccessDenied
-// ============================================================
-using KLTN_Registration_System.Models.Entities;
+﻿using KLTN_Registration_System.Models.Entities;
 using KLTN_Registration_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;

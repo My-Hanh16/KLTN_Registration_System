@@ -18,15 +18,12 @@ namespace KLTN_Registration_System.Services
             _notiService = notiService;
             _userManager = userManager;
         }
-
-        // Hangfire sẽ gọi hàm này theo lịch
         public async Task CheckAndSendReminders()
         {
             Debug.WriteLine("===> BAT DAU QUET SINH VIEN");
 
             var now = DateTime.Now;
 
-            // 1. Lấy ngày kết thúc từ bảng Settings
             var deadlineSetting = await _context.Settings
                 .FirstOrDefaultAsync(s => s.Name == "Registration_End");
 
@@ -36,26 +33,21 @@ namespace KLTN_Registration_System.Services
                 return;
             }
 
-            // 2. Lấy ID của tất cả sinh viên đã đăng ký đề tài (Distinct để tránh trùng)
             var registeredStudentIds = await _context.Registrations
                 .Select(r => r.StudentId)
                 .Distinct()
                 .ToListAsync();
 
-            // 3. Lấy danh sách tài khoản thuộc vai trò "Student"
             var allStudents = await _userManager.GetUsersInRoleAsync("Student");
 
-            // 4. Lọc ra những sinh viên CHƯA đăng ký
             var targetStudents = allStudents.Where(s => !registeredStudentIds.Contains(s.Id)).ToList();
 
             Console.WriteLine($"===> Tìm thấy {targetStudents.Count} sinh viên chưa đăng ký.");
 
-            // 5. Gửi thông báo cho danh sách mục tiêu
             foreach (var student in targetStudents)
             {
                 Console.WriteLine($"===> Đang thực hiện gửi mail tới: {student.Email}");
 
-                // Nội dung mail chuyên nghiệp hơn
                 string subject = "🔔 [Nhắc nhở] Hoàn thành đăng ký đề tài Khóa luận";
                 string content = $@"
             <h3>Thông báo từ Hệ thống Quản lý Khóa luận</h3>

@@ -3,20 +3,17 @@
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Dashboard Giảng viên";
 
-    // Ép kiểu dữ liệu an toàn từ ViewBag
     var guidingTopics = ViewBag.GuidingTopics as List<KLTN_Registration_System.Models.Entities.Topic> ?? new List<KLTN_Registration_System.Models.Entities.Topic>();
     var upcomingSchedules = ViewBag.UpcomingSchedules as List<dynamic> ?? new List<dynamic>();
     var majors = ViewBag.Majors as List<KLTN_Registration_System.Models.Entities.Major> ?? new List<KLTN_Registration_System.Models.Entities.Major>();
     bool noMajorAssigned = !majors.Any();
 
-    // Logic tính toán phân bổ đề tài
     var total = (int)(ViewBag.TotalTopics ?? 0);
     var app = (int)(ViewBag.AppCount ?? 0);
     var res = (int)(ViewBag.ResCount ?? 0);
     var activePeriod = ViewBag.ActivePeriod as KLTN_Registration_System.Models.Entities.RegistrationPeriod;
     string activePeriodName = activePeriod?.Name ?? "Chưa cấu hình";
 
-    // Tính toán phần trăm chính xác (làm tròn 1 chữ số thập phân)
     double appRate = total > 0 ? ((double)app / total * 100) : 0;
     double resRate = total > 0 ? (100 - appRate) : 0;
 }

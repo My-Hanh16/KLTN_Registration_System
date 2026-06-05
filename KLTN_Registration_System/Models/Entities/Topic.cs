@@ -42,8 +42,6 @@ namespace KLTN_Registration_System.Models.Entities
         public DateTime CreatedAt { get; set; }
         public string? Faculty { get; set; }
 
-        // ── FIX: Lưu enum dưới dạng string cho khớp với SQL nvarchar(max) ──
-        // Không đổi kiểu property (vẫn là enum), chỉ thêm [Column] để EF hiểu
         [Column(TypeName = "nvarchar(max)")]
         public TopicLevel Level { get; set; }
 
@@ -68,10 +66,7 @@ namespace KLTN_Registration_System.Models.Entities
         public virtual ApplicationUser? Student { get; set; }
 
         public List<Registration>? Registrations { get; set; }
-        // =====================================================
-        // COMMENTS / CHAT
-        // =====================================================
-
+  
         public ICollection<TopicComment> Comments { get; set; }
             = new List<TopicComment>();
     }

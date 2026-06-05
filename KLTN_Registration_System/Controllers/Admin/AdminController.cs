@@ -458,7 +458,7 @@ namespace KLTN_Registration_System.Controllers.Admin
             return View(registrations);
         }
 
-        // POST: Duyệt 1 đăng ký — ĐÃ SỬA bug NullReference
+        // POST: Duyệt một yêu cầu. Với đăng ký nhóm, duyệt cả nhóm cùng lúc.
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveRegistration(int id, string? semester = null, string? year = null, string? status = "Pending")
         {
@@ -473,38 +473,58 @@ namespace KLTN_Registration_System.Controllers.Admin
                 return RedirectToAction(nameof(Approval), new { status, semester, year });
             }
 
-            // SV đã có đề tài approved chưa
+            var groupRegs = await _context.Registrations
+                .Include(r => r.Topic)
+                .Where(r =>
+                    r.TopicId == reg.TopicId &&
+                    r.CreatedAt == reg.CreatedAt &&
+                    r.Status == "Pending")
+                .OrderBy(r => r.Id)
+                .ToListAsync();
+
+            if (!groupRegs.Any())
+            {
+                TempData["Error"] = "Nhóm đăng ký này không còn ở trạng thái chờ duyệt.";
+                return RedirectToAction(nameof(Approval), new { status, semester, year });
+            }
+
+            var groupIds = groupRegs.Select(r => r.Id).ToList();
+            var groupStudentIds = groupRegs.Select(r => r.StudentId).ToList();
+
             var alreadyApproved = await _context.Registrations
                 .AnyAsync(r =>
-                    r.StudentId == reg.StudentId &&
+                    groupStudentIds.Contains(r.StudentId) &&
                     r.Status == "Approved" &&
-                    r.Id != reg.Id);
+                    !groupIds.Contains(r.Id));
 
             if (alreadyApproved)
             {
-                TempData["Error"] = "Sinh viên đã có đề tài được duyệt!";
+                TempData["Error"] = "Có sinh viên trong nhóm đã có đề tài được duyệt. Không thể duyệt lẻ một phần nhóm.";
                 return RedirectToAction(nameof(Approval), new { status, semester, year });
             }
 
             var currentApprovedCount = await _context.Registrations
                 .CountAsync(r => r.TopicId == reg.TopicId && r.Status == "Approved");
 
-            if (currentApprovedCount >= reg.Topic.MaxStudents)
+            if (currentApprovedCount + groupRegs.Count > reg.Topic.MaxStudents)
             {
                 reg.Topic.Status = TopicStatus.Full;
                 reg.Topic.IsRegistrationOpen = false;
                 await _context.SaveChangesAsync();
 
-                TempData["Error"] = "Đề tài đã đủ sinh viên, không thể duyệt thêm.";
+                TempData["Error"] = $"Đề tài không đủ chỗ cho cả nhóm {groupRegs.Count} sinh viên. Không duyệt một phần nhóm.";
                 return RedirectToAction(nameof(Approval), new { status, semester, year });
             }
 
-            reg.UpdatedAt = DateTime.Now;
-            reg.ApprovedBy = User.Identity?.Name;
+            var now = DateTime.Now;
+            foreach (var memberReg in groupRegs)
+            {
+                memberReg.Status = "Approved";
+                memberReg.UpdatedAt = now;
+                memberReg.ApprovedBy = User.Identity?.Name;
+            }
 
-            reg.Status = "Approved";
-
-            if (currentApprovedCount + 1 >= reg.Topic.MaxStudents)
+            if (currentApprovedCount + groupRegs.Count >= reg.Topic.MaxStudents)
             {
                 reg.Topic.Status = TopicStatus.Full;
                 reg.Topic.IsRegistrationOpen = false;
@@ -512,15 +532,19 @@ namespace KLTN_Registration_System.Controllers.Admin
 
             await _context.SaveChangesAsync();
 
-            await _notificationService.SendDualNotification(
-    reg.StudentId,
-    "🔔 Đăng ký được duyệt",
-    $"Yêu cầu đăng ký đề tài \"{reg.Topic?.Title}\" của bạn đã được Admin phê duyệt.",
-    "TopicApproved",
-    reg.TopicId // Truyền ID đề tài vào tham số relatedId (kiểu int)
-);
+            foreach (var memberReg in groupRegs)
+            {
+                await _notificationService.SendDualNotification(
+                    memberReg.StudentId,
+                    "Đăng ký được duyệt",
+                    $"Yêu cầu đăng ký đề tài \"{reg.Topic?.Title}\" của bạn đã được Admin phê duyệt.",
+                    "TopicApproved",
+                    reg.TopicId);
+            }
 
-            TempData["Success"] = "Đã phê duyệt đăng ký thành công!";
+            TempData["Success"] = groupRegs.Count > 1
+                ? $"Đã phê duyệt cả nhóm {groupRegs.Count} sinh viên."
+                : "Đã phê duyệt đăng ký thành công!";
             return RedirectToAction(nameof(Approval), new { status = status ?? "Pending", semester, year });
         }
 
@@ -558,37 +582,52 @@ namespace KLTN_Registration_System.Controllers.Admin
             var approvedRegs = new List<Registration>();
             int skipped = 0;
 
-            foreach (var reg in pendingRegs)
+            var pendingGroups = pendingRegs
+                .GroupBy(r => new { r.TopicId, r.CreatedAt })
+                .OrderBy(g => g.Min(r => r.Id));
+
+            foreach (var group in pendingGroups)
             {
-                if (reg.Topic == null || approvedStudents.Contains(reg.StudentId))
+                var groupRegs = group.ToList();
+                var firstReg = groupRegs.First();
+
+                if (firstReg.Topic == null || groupRegs.Any(r => approvedStudents.Contains(r.StudentId)))
                 {
                     skipped++;
                     continue;
                 }
 
-                var currentApprovedCount = topicApprovedCounts.TryGetValue(reg.TopicId, out var count)
+                var currentApprovedCount = topicApprovedCounts.TryGetValue(firstReg.TopicId, out var count)
                     ? count
                     : 0;
 
-                if (currentApprovedCount >= reg.Topic.MaxStudents)
+                if (currentApprovedCount + groupRegs.Count > firstReg.Topic.MaxStudents)
                 {
-                    reg.Topic.Status = TopicStatus.Full;
-                    reg.Topic.IsRegistrationOpen = false;
+                    if (currentApprovedCount >= firstReg.Topic.MaxStudents)
+                    {
+                        firstReg.Topic.Status = TopicStatus.Full;
+                        firstReg.Topic.IsRegistrationOpen = false;
+                    }
+
                     skipped++;
                     continue;
                 }
 
-                reg.Status = "Approved";
-                reg.UpdatedAt = DateTime.Now;
-                reg.ApprovedBy = User.Identity?.Name;
-                approvedRegs.Add(reg);
-                approvedStudents.Add(reg.StudentId);
-                topicApprovedCounts[reg.TopicId] = currentApprovedCount + 1;
-
-                if (currentApprovedCount + 1 >= reg.Topic.MaxStudents)
+                foreach (var reg in groupRegs)
                 {
-                    reg.Topic.Status = TopicStatus.Full;
-                    reg.Topic.IsRegistrationOpen = false;
+                    reg.Status = "Approved";
+                    reg.UpdatedAt = DateTime.Now;
+                    reg.ApprovedBy = User.Identity?.Name;
+                    approvedRegs.Add(reg);
+                    approvedStudents.Add(reg.StudentId);
+                }
+
+                topicApprovedCounts[firstReg.TopicId] = currentApprovedCount + groupRegs.Count;
+
+                if (currentApprovedCount + groupRegs.Count >= firstReg.Topic.MaxStudents)
+                {
+                    firstReg.Topic.Status = TopicStatus.Full;
+                    firstReg.Topic.IsRegistrationOpen = false;
                 }
             }
 
@@ -598,17 +637,17 @@ namespace KLTN_Registration_System.Controllers.Admin
             {
                 await _notificationService.SendDualNotification(
                     reg.StudentId,
-                    "🔔 Đăng ký được duyệt",
+                    "Đăng ký được duyệt",
                     $"Yêu cầu đăng ký đề tài \"{reg.Topic?.Title}\" của bạn đã được Admin phê duyệt.",
                     "TopicApproved",
                     reg.TopicId);
             }
 
-            TempData["Success"] = $"Đã duyệt {approvedRegs.Count} đăng ký. Bỏ qua {skipped} đăng ký không hợp lệ hoặc đề tài đã đủ sinh viên.";
+            TempData["Success"] = $"Đã duyệt {approvedRegs.Count} sinh viên. Bỏ qua {skipped} nhóm không hợp lệ hoặc đề tài không đủ chỗ.";
             return RedirectToAction(nameof(Approval), new { status = "Pending", semester, year });
         }
 
-        // POST: Từ chối 1 đăng ký
+        // POST: Từ chối một yêu cầu. Với đăng ký nhóm, từ chối cả nhóm cùng lúc.
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> RejectRegistration(int id, string? semester = null, string? year = null, string? status = "Pending")
         {
@@ -618,19 +657,42 @@ namespace KLTN_Registration_System.Controllers.Admin
 
             if (reg == null) return NotFound();
 
-            reg.Status = "Rejected";
-            reg.UpdatedAt = DateTime.Now;
+            var groupRegs = await _context.Registrations
+                .Where(r =>
+                    r.TopicId == reg.TopicId &&
+                    r.CreatedAt == reg.CreatedAt &&
+                    r.Status == "Pending")
+                .OrderBy(r => r.Id)
+                .ToListAsync();
+
+            if (!groupRegs.Any())
+            {
+                TempData["Error"] = "Nhóm đăng ký này không còn ở trạng thái chờ duyệt.";
+                return RedirectToAction(nameof(Approval), new { status = status ?? "Pending", semester, year });
+            }
+
+            var now = DateTime.Now;
+            foreach (var memberReg in groupRegs)
+            {
+                memberReg.Status = "Rejected";
+                memberReg.UpdatedAt = now;
+            }
 
             await _context.SaveChangesAsync();
 
-            await _notificationService.SendDualNotification(
-        reg.StudentId,
-        "❌ Đăng ký bị từ chối",
-        $"Yêu cầu đăng ký đề tài \"{reg.Topic?.Title}\" của bạn đã bị từ chối.",
-        "TopicRejected",
-        reg.TopicId);
+            foreach (var memberReg in groupRegs)
+            {
+                await _notificationService.SendDualNotification(
+                    memberReg.StudentId,
+                    "Đăng ký bị từ chối",
+                    $"Yêu cầu đăng ký đề tài \"{reg.Topic?.Title}\" của bạn đã bị từ chối.",
+                    "TopicRejected",
+                    reg.TopicId);
+            }
 
-            TempData["Error"] = "Đã từ chối yêu cầu đăng ký.";
+            TempData["Error"] = groupRegs.Count > 1
+                ? $"Đã từ chối cả nhóm {groupRegs.Count} sinh viên."
+                : "Đã từ chối yêu cầu đăng ký.";
             return RedirectToAction(nameof(Approval), new { status = status ?? "Pending", semester, year });
         } // Thêm dấu đóng ngoặc này để fix lỗi CS1513
 

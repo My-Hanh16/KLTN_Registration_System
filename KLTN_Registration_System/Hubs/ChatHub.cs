@@ -1,8 +1,4 @@
-﻿// ============================================================
-// FILE: Hubs/ChatHub.cs
-// ============================================================
-
-using KLTN_Registration_System.Models;
+﻿using KLTN_Registration_System.Models;
 using KLTN_Registration_System.Models.Entities;
 using KLTN_Registration_System.Services;
 using Microsoft.AspNetCore.Authorization;

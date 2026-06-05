@@ -15,7 +15,6 @@ namespace KLTN_Registration_System.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly EmailService _emailService;
 
-        // THÊM
         private readonly IHubContext<NotificationHub> _hubContext;
 
         public NotificationService(
@@ -23,14 +22,12 @@ namespace KLTN_Registration_System.Services
             UserManager<ApplicationUser> userManager,
             EmailService emailService,
 
-            // THÊM
             IHubContext<NotificationHub> hubContext)
         {
             _context = context;
             _userManager = userManager;
             _emailService = emailService;
 
-            // THÊM
             _hubContext = hubContext;
         }
 
@@ -45,10 +42,6 @@ namespace KLTN_Registration_System.Services
         {
             if (string.IsNullOrWhiteSpace(userId))
                 return;
-
-            // ====================================================
-            // 1. Lưu Database
-            // ====================================================
 
             var notification = new Notification
             {
@@ -69,10 +62,6 @@ namespace KLTN_Registration_System.Services
 
             await _context.SaveChangesAsync();
 
-            // ====================================================
-            // 2. Realtime SignalR
-            // ====================================================
-
             int unreadCount = await _context.Notifications
                 .CountAsync(n =>
                     n.UserId == userId &&
@@ -92,11 +81,6 @@ namespace KLTN_Registration_System.Services
                         .ToString("HH:mm dd/MM/yyyy"),
                     unreadCount = unreadCount
                 });
-
-            // ====================================================
-            // 3. Gửi Email
-            // ====================================================
-
             try
             {
                 var student = await _userManager.FindByIdAsync(userId);
@@ -127,13 +111,9 @@ namespace KLTN_Registration_System.Services
             }
             catch
             {
-                // Không để lỗi email làm hỏng nghiệp vụ chính sau khi notification đã được lưu.
             }
         }
 
-        // ====================================================
-        // Đánh dấu đã đọc
-        // ====================================================
 
         public async Task MarkAsRead(
             int notificationId,
@@ -161,10 +141,6 @@ namespace KLTN_Registration_System.Services
                     .SendAsync("UpdateBadge", unreadCount);
             }
         }
-
-        // ====================================================
-        // Đánh dấu tất cả đã đọc
-        // ====================================================
 
         public async Task MarkAllAsRead(string userId)
         {

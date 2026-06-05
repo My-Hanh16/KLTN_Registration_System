@@ -7,13 +7,9 @@ namespace KLTN_Registration_System.Models.Entities
         public string? FullName { get; set; }
         public string? UserCode { get; set; }
 
-        // Thêm các trường mới cho Giảng viên
-        public string? Faculty { get; set; }    // Khoa
-        public string? Degree { get; set; }     // Trình độ (Thạc sĩ, Tiến sĩ...)
-        public string? Position { get; set; }   // Chức vụ
-
-        // ── Thêm để AdminController có thể Include/query ──────────
-        // Không phá cấu trúc cũ, chỉ thêm navigation
+        public string? Faculty { get; set; }    
+        public string? Degree { get; set; }    
+        public string? Position { get; set; }  
         public int? MajorId { get; set; }
         public Major? Major { get; set; }
         public bool HasCompletedThesis { get; set; } = false;

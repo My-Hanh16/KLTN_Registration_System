@@ -1,9 +1,5 @@
-﻿// ============================================================
-// FILE: Models/ViewModels/AdminViewModels.cs
-// ============================================================
-namespace KLTN_Registration_System.Models.ViewModels
+﻿namespace KLTN_Registration_System.Models.ViewModels
 {
-    // ── Dashboard KPI ──────────────────────────────────────────
     public class AdminDashboard
     {
         public int TotalTopics { get; set; }
@@ -16,7 +12,6 @@ namespace KLTN_Registration_System.Models.ViewModels
         public List<TopicItemVM> NewTopics { get; set; } = new();
     }
 
-    // ── Biểu đồ cột phân bổ theo Khoa ─────────────────────────
     public class DepartmentStatVM
     {
         public string Name { get; set; } = string.Empty;
@@ -25,7 +20,6 @@ namespace KLTN_Registration_System.Models.ViewModels
         public int Count { get; set; }
     }
 
-    // ── Dòng hoạt động gần đây ────────────────────────────────
     public class ActivityLogVM
     {
         public string Message { get; set; } = string.Empty;
@@ -34,7 +28,6 @@ namespace KLTN_Registration_System.Models.ViewModels
         public string ColorClass { get; set; } = "bg-slate-100 text-slate-600";
     }
 
-    // ── Hàng đề tài trong bảng "Đề tài mới cần duyệt" ────────
     public class TopicItemVM
     {
         public string Id { get; set; } = string.Empty;

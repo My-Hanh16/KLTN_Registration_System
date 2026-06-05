@@ -7,7 +7,7 @@
                 text: options.text,
                 showCancelButton: true,
                 confirmButtonText: options.confirmText || 'Đồng ý',
-                cancelButtonText: 'Huỷ',
+                cancelButtonText: 'Hủy',
                 confirmButtonColor: options.confirmColor || '#4f46e5',
                 cancelButtonColor: '#94a3b8'
             });
@@ -34,15 +34,15 @@
         bindConfirm('.js-approve-all-form', {
             icon: 'question',
             title: 'Duyệt tất cả đăng ký?',
-            text: 'Hệ thống sẽ tự bỏ qua sinh viên trùng hoặc đề tài đã đủ chỗ.',
+            text: 'Hệ thống sẽ duyệt theo từng nhóm, nhóm nào có sinh viên trùng hoặc đề tài không đủ chỗ sẽ bị bỏ qua cả nhóm.',
             confirmText: 'Duyệt tất cả',
             confirmColor: '#16a34a'
         });
 
         bindConfirm('.js-reject-registration-form', {
             icon: 'warning',
-            title: 'Từ chối đăng ký này?',
-            text: 'Sinh viên sẽ nhận trạng thái từ chối cho yêu cầu đăng ký này.',
+            title: 'Từ chối nhóm đăng ký này?',
+            text: 'Tất cả sinh viên trong cùng nhóm đăng ký sẽ nhận trạng thái từ chối.',
             confirmText: 'Từ chối',
             confirmColor: '#dc2626'
         });
