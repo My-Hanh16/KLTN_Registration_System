@@ -1,7 +1,4 @@
-﻿/* ══════════════════════════════════════
-       HEADER
-    ══════════════════════════════════════ */
-    .page-title {
+﻿.page-title {
         font-size: 20px;
         font-weight: 800;
         color: #1e293b;
@@ -113,8 +110,8 @@
     .welcome-eyebrow {
         margin-bottom: 20px;
         color: #fff;
-        font-size: 30px;
-        font-weight: 850;
+        font-size: 38px;
+        font-weight: 800;
         letter-spacing: 0;
         line-height: 1.18;
         text-wrap: balance;
@@ -366,7 +363,7 @@
         }
 
         .welcome-eyebrow {
-            font-size: 24px;
+            font-size: 30px;
         }
 
         .banner-actions,

@@ -1,12 +1,7 @@
-/* ══════════════════════════════════════
-       PAGE HEADER
-    ══════════════════════════════════════ */
+
     .page-title { font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
     .page-sub   { font-size: 13.5px; color: #94a3b8; margin: 0; }
 
-    /* ══════════════════════════════════════
-       STATS ROW
-    ══════════════════════════════════════ */
     .stats-row {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -44,7 +39,6 @@
     .stat-label  { font-size: 12px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
     .stat-number { font-size: 26px; font-weight: 800; color: #1e293b; line-height: 1.1; }
 
-    /* Rate progress mini */
     .stat-progress {
         height: 4px; border-radius: 99px;
         background: #f1f5f9; overflow: hidden; margin-top: 8px;
@@ -54,9 +48,6 @@
         height: 100%; border-radius: 99px; background: #16a34a;
     }
 
-    /* ══════════════════════════════════════
-       FILTER TABS
-    ══════════════════════════════════════ */
     .filter-tabs {
         display: flex; gap: 4px;
         background: #f1f5f9; padding: 4px;
@@ -87,9 +78,6 @@
     .tab-count.green { background: #dcfce7; color: #15803d; }
     .tab-count.red   { background: #fee2e2; color: #dc2626; }
 
-    /* ══════════════════════════════════════
-       FILTER CARD
-    ══════════════════════════════════════ */
     .filter-card {
         background: #fff; border: 1px solid #e8edf4;
         border-radius: 14px; padding: 16px 20px;

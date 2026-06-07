@@ -1,4 +1,4 @@
-/* ── CSS vars: đồng bộ với _LayoutStudent ── */
+
         :root {
             --primary-blue: #4f46e5;
             --primary-light: #eef2ff;
@@ -32,9 +32,6 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* ══════════════════════════════════════
-                   SIDEBAR
-                ══════════════════════════════════════ */
         .sidebar {
             width: var(--sidebar-w);
             height: 100vh;
@@ -260,6 +257,31 @@
             align-items: center;
             gap: 10px;
         }
+
+        .topbar-period-chip {
+            align-items: center;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            color: #2563eb;
+            display: inline-flex;
+            flex-shrink: 0;
+            gap: 7px;
+            min-height: 38px;
+            padding: 0 12px;
+            white-space: nowrap;
+        }
+
+            .topbar-period-chip i {
+                font-size: 14px;
+                line-height: 1;
+            }
+
+            .topbar-period-chip span {
+                font-size: 13.5px;
+                font-weight: 800;
+                line-height: 1.2;
+            }
 
         .topbar-icon-btn {
             position: relative;
@@ -577,6 +599,12 @@
             .search-wrap {
                 max-width: none;
             }
+
+            .topbar-period-chip span {
+                max-width: 210px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
         }
 
         @media (max-width: 640px) {
@@ -595,6 +623,15 @@
             .topbar-divider {
                 display: none;
             }
+
+            .topbar-period-chip {
+                padding: 0 10px;
+            }
+
+                .topbar-period-chip span {
+                    max-width: 150px;
+                    font-size: 12px;
+                }
 
             .page-content {
                 padding: 18px 14px;

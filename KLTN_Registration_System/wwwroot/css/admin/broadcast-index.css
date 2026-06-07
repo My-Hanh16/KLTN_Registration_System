@@ -1,6 +1,4 @@
-﻿/* ══════════════════════════════════════
-               PAGE HEADER
-            ══════════════════════════════════════ */
+﻿
         .page-title {
             font-size: 20px;
             font-weight: 800;
@@ -14,9 +12,6 @@
             margin: 0;
         }
 
-        /* ══════════════════════════════════════
-               STATS ROW
-            ══════════════════════════════════════ */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);

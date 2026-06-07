@@ -1,6 +1,8 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @using KLTN_Registration_System.Models.Entities
+@using Microsoft.EntityFrameworkCore
 @inject UserManager<ApplicationUser> UserManager
+@inject AppDbContext StudentLayoutDb
 
 <!DOCTYPE html>
 <html lang="vi">
@@ -45,6 +47,22 @@
         {
             initials = currentUser.Email[0].ToString().ToUpper();
         }
+
+        var studentActivePeriod = await StudentLayoutDb.RegistrationPeriods
+            .AsNoTracking()
+            .Where(p => p.IsActive)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        string studentSemesterNumber = studentActivePeriod?.SemesterCode ?? "";
+        if (studentSemesterNumber.StartsWith("HK", StringComparison.OrdinalIgnoreCase))
+        {
+            studentSemesterNumber = studentSemesterNumber[2..];
+        }
+
+        string studentPeriodLabel = studentActivePeriod == null
+            ? ""
+            : $"Học kỳ: {studentSemesterNumber}, năm học: {studentActivePeriod.AcademicYear}";
     }
 
     <div class="sidebar-backdrop" data-close-sidebar></div>
@@ -158,6 +176,14 @@
                            placeholder="Tìm kiếm đề tài, giảng viên..." />
                 </form>
             </div>
+
+            @if (!string.IsNullOrWhiteSpace(studentPeriodLabel))
+            {
+                <div class="topbar-period-chip" title="@studentActivePeriod?.Name">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>@studentPeriodLabel</span>
+                </div>
+            }
 
             <div class="topbar-right">
 

@@ -5,7 +5,6 @@
     Layout = "_LayoutDashboard";
     ViewData["Title"] = "Quản lý kho đề tài";
 
-    // Fix: resolve server-side thay vì kiểm tra role phía client
     bool isAdmin   = User.IsInRole("Admin");
     string createUrl = isAdmin ? "/Admin/Create" : "/Lecturer/Create";
     int totalTopics = ViewBag.TotalTopics ?? Model.Count();
@@ -13,611 +12,39 @@
     int fullTopics = ViewBag.FullTopics ?? Model.Count(t => t.Status == TopicStatus.Full || (t.IsApproved && !t.IsRegistrationOpen && !string.IsNullOrWhiteSpace(t.CreatedByStudentId)));
     int closedTopics = ViewBag.ClosedTopics ?? Model.Count(t => t.Status == TopicStatus.Closed || t.Status == TopicStatus.Full || (t.IsApproved && !t.IsRegistrationOpen && !string.IsNullOrWhiteSpace(t.CreatedByStudentId)));
     int readyTopics = ViewBag.ReadyTopics ?? Model.Count(t => t.IsApproved && !t.IsRegistrationOpen && t.Status == TopicStatus.Available);
+    var activePeriod = ViewBag.ActivePeriod as RegistrationPeriod;
+    var selectedPeriod = ViewBag.SelectedPeriod as RegistrationPeriod ?? activePeriod;
+    var periods = ViewBag.RegistrationPeriods as IEnumerable<RegistrationPeriod> ?? Enumerable.Empty<RegistrationPeriod>();
+    int? selectedPeriodId = ViewBag.SelectedPeriodId as int?;
+    bool isViewingOldPeriod = ViewBag.IsViewingOldPeriod == true;
+    bool adminReadOnlyOldPeriod = isAdmin && isViewingOldPeriod;
+    string periodText = selectedPeriod?.Name ?? activePeriod?.Name ?? "đợt hiện tại";
 }
 
 @section Styles {
-<style>
-    /* ══════════════════════════════════════
-       PAGE HEADER
-    ══════════════════════════════════════ */
-    .page-title {
-        font-size: 20px;               /* Fix: 2.5rem (~40px) → 20px đồng bộ layout */
-        font-weight: 800;
-        color: #1e293b;
-        margin-bottom: 4px;
-    }
-
-    .page-sub {
-        font-size: 13.5px;
-        color: #94a3b8;
-        margin: 0;
-        line-height: 1.6;
-    }
-
-    /* ══════════════════════════════════════
-       HEADER ACTION BUTTONS
-    ══════════════════════════════════════ */
-    .btn-header {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        font-weight: 600;
-        padding: 8px 16px;
-        border-radius: 10px;
-        border: 1.5px solid #e8edf4;
-        background: #fff;
-        color: #475569;
-        text-decoration: none;
-        white-space: nowrap;
-        cursor: pointer;
-        transition: all .15s;
-    }
-
-    .btn-header:hover {
-        border-color: #c7d2fe;
-        color: #4f46e5;
-        background: #eef2ff;
-    }
-
-    .btn-header.green  { border-color: #bbf7d0; color: #15803d; }
-    .btn-header.green:hover  { background: #16a34a; color: #fff; border-color: #16a34a; }
-
-    .btn-header.amber  { border-color: #fde68a; color: #b45309; }
-    .btn-header.amber:hover  { background: #d97706; color: #fff; border-color: #d97706; }
-
-    .btn-header.primary {
-        background: #4f46e5;
-        color: #fff;
-        border-color: #4f46e5;
-        box-shadow: 0 4px 12px rgba(79,70,229,.22);
-    }
-
-    .btn-header.primary:hover { background: #4338ca; border-color: #4338ca; }
-
-    /* ══════════════════════════════════════
-       STATS GRID
-    ══════════════════════════════════════ */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 14px;
-        margin-bottom: 20px;
-    }
-
-    .stat-card {
-        background: #fff;
-        border: 1px solid #e8edf4;
-        border-radius: 14px;           /* Fix: 22px → 14px */
-        padding: 18px 20px;
-        transition: box-shadow .2s;
-    }
-
-    .stat-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
-
-    .stat-card.blue-accent  { border-left: 3px solid #2563eb; }
-    .stat-card.orange-accent { border-left: 3px solid #ea580c; }
-
-    .stat-label {
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        color: #94a3b8;
-        margin-bottom: 6px;
-    }
-
-    .stat-label.blue   { color: #2563eb; }
-    .stat-label.orange { color: #ea580c; }
-
-    .stat-number {
-        font-size: 26px;               /* Fix: text-3xl (~30px) → 26px */
-        font-weight: 800;
-        color: #1e293b;
-        line-height: 1.1;
-    }
-
-    /* ══════════════════════════════════════
-       FILTER BOX
-    ══════════════════════════════════════ */
-    .filter-box {
-        background: #fff;
-        border: 1px solid #e8edf4;
-        border-radius: 14px;
-        padding: 20px 22px;
-        margin-bottom: 20px;
-    }
-
-    .filter-select {
-        font-size: 13px;
-        font-weight: 600;
-        border: 1.5px solid #e8edf4;
-        border-radius: 10px;
-        padding: 8px 14px;
-        background: #f8fafc;
-        color: #475569;
-        min-width: 155px;
-        outline: none;
-        transition: border-color .15s;
-        cursor: pointer;
-    }
-
-    .filter-select:focus {
-        border-color: #4f46e5;
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(79,70,229,.08);
-    }
-
-    .filter-label {
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.7px;
-        color: #94a3b8;
-        margin-bottom: 5px;
-        display: block;
-    }
-
-    /* Status filter chips */
-    .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-
-    .filter-chip {
-        font-size: 12.5px;
-        font-weight: 600;
-        padding: 6px 14px;
-        border-radius: 99px;
-        border: 1.5px solid #e8edf4;
-        background: #f8fafc;
-        color: #64748b;
-        cursor: pointer;
-        transition: all .15s;
-        line-height: 1.5;
-    }
-
-    .filter-chip:hover  { border-color: #c7d2fe; color: #4f46e5; background: #eef2ff; }
-    .filter-chip.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
-
-    /* ══════════════════════════════════════
-       BULK TOOLBAR
-    ══════════════════════════════════════ */
-    .bulk-toolbar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        padding: 12px 16px;
-        background: #fff;
-        border: 1.5px solid #e8edf4;
-        border-radius: 12px;
-        margin-bottom: 16px;
-    }
-
-    .bulk-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: #475569;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-bulk {
-        font-size: 12.5px;
-        font-weight: 700;
-        padding: 7px 16px;
-        border-radius: 9px;
-        border: none;
-        cursor: pointer;
-        transition: all .15s;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-    }
-
-    .btn-bulk.approve { background: #f0fdf4; color: #15803d; }
-    .btn-bulk.approve:hover { background: #16a34a; color: #fff; }
-
-    .btn-bulk.reject  { background: #fff5f5; color: #dc2626; }
-    .btn-bulk.reject:hover  { background: #dc2626; color: #fff; }
-
-    /* ══════════════════════════════════════
-       TOPIC CARD GRID
-    ══════════════════════════════════════ */
-    .topics-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 14px;
-    }
-
-    @@media (max-width: 1280px) { .topics-grid { grid-template-columns: repeat(2, 1fr); } }
-    @@media (max-width: 768px)  { .topics-grid { grid-template-columns: 1fr; } }
-
-    /* ══════════════════════════════════════
-       TOPIC CARD
-    ══════════════════════════════════════ */
-    .topic-card {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        padding: 20px;
-        border-radius: 14px;           /* Fix: 24px → 14px */
-        background: #fff;
-        border: 1px solid #e8edf4;
-        transition: box-shadow .2s, border-color .2s, transform .2s;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    }
-
-    .topic-card:hover {
-        transform: translateY(-2px);
-        border-color: #c7d2fe;
-        box-shadow: 0 8px 24px rgba(79,70,229,.08);
-    }
-
-    /* Checkbox */
-    .bulk-check-wrap {
-        position: absolute;
-        top: 16px; left: 16px;
-        z-index: 5;
-    }
-
-    .bulk-check-wrap input {
-        width: 16px; height: 16px;
-        accent-color: #4f46e5;
-        cursor: pointer;
-    }
-
-    /* Status badge */
-    .topic-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 10px;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 99px;
-        white-space: nowrap;
-        letter-spacing: 0.3px;
-    }
-
-    .status-dot {
-        width: 5px; height: 5px;
-        border-radius: 50%;
-        background: currentColor;
-        opacity: 0.8;
-    }
-
-    .s-available { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-    .s-pending   { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-    .s-full      { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
-    .s-closed    { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
-
-    /* Lecturer info */
-    .lecturer-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 12px;
-        font-weight: 600;
-        color: #4f46e5;
-    }
-
-    .lecturer-tag i { font-size: 11px; }
-
-    /* Title */
-    .topic-title {
-        font-size: 14px;               /* Fix: 1.15rem (~18px) → 14px */
-        font-weight: 700;
-        color: #1e293b;
-        line-height: 1.5;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        margin: 0;
-    }
-
-    .topic-code {
-        font-size: 11.5px;
-        color: #94a3b8;
-        margin-top: 2px;
-    }
-
-    .topic-code span { font-weight: 600; color: #475569; }
-
-    /* Info box */
-    .topic-info-box {
-        background: #f8fafc;
-        border: 1px solid #f1f5f9;
-        border-radius: 10px;
-        padding: 12px 14px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-
-    .info-label {
-        font-size: 9.5px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #94a3b8;
-        margin-bottom: 2px;
-    }
-
-    .info-value {
-        font-size: 14px;
-        font-weight: 800;
-        color: #1e293b;
-        line-height: 1;
-    }
-
-    .info-divider {
-        width: 1px; height: 28px;
-        background: #e8edf4;
-        flex-shrink: 0;
-    }
-
-    /* Registration state */
-    .registration-state { display: flex; align-items: center; gap: 8px; }
-
-    .registration-label {
-        font-size: 11.5px;
-        font-weight: 600;
-        color: #64748b;
-    }
-
-    .registration-pill {
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 11px;
-        font-weight: 800;
-        padding: 5px 9px;
-        white-space: nowrap;
-    }
-
-    .registration-pill.open {
-        background: #ecfdf5;
-        color: #047857;
-    }
-
-    .registration-pill.locked {
-        background: #f1f5f9;
-        color: #64748b;
-    }
-
-    /* Card action buttons */
-    .card-actions { display: flex; flex-direction: column; gap: 10px; }
-
-    .action-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-    }
-
-    .btn-card-action {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        height: 38px;
-        border-radius: 10px;
-        font-size: 12.5px;
-        font-weight: 600;
-        border: 1.5px solid #e8edf4;
-        background: #fff;
-        color: #475569;
-        text-decoration: none;
-        cursor: pointer;
-        transition: all .15s;
-        white-space: nowrap;
-    }
-
-    .btn-card-action i { font-size: 12px; }
-
-    .btn-card-action:hover      { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
-    .btn-card-action.approve    { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
-    .btn-card-action.approve:hover { background: #16a34a; border-color: #16a34a; color: #fff; }
-    .btn-card-action.reject-btn { background: #fff5f5; border-color: #fecaca; color: #dc2626; }
-    .btn-card-action.reject-btn:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
-    .btn-card-action.danger     { background: #fff5f5; border-color: #fecaca; color: #dc2626; }
-    .btn-card-action.danger:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
-
-    /* ══════════════════════════════════════
-       PAGINATION
-    ══════════════════════════════════════ */
-    .pagination-wrap {
-        display: flex;
-        justify-content: center;
-        gap: 6px;
-        margin-top: 24px;
-    }
-
-    .page-btn {
-        font-size: 13px;
-        font-weight: 600;
-        padding: 7px 14px;
-        border-radius: 9px;
-        border: 1.5px solid #e8edf4;
-        background: #fff;
-        color: #64748b;
-        text-decoration: none;
-        transition: all .15s;
-    }
-
-    .page-btn:hover  { border-color: #c7d2fe; color: #4f46e5; }
-    .page-btn.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
-
-    /* ══════════════════════════════════════
-       MODAL — CSS thuần, không dùng Tailwind toggle
-    ══════════════════════════════════════ */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.4);
-        backdrop-filter: blur(3px);
-        z-index: 1050;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-    }
-
-    .modal-overlay.open { display: flex; }
-
-    .modal-box {
-        background: #fff;
-        border-radius: 16px;
-        width: 100%;
-        max-width: 640px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 24px 64px rgba(0,0,0,0.16);
-    }
-
-    .modal-head {
-        padding: 22px 24px 18px;
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-    }
-
-    .modal-head-title {
-        font-size: 16px;
-        font-weight: 800;
-        color: #1e293b;
-        margin-bottom: 2px;
-    }
-
-    .modal-head-sub {
-        font-size: 12.5px;
-        color: #94a3b8;
-        margin: 0;
-    }
-
-    .modal-close {
-        width: 32px; height: 32px;
-        border-radius: 9px;
-        border: 1.5px solid #e8edf4;
-        background: #f8fafc;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #64748b;
-        cursor: pointer;
-        transition: all .15s;
-        font-size: 14px;
-        flex-shrink: 0;
-    }
-
-    .modal-close:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
-
-    .modal-body { padding: 22px 24px; }
-
-    .modal-footer {
-        padding: 16px 24px;
-        border-top: 1px solid #f1f5f9;
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    /* Form fields */
-    .form-group { margin-bottom: 16px; }
-
-    .form-label {
-        font-size: 12.5px;
-        font-weight: 700;
-        color: #374151;
-        margin-bottom: 6px;
-        display: block;
-    }
-
-    .form-control-custom {
-        width: 100%;
-        border: 1.5px solid #e8edf4;
-        border-radius: 10px;
-        padding: 9px 14px;
-        font-size: 13.5px;
-        font-family: 'Inter', sans-serif;
-        color: #1e293b;
-        background: #f8fafc;
-        outline: none;
-        transition: border-color .15s, box-shadow .15s;
-    }
-
-    .form-control-custom:focus {
-        border-color: #4f46e5;
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(79,70,229,.08);
-    }
-
-    textarea.form-control-custom { resize: none; }
-
-    .form-grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 14px;
-    }
-
-    .btn-modal-cancel {
-        font-size: 13.5px;
-        font-weight: 600;
-        padding: 9px 20px;
-        border-radius: 10px;
-        border: 1.5px solid #e8edf4;
-        background: #f8fafc;
-        color: #64748b;
-        cursor: pointer;
-        transition: all .15s;
-    }
-
-    .btn-modal-cancel:hover { background: #f1f5f9; color: #1e293b; }
-
-    .btn-modal-submit {
-        font-size: 13.5px;
-        font-weight: 700;
-        padding: 9px 24px;
-        border-radius: 10px;
-        border: none;
-        background: #4f46e5;
-        color: #fff;
-        cursor: pointer;
-        transition: all .15s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        box-shadow: 0 4px 12px rgba(79,70,229,.22);
-    }
-
-    .btn-modal-submit:hover { background: #4338ca; }
-    .btn-modal-submit:disabled { opacity: .65; cursor: not-allowed; }
-</style>
+    <link rel="stylesheet" href="~/css/shared/topic-list.css" asp-append-version="true" />
 }
 
-<!-- PAGE HEADER -->
 <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
         <h2 class="page-title">Quản lý kho đề tài</h2>
-        <p class="page-sub">@(isAdmin ? "Biên soạn và theo dõi tiến độ các đề tài luận văn trong kỳ học này." : "Theo dõi danh sách sinh viên và tiến độ các đề tài luận văn trong kỳ học này.")</p>
+        <p class="page-sub">@(isAdmin ? "Biên soạn và theo dõi tiến độ các đề tài luận văn trong kỳ học này." : $"Theo dõi đề tài trong {periodText}; có thể xem lại đợt cũ để tránh trùng và sao chép dùng lại.")</p>
     </div>
 
     <div class="d-flex align-items-center gap-2 flex-wrap">
 
-        @* Import Excel *@
-        <form asp-action="ImportTopics" method="post" enctype="multipart/form-data" id="importExcelForm" style="display:none;">
-            @Html.AntiForgeryToken()
-            <input type="file" name="file" id="excelInput" accept=".xlsx,.xls" onchange="handleFileSelect()">
-        </form>
+        @if (!adminReadOnlyOldPeriod)
+        {
+            <form asp-action="ImportTopics" method="post" enctype="multipart/form-data" id="importExcelForm" style="display:none;">
+                @Html.AntiForgeryToken()
+                <input type="file" name="file" id="excelInput" accept=".xlsx,.xls" onchange="handleFileSelect()">
+            </form>
 
-        <button type="button" id="importBtn" class="btn-header" onclick="document.getElementById('excelInput').click()">
-            <i class="fa-solid fa-file-import"></i> Nhập Excel
-        </button>
+            <button type="button" id="importBtn" class="btn-header" onclick="document.getElementById('excelInput').click()">
+                <i class="fa-solid fa-file-import"></i> Nhập Excel
+            </button>
+        }
 
-        @* Xuất Excel — chỉ Admin *@
         @if (isAdmin)
         {
             <a href="/Admin/ExportRegistrations?status=Approved" class="btn-header green">
@@ -631,13 +58,15 @@
             </a>
         }
 
-        <button type="button" class="btn-header primary" onclick="openCreateModal()">
-            <i class="fa-solid fa-plus"></i> Tạo đề tài
-        </button>
+        @if (!adminReadOnlyOldPeriod)
+        {
+            <button type="button" class="btn-header primary" onclick="openCreateModal()">
+                <i class="fa-solid fa-plus"></i> Tạo đề tài
+            </button>
+        }
     </div>
 </div>
 
-<!-- STATS -->
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-label">Tổng đề tài</div>
@@ -657,26 +86,24 @@
     </div>
 </div>
 
-<!-- FILTER -->
 <div class="filter-box">
     <form id="filterForm" method="get">
         <div class="d-flex align-items-end gap-4 flex-wrap">
 
-            <div>
-                <span class="filter-label">Học kỳ</span>
-                <select name="semester" class="filter-select" onchange="this.form.submit()">
-                    <option value="">Tất cả học kỳ</option>
-                    <option value="HK2 - 2024-2025"
-                            selected="@(Context.Request.Query["semester"] == "HK2 - 2024-2025")">
-                        HK2 - 2024-2025
-                    </option>
-
-                    <option value="HK1 - 2024-2025"
-                            selected="@(Context.Request.Query["semester"] == "HK1 - 2024-2025")">
-                        HK1 - 2024-2025
-                    </option>
-                </select>
-            </div>
+            @if (periods.Any())
+            {
+                <div>
+                    <span class="filter-label">Đợt đề tài</span>
+                    <select name="periodId" class="filter-select" onchange="this.form.submit()">
+                        @foreach (var period in periods)
+                        {
+                            <option value="@period.Id" selected="@(selectedPeriodId == period.Id)">
+                                @(period.IsActive ? "Đợt hiện tại - " : "")@period.Name
+                            </option>
+                        }
+                    </select>
+                </div>
+            }
 
             <div>
                 <span class="filter-label">Bộ môn</span>
@@ -719,8 +146,7 @@
     </form>
 </div>
 
-<!-- BULK TOOLBAR (chỉ Admin) -->
-@if (isAdmin)
+@if (isAdmin && !adminReadOnlyOldPeriod)
 {
     <div class="bulk-toolbar">
         <label class="bulk-label">
@@ -736,11 +162,9 @@
     </div>
 }
 
-<!-- TOPIC CARDS -->
 <div class="topics-grid">
     @foreach (var item in Model)
     {
-        // Resolve status
         bool isPrivateApprovedProposal = item.IsApproved
             && !item.IsRegistrationOpen
             && !string.IsNullOrWhiteSpace(item.CreatedByStudentId);
@@ -760,18 +184,21 @@
                       : "Đã đóng";
 
         bool isPending = item.Status == TopicStatus.Pending;
+        int approvedCount = item.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+        bool isLockedForEditDelete = item.Status == TopicStatus.Closed
+            || item.Status == TopicStatus.Full
+            || (item.MaxStudents > 0 && approvedCount >= item.MaxStudents);
 
         <div class="topic-card">
 
-            @if (isPending && isAdmin)
+            @if (isPending && isAdmin && !adminReadOnlyOldPeriod)
             {
                 <div class="bulk-check-wrap">
                     <input type="checkbox" class="pending-checkbox" value="@item.Id" />
                 </div>
             }
 
-            <!-- Header row -->
-            <div class="d-flex justify-content-between align-items-start @(isPending && isAdmin ? "ps-4" : "")">
+            <div class="d-flex justify-content-between align-items-start @(isPending && isAdmin && !adminReadOnlyOldPeriod ? "ps-4" : "")">
                 <div>
                     @if (isAdmin)
                     {
@@ -787,13 +214,11 @@
                 </span>
             </div>
 
-            <!-- Title -->
             <div>
                 <p class="topic-title">@item.Title</p>
                 <p class="topic-code">Mã: <span>@item.TopicCode</span></p>
             </div>
 
-            <!-- Info box -->
             <div class="topic-info-box">
                 <div>
                     <div class="info-label">Số lượng SV</div>
@@ -811,10 +236,9 @@
                 </div>
             </div>
 
-            <!-- Actions -->
             <div class="card-actions">
 
-                @if (isPending && isAdmin)
+                @if (isPending && isAdmin && !adminReadOnlyOldPeriod)
                 {
                     <div class="action-row">
                         <form asp-action="ApproveTopic" method="post" class="m-0">
@@ -834,52 +258,89 @@
                     </div>
                 }
 
-                <div class="action-row">
-                    <a asp-controller="@(isAdmin ? "Admin" : "Lecturer")"
-                       asp-action="TopicRegistrations"
-                       asp-route-id="@item.Id"
-                       class="btn-card-action">
-                        <i class="fa-solid fa-users"></i>
-                        Danh sách @(item.CurrentStudents > 0 ? $"({item.CurrentStudents})" : "")
-                    </a>
-                    <a asp-controller="Timeline"
-                       asp-action="Index"
-                       asp-route-topicId="@item.Id"
-                       class="btn-card-action">
-                        <i class="fa-solid fa-timeline"></i> Tiến độ
-                    </a>
-                </div>
+                @if (isAdmin || !isViewingOldPeriod)
+                {
+                    <div class="action-row">
+                        <a asp-controller="@(isAdmin ? "Admin" : "Lecturer")"
+                           asp-action="TopicRegistrations"
+                           asp-route-id="@item.Id"
+                           class="btn-card-action">
+                            <i class="fa-solid fa-users"></i>
+                            Danh sách @(item.CurrentStudents > 0 ? $"({item.CurrentStudents})" : "")
+                        </a>
+                        <a asp-controller="Timeline"
+                           asp-action="Index"
+                           asp-route-topicId="@item.Id"
+                           class="btn-card-action">
+                            <i class="fa-solid fa-timeline"></i> Tiến độ
+                        </a>
+                    </div>
+                }
+
+                @if (!isAdmin && isViewingOldPeriod)
+                {
+                    <form asp-controller="Lecturer"
+                          asp-action="CopyTopicToActivePeriod"
+                          method="post"
+                          class="m-0">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@item.Id" />
+                        <input type="hidden" name="periodId" value="@selectedPeriodId" />
+                        <input type="hidden" name="status" value="@Context.Request.Query["status"]" />
+                        <input type="hidden" name="majorId" value="@Context.Request.Query["majorId"]" />
+                        <button type="submit"
+                                class="btn-card-action approve w-100"
+                                data-confirm-copy="Sao chép đề tài này sang đợt hiện tại?">
+                            <i class="fa-solid fa-copy"></i> Sao chép sang đợt hiện tại
+                        </button>
+                    </form>
+                }
 
                 @if (isAdmin)
                 {
-                    <div class="action-row">
-                        <button type="button"
-                           class="btn-card-action"
-                           data-edit-topic
-                           data-id="@item.Id"
-                           data-title="@item.Title"
-                           data-description="@item.Description"
-                           data-lecturer-id="@item.LecturerId"
-                           data-major-id="@item.MajorId"
-                           data-level="@item.Level"
-                           data-max-students="@item.MaxStudents"
-                           data-status="@item.Status"
-                           data-deadline="@item.Deadline.ToString("yyyy-MM-ddTHH:mm")"
-                           data-category="@item.Category"
-                           data-is-approved="@item.IsApproved.ToString().ToLowerInvariant()"
-                           data-is-registration-open="@item.IsRegistrationOpen.ToString().ToLowerInvariant()"
-                           data-note="@item.Note">
-                            <i class="fa-solid fa-pen"></i> Sửa
+                    @if (adminReadOnlyOldPeriod)
+                    {
+                        <button type="button" class="btn-card-action locked-action w-100" disabled>
+                            <i class="fa-solid fa-lock"></i> Đề tài đợt cũ, admin chỉ được xem
                         </button>
-                        <form asp-action="DeleteTopic" method="post"
-                              onsubmit="confirmDelete(event, this)" class="m-0">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@item.Id" />
-                            <button type="submit" class="btn-card-action danger w-100">
-                                <i class="fa-solid fa-trash"></i> Xóa
+                    }
+                    else if (isLockedForEditDelete)
+                    {
+                        <button type="button" class="btn-card-action locked-action w-100" disabled>
+                            <i class="fa-solid fa-lock"></i> Đề tài đã đóng/đủ SV, không thể sửa/xóa
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="action-row">
+                            <button type="button"
+                               class="btn-card-action"
+                               data-edit-topic
+                               data-id="@item.Id"
+                               data-title="@item.Title"
+                               data-description="@item.Description"
+                               data-lecturer-id="@item.LecturerId"
+                               data-major-id="@item.MajorId"
+                               data-level="@item.Level"
+                               data-max-students="@item.MaxStudents"
+                               data-status="@item.Status"
+                               data-deadline="@item.Deadline.ToString("yyyy-MM-ddTHH:mm")"
+                               data-category="@item.Category"
+                               data-is-approved="@item.IsApproved.ToString().ToLowerInvariant()"
+                               data-is-registration-open="@item.IsRegistrationOpen.ToString().ToLowerInvariant()"
+                               data-note="@item.Note">
+                                <i class="fa-solid fa-pen"></i> Sửa
                             </button>
-                        </form>
-                    </div>
+                            <form asp-action="DeleteTopic" method="post"
+                                  onsubmit="confirmDelete(event, this)" class="m-0">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <button type="submit" class="btn-card-action danger w-100">
+                                    <i class="fa-solid fa-trash"></i> Xóa
+                                </button>
+                            </form>
+                        </div>
+                    }
                 }
 
             </div>
@@ -893,7 +354,7 @@
     <div class="pagination-wrap">
         @for (int i = 1; i <= ViewBag.TotalPages; i++)
         {
-            <a href="?page=@i&status=@Context.Request.Query["status"]&majorId=@Context.Request.Query["majorId"]&semester=@Context.Request.Query["semester"]"
+            <a href="?page=@i&status=@Context.Request.Query["status"]&majorId=@Context.Request.Query["majorId"]&periodId=@Context.Request.Query["periodId"]"
                class="page-btn @(i == ViewBag.CurrentPage ? "active" : "")">@i</a>
         }
     </div>
@@ -1126,296 +587,13 @@
 @section Scripts {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script>
-    // Fix: lấy token sau DOMContentLoaded, đảm bảo form đã render
-    let _token = null;
+<div id="topic-list-config"
+     data-create-url="@createUrl"
+     data-edit-url="/Admin/EditTopic"
+     data-is-admin="@(isAdmin.ToString().ToLowerInvariant())"
+     hidden></div>
+<script src="~/js/shared/topic-list.js" asp-append-version="true"></script>
 
-    function getToken() {
-        if (!_token) {
-            _token = document.querySelector('#createTopicForm input[name="__RequestVerificationToken"], #editTopicForm input[name="__RequestVerificationToken"]')?.value ?? '';
-        }
-        return _token;
-    }
-
-    // Fix: resolve URL server-side, không check role phía client
-    const CREATE_URL = '@createUrl';
-    const EDIT_URL   = '/Admin/EditTopic';
-    const IS_ADMIN   = @(isAdmin ? "true" : "false");
-
-    // ── FILTER ──
-    function filterByStatus(status) {
-        document.getElementById('statusInput').value = status;
-        document.getElementById('filterForm').submit();
-    }
-
-    // ── MODAL ──
-    function openCreateModal() {
-        document.getElementById('createModal').classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeCreateModal() {
-        document.getElementById('createModal').classList.remove('open');
-        document.body.style.overflow = '';
-        document.getElementById('createTopicForm').reset();
-    }
-
-    function openEditModal(button) {
-        const form = document.getElementById('editTopicForm');
-        if (!form) return;
-
-        form.reset();
-        form.Id.value = button.dataset.id || '';
-        form.Title.value = button.dataset.title || '';
-        form.Description.value = button.dataset.description || '';
-        form.LecturerId.value = button.dataset.lecturerId || '';
-        form.MajorId.value = button.dataset.majorId || '';
-        form.Level.value = button.dataset.level || 'Easy';
-        form.MaxStudents.value = button.dataset.maxStudents || 1;
-        form.Status.value = button.dataset.status || 'Pending';
-        form.Deadline.value = button.dataset.deadline || '';
-        form.Category.value = button.dataset.category || 'Ứng dụng';
-        form.Note.value = button.dataset.note || '';
-        form.IsApproved.checked = button.dataset.isApproved === 'true';
-        form.IsRegistrationOpen.checked = button.dataset.isRegistrationOpen === 'true';
-
-        document.getElementById('editModal').classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeEditModal() {
-        const modal = document.getElementById('editModal');
-        if (!modal) return;
-        modal.classList.remove('open');
-        document.body.style.overflow = '';
-        document.getElementById('editTopicForm')?.reset();
-    }
-
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            closeCreateModal();
-            closeEditModal();
-        }
-    });
-
-    // ── TOAST — Fix: đổi tên thành pageToast để tránh xung đột với layout cha showToast() ──
-    function pageToast(message, type = 'success') {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: type,
-            title: message,
-            showConfirmButton: false,
-            timer: 2500,
-            timerProgressBar: true
-        });
-    }
-
-    // ── IMPORT EXCEL ──
-    function handleFileSelect() {
-        const fileInput = document.getElementById('excelInput');
-        if (!fileInput.files.length) return;
-
-        const btn = document.getElementById('importBtn');
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang nhập...';
-        btn.disabled  = true;
-        document.getElementById('importExcelForm').submit();
-    }
-
-    // ── CREATE TOPIC ──
-    async function submitCreateTopic(e) {
-        e.preventDefault();
-
-        const form      = document.getElementById('createTopicForm');
-        const submitBtn = document.getElementById('submitCreateBtn');
-
-        submitBtn.disabled    = true;
-        submitBtn.innerHTML   = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tạo...';
-
-        const lecSelect = form.querySelector('[name="LecturerId"]');
-
-        const payload = {
-            Title:       form.Title.value,
-            Description: form.Description.value,
-            MajorId:     parseInt(form.MajorId.value),
-            LecturerId:  lecSelect ? (lecSelect.value || null) : null,
-            Level:       form.Level.value,
-            MaxStudents: parseInt(form.MaxStudents.value),
-            Deadline:    form.Deadline.value || null
-        };
-
-        try {
-            const res    = await fetch(CREATE_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': getToken()
-                },
-                body: JSON.stringify(payload)
-            });
-            const result = await res.json();
-
-            if (result.success) {
-                pageToast(result.message || 'Tạo đề tài thành công!');
-                closeCreateModal();
-                setTimeout(() => location.reload(), 1200);
-            } else {
-                pageToast(result.message || 'Tạo đề tài thất bại!', 'error');
-            }
-        } catch {
-            pageToast('Có lỗi xảy ra!', 'error');
-        } finally {
-            submitBtn.disabled  = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Tạo đề tài';
-        }
-    }
-
-    async function submitEditTopic(e) {
-        e.preventDefault();
-
-        const form = document.getElementById('editTopicForm');
-        const submitBtn = document.getElementById('submitEditBtn');
-        const formData = new FormData(form);
-
-        if (!form.IsApproved.checked) formData.append('IsApproved', 'false');
-        if (!form.IsRegistrationOpen.checked) formData.append('IsRegistrationOpen', 'false');
-
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...';
-
-        try {
-            const res = await fetch(EDIT_URL, {
-                method: 'POST',
-                headers: {
-                    'RequestVerificationToken': getToken(),
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            });
-            const result = await res.json();
-
-            if (result.success) {
-                pageToast(result.message || 'Đã cập nhật đề tài!');
-                closeEditModal();
-                setTimeout(() => location.reload(), 900);
-            } else {
-                pageToast(result.message || 'Cập nhật đề tài thất bại!', 'error');
-            }
-        } catch {
-            pageToast('Có lỗi xảy ra khi cập nhật đề tài!', 'error');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi';
-        }
-    }
-
-    // ── DELETE CONFIRM ──
-    function confirmDelete(event, form) {
-        event.preventDefault();
-        Swal.fire({
-            title: 'Xóa đề tài?',
-            text:  'Dữ liệu sẽ không thể khôi phục!',
-            icon:  'warning',
-            showCancelButton:    true,
-            confirmButtonColor:  '#dc2626',
-            cancelButtonColor:   '#64748b',
-            confirmButtonText:   'Xóa',
-            cancelButtonText:    'Hủy',
-            reverseButtons:      true
-        }).then(r => { if (r.isConfirmed) form.submit(); });
-    }
-
-    // ── SELECT ALL ──
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('[data-edit-topic]').forEach(button => {
-            button.addEventListener('click', () => openEditModal(button));
-        });
-
-        const selectAll  = document.getElementById('selectAllPending');
-        if (!selectAll) return;
-
-        const checkboxes = document.querySelectorAll('.pending-checkbox');
-
-        selectAll.addEventListener('change', function () {
-            checkboxes.forEach(cb => cb.checked = this.checked);
-        });
-
-        checkboxes.forEach(cb => {
-            cb.addEventListener('change', () => {
-                const checked = document.querySelectorAll('.pending-checkbox:checked').length;
-                selectAll.checked = checked === checkboxes.length;
-                selectAll.indeterminate = checked > 0 && checked < checkboxes.length;
-            });
-        });
-    });
-
-    function getSelectedIds() {
-        return [...document.querySelectorAll('.pending-checkbox:checked')].map(x => parseInt(x.value));
-    }
-
-    // ── BULK APPROVE ──
-    async function bulkApprove() {
-        const ids = getSelectedIds();
-        if (!ids.length) { pageToast('Vui lòng chọn đề tài', 'error'); return; }
-
-        const r = await Swal.fire({
-            title: 'Duyệt hàng loạt?', text: `Duyệt ${ids.length} đề tài đã chọn`,
-            icon: 'question', showCancelButton: true,
-            confirmButtonText: 'Duyệt', cancelButtonText: 'Hủy',
-            confirmButtonColor: '#16a34a'
-        });
-
-        if (!r.isConfirmed) return;
-
-        try {
-            const res  = await fetch('/Admin/BulkApproveTopics', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
-                body: JSON.stringify(ids)
-            });
-            const data = await res.json();
-            data.success ? (pageToast('Duyệt thành công!'), setTimeout(() => location.reload(), 1000))
-                         : pageToast(data.message || 'Lỗi!', 'error');
-        } catch { pageToast('Có lỗi xảy ra!', 'error'); }
-    }
-
-    // ── BULK REJECT ──
-    async function bulkReject() {
-        const ids = getSelectedIds();
-        if (!ids.length) { pageToast('Vui lòng chọn đề tài', 'error'); return; }
-
-        const r = await Swal.fire({
-            title: 'Từ chối hàng loạt?', text: `Từ chối ${ids.length} đề tài đã chọn`,
-            icon: 'warning', showCancelButton: true,
-            confirmButtonText: 'Từ chối', cancelButtonText: 'Hủy',
-            confirmButtonColor: '#dc2626'
-        });
-
-        if (!r.isConfirmed) return;
-
-        try {
-            const res  = await fetch('/Admin/BulkRejectTopics', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
-                body: JSON.stringify(ids)
-            });
-            const data = await res.json();
-            data.success ? (pageToast('Từ chối thành công!'), setTimeout(() => location.reload(), 1000))
-                         : pageToast(data.message || 'Lỗi!', 'error');
-        } catch { pageToast('Có lỗi xảy ra!', 'error'); }
-    }
-
-    // Fix: TempData qua data attribute thay vì inline script — tránh lỗi ký tự đặc biệt
-    document.addEventListener('DOMContentLoaded', () => {
-        const el = document.getElementById('tempdata-msg');
-        if (!el) return;
-        const msg  = el.dataset.msg;
-        const type = el.dataset.type;
-        if (msg) pageToast(msg, type);
-    });
-</script>
-
-@* Fix: dùng data attribute thay vì inline script để tránh XSS / ký tự đặc biệt break JS *@
 @if (TempData["Success"] != null)
 {
     <div id="tempdata-msg"
@@ -1431,3 +609,4 @@
          style="display:none;"></div>
 }
 }
+

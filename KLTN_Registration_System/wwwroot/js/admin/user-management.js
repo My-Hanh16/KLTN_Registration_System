@@ -257,6 +257,22 @@
             select.addEventListener('change', () => select.form?.submit());
         });
 
+        const inlineImportBtn = document.getElementById('inlineImportUsersBtn');
+        const inlineImportInput = document.getElementById('inlineImportUsersInput');
+        const inlineImportForm = document.getElementById('inlineImportUsersForm');
+
+        inlineImportBtn?.addEventListener('click', () => {
+            inlineImportInput?.click();
+        });
+
+        inlineImportInput?.addEventListener('change', () => {
+            if (!inlineImportInput.files.length || !inlineImportForm) return;
+
+            inlineImportBtn.disabled = true;
+            inlineImportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang nhập...';
+            inlineImportForm.submit();
+        });
+
         document.querySelectorAll('[data-role-user-id]').forEach(button => {
             button.addEventListener('click', () => openRoleModal(button));
         });

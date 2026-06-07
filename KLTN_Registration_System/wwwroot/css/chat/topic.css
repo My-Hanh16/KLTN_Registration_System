@@ -1,7 +1,4 @@
-/* ---------------------------------------
-               LAYOUT � Fix: kh�ng override body/html overflow
-               d? sidebar layout cha v?n ho?t d?ng b�nh thu?ng
-            --------------------------------------- */
+
         .chat-page-wrap {
             height: calc(100vh - var(--topbar-h, 70px) - 32px);
             display: flex;
@@ -12,7 +9,7 @@
             display: flex;
             flex-direction: column;
             flex: 1;
-            min-height: 0; /* Fix: quan tr?ng d? flex child scroll d�ng */
+            min-height: 0; 
             background: #fff;
             border-radius: 14px;
             overflow: hidden;
@@ -20,9 +17,6 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.06);
         }
 
-        /* ---------------------------------------
-               HEADER � Fix: b? gradient n?ng, d�ng style ph� h?p layout
-            --------------------------------------- */
         .chat-header {
             padding: 14px 20px;
             background: #fff;

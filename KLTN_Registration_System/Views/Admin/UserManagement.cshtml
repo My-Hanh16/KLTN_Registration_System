@@ -86,9 +86,31 @@
         <button class="btn btn-green" data-open-modal="createModal">
             <i class="fa-solid fa-plus"></i> @addLabel
         </button>
-        <a href="@Url.Action("ImportUsers","Admin", new { role = roleFilter })" class="btn btn-ghost">
-            <i class="fa-solid fa-file-arrow-up"></i> Nhập Excel
-        </a>
+        @if (!string.IsNullOrWhiteSpace(roleFilter))
+        {
+            <form asp-action="ImportUsers"
+                  asp-controller="Admin"
+                  method="post"
+                  enctype="multipart/form-data"
+                  id="inlineImportUsersForm"
+                  class="d-none">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="role" value="@roleFilter" />
+                <input type="file"
+                       name="file"
+                       id="inlineImportUsersInput"
+                       accept=".xlsx,.xls" />
+            </form>
+            <button type="button" class="btn btn-ghost" id="inlineImportUsersBtn">
+                <i class="fa-solid fa-file-arrow-up"></i> Nhập Excel
+            </button>
+        }
+        else
+        {
+            <a href="@Url.Action("ImportUsers","Admin", new { role = roleFilter })" class="btn btn-ghost">
+                <i class="fa-solid fa-file-arrow-up"></i> Nhập Excel
+            </a>
+        }
         <a href="@Url.Action("ExportUsers","Admin", new { role = roleFilter })" class="btn btn-primary">
             <i class="fa-solid fa-file-arrow-down"></i> Xuất file
         </a>

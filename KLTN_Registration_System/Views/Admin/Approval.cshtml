@@ -287,7 +287,7 @@
                             <td class="text-end row-action-cell">
                                 @if (currentStatus == "Pending")
                                 {
-                                    <div class="d-flex justify-content-end align-items-center gap-2">
+                                    <div class="action-buttons">
                                         <form asp-controller="Admin" asp-action="ApproveRegistration"
                                               asp-route-id="@firstItem.Id" method="post" class="m-0">
                                             @Html.AntiForgeryToken()

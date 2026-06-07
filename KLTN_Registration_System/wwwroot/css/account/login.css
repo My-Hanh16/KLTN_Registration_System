@@ -12,9 +12,6 @@
         color: #fff;
     }
 
-    /* ════════════════════════════════
-       NAVBAR
-    ════════════════════════════════ */
     .navbar {
         position: fixed;
         top: 0;
@@ -112,9 +109,6 @@
             background: #1d4ed8;
         }
 
-    /* ════════════════════════════════
-       HERO — full viewport, real photo bg
-    ════════════════════════════════ */
     .hero-wrap {
         position: relative;
         min-height: 100vh;
@@ -122,7 +116,6 @@
         flex-direction: column;
     }
 
-    /* Real university corridor photo via Unsplash */
     .hero-bg {
         position: absolute;
         inset: 0;
@@ -133,7 +126,6 @@
         background-repeat: no-repeat;
     }
 
-        /* Dark overlay — tái hiện đúng màu tối trong ảnh tham chiếu */
         .hero-bg::after {
             content: '';
             position: absolute;
@@ -141,7 +133,6 @@
             background: linear-gradient( 108deg, rgba(4, 8, 28, 0.91) 0%, rgba(6, 14, 42, 0.85) 35%, rgba(10, 25, 65, 0.70) 58%, rgba(18, 40, 100, 0.55) 80%, rgba(30, 60, 140, 0.45) 100% );
         }
 
-    /* Extra blue-purple glow on right half */
     .hero-glow {
         position: absolute;
         z-index: 1;
@@ -154,7 +145,6 @@
         pointer-events: none;
     }
 
-    /* ── Hero body ── */
     .hero-body {
         position: relative;
         z-index: 10;
@@ -169,7 +159,6 @@
         margin: 0 auto;
     }
 
-    /* ── Left ── */
     .hero-left {
     }
 
@@ -233,7 +222,6 @@
         animation: fadeUp .55s ease both .3s;
     }
 
-    /* Stats */
     .hero-stats {
         display: flex;
         gap: 44px;
@@ -257,7 +245,6 @@
         color: rgba(255,255,255,.38);
     }
 
-    /* ── Right: form card ── */
     .form-card {
         background: rgba(8, 16, 50, 0.68);
         border: 1px solid rgba(255,255,255,.11);
@@ -286,7 +273,6 @@
         margin-bottom: 26px;
     }
 
-    /* Error alert */
     .alert-error {
         background: rgba(239,68,68,.12);
         border: 1px solid rgba(239,68,68,.28);

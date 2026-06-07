@@ -1,6 +1,4 @@
-﻿/* ══════════════════════════════════════
-               PAGE HEADER
-            ══════════════════════════════════════ */
+﻿
         .page-title {
             font-size: 20px;
             font-weight: 800;
@@ -14,9 +12,6 @@
             margin: 0;
         }
 
-        /* ══════════════════════════════════════
-               FILTER TABS
-            ══════════════════════════════════════ */
         .filter-tabs {
             display: flex;
             gap: 4px;
@@ -61,9 +56,6 @@
                 box-shadow: 0 2px 8px rgba(79,70,229,.2);
             }
 
-        /* ══════════════════════════════════════
-               STATS CARDS
-            ══════════════════════════════════════ */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);

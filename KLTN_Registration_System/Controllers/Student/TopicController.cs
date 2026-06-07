@@ -624,7 +624,7 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Lọc email sạch
+
             var cleanEmails = (memberEmails ?? new List<string>())
                 .Where(e => !string.IsNullOrWhiteSpace(e))
                 .Select(e => e.Trim())
@@ -649,7 +649,8 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Kiểm tra sĩ số: Trưởng nhóm (1) + thành viên
+
+
             if (cleanEmails.Count + 1 > remainingSlots)
             {
                 TempData["Error"] = $"Đề tài chỉ còn {remainingSlots} chỗ trống. Nhóm của bạn đang có {cleanEmails.Count + 1} sinh viên.";
@@ -720,7 +721,6 @@ namespace KLTN_Registration_System.Controllers
                 return RedirectGroupForm();
             }
 
-            // Lưu đăng ký cho cả nhóm
             foreach (var sid in allIds)
             {
                 _context.Registrations.Add(new Registration
@@ -765,9 +765,6 @@ namespace KLTN_Registration_System.Controllers
             return RedirectToAction("Home", "Student");
         }
 
-        // ============================================================
-        // HỦY ĐĂNG KÝ  →  POST /Topic/Cancel/{id}
-        // ============================================================
         [HttpPost, ValidateAntiForgeryToken]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> Cancel(int id)
@@ -799,10 +796,6 @@ namespace KLTN_Registration_System.Controllers
             return RedirectToAction("MyRegistration", "Student");
         }
 
-        // ============================================================
-        // SINH VIÊN TỰ ĐỀ XUẤT ĐỀ TÀI  →  GET /Topic/Propose
-        // View: Views/Topic/Propose.cshtml  (@model Topic)
-        // ============================================================
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> Propose()
         {
@@ -921,7 +914,6 @@ namespace KLTN_Registration_System.Controllers
             topic.Level = TopicLevel.Medium;
             topic.TopicCode = $"PROP-{studentCodePart}-{(topicCount + 1):D3}";
 
-            // Bỏ qua validation navigation properties
             ModelState.Remove("Lecturer");
             ModelState.Remove("Major");
             ModelState.Remove("Student");
@@ -960,9 +952,6 @@ namespace KLTN_Registration_System.Controllers
             return View(topic);
         }
 
-        // ============================================================
-        // HELPER (private)
-        // ============================================================
 
         /// <summary>Redirect về trang Approval phù hợp theo Role.</summary>
         private IActionResult RedirectToApproval() =>

@@ -236,6 +236,7 @@ namespace KLTN_Registration_System.Controllers.Admin
 
             int prevTotalTopics = 0;
             int prevPendingTopics = 0;
+            int prevPendingRegs = 0;
             int prevTotalLecturers = 0;
             double prevRegistrationRate = 0;
 
@@ -251,6 +252,7 @@ namespace KLTN_Registration_System.Controllers.Admin
 
                 prevTotalTopics = await previousTopicQuery.CountAsync();
                 prevPendingTopics = await previousTopicQuery.CountAsync(t => !t.IsApproved && t.Status == TopicStatus.Pending);
+                prevPendingRegs = await previousRegistrationQuery.CountAsync(r => r.Status == "Pending");
                 prevTotalLecturers = await previousTopicQuery
                     .Where(t => t.LecturerId != null)
                     .Select(t => t.LecturerId!)
@@ -338,6 +340,7 @@ namespace KLTN_Registration_System.Controllers.Admin
             ViewBag.TopicDelta = totalTopics - prevTotalTopics;
             ViewBag.RegistrationRateDelta = Math.Round(registrationRate - prevRegistrationRate, 1);
             ViewBag.PendingTopicDelta = pendingTopics - prevPendingTopics;
+            ViewBag.PendingRegistrationDelta = pendingRegs - prevPendingRegs;
             ViewBag.LecturerDelta = totalLecturers - prevTotalLecturers;
             ViewBag.SelectedSemester = semester;
             ViewBag.SelectedYear = year;
@@ -1109,10 +1112,17 @@ namespace KLTN_Registration_System.Controllers.Admin
         public async Task<IActionResult> ThesisManagement(
             string? search = null, string? status = null,
             int? majorId = null, int page = 1,
-            string? semester = null, string? year = null)
+            string? semester = null, string? year = null,
+            int? periodId = null)
         {
-            int pageSize = 10;
-            var selectedPeriod = await GetAdminSelectedPeriodAsync(semester, year);
+            int pageSize = 9;
+            var currentPeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            SetAdminSelectedPeriod(currentPeriod.Name);
+
+            var selectedPeriod = periodId.HasValue
+                ? await _context.RegistrationPeriods.FirstOrDefaultAsync(p => p.Id == periodId.Value)
+                : currentPeriod;
+            selectedPeriod ??= currentPeriod;
 
             var query = _context.Topics
                 .Include(t => t.Lecturer)
@@ -1180,8 +1190,15 @@ t.Lecturer.FullName.Contains(search)));
                     && !t.IsRegistrationOpen
                     && !string.IsNullOrWhiteSpace(t.CreatedByStudentId)));
             ViewBag.PendingTopics = await periodTopics.CountAsync(t => !t.IsApproved);
-            ViewBag.ActivePeriod = selectedPeriod;
+            ViewBag.ActivePeriod = currentPeriod;
+            ViewBag.SelectedPeriod = selectedPeriod;
+            ViewBag.SelectedPeriodId = selectedPeriod?.Id;
+            ViewBag.IsViewingOldPeriod = selectedPeriod?.Id != currentPeriod.Id;
             ViewBag.SelectedPeriodName = selectedPeriod?.Name ?? GetAdminSelectedPeriodName();
+            ViewBag.RegistrationPeriods = await _context.RegistrationPeriods
+                .OrderByDescending(p => p.SemesterStart)
+                .ThenByDescending(p => p.CreatedAt)
+                .ToListAsync();
             ViewBag.Majors = await _context.Majors.Where(m => m.IsActive).ToListAsync();
             ViewBag.TotalPages = (int)Math.Ceiling((double)totalItems / pageSize);
             ViewBag.CurrentPage = page;
@@ -1197,8 +1214,9 @@ t.Lecturer.FullName.Contains(search)));
         public Task<IActionResult> ManageTopics(
             string? search = null, string? status = null,
             int? majorId = null, int page = 1,
-            string? semester = null, string? year = null)
-            => ThesisManagement(search, status, majorId, page, semester, year);
+            string? semester = null, string? year = null,
+            int? periodId = null)
+            => ThesisManagement(search, status, majorId, page, semester, year, periodId);
 
         // Duyệt 1 đề tài
         [Authorize(Roles = "Admin")]
@@ -1263,6 +1281,22 @@ t.Lecturer.FullName.Contains(search)));
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (topic == null) return NotFound();
+
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            if (!IsTopicInPeriod(topic, activePeriod))
+            {
+                TempData["Error"] = "Không thể xóa đề tài của đợt cũ. Admin chỉ được xem lại dữ liệu lịch sử.";
+                return RedirectToAction(nameof(ThesisManagement));
+            }
+
+            var approvedCount = topic.Registrations?.Count(r => r.Status == "Approved") ?? 0;
+            if (topic.Status == TopicStatus.Closed
+                || topic.Status == TopicStatus.Full
+                || (topic.MaxStudents > 0 && approvedCount >= topic.MaxStudents))
+            {
+                TempData["Error"] = "Không thể xóa đề tài đã đóng hoặc đã đủ sinh viên.";
+                return RedirectToAction(nameof(ThesisManagement));
+            }
 
             if (topic.Registrations != null && topic.Registrations.Any(r => r.Status == "Approved"))
             {
@@ -2423,6 +2457,12 @@ t.Lecturer.FullName.Contains(search)));
         private string? GetAdminSelectedPeriodName()
         {
             return HttpContext.Session.GetString(AdminSelectedPeriodSessionKey);
+        }
+
+        private static bool IsTopicInPeriod(Topic topic, RegistrationPeriod period)
+        {
+            return topic.RegistrationPeriodId == period.Id
+                || (topic.RegistrationPeriodId == null && topic.Semester == period.Name);
         }
 
         private async Task<RegistrationPeriod?> GetAdminSelectedPeriodAsync(string? semester = null, string? year = null)
@@ -3637,6 +3677,30 @@ t.Lecturer.FullName.Contains(search)));
                 return isAjax
                     ? Json(new { success = false, message = "Không tìm thấy đề tài." })
                     : NotFound();
+
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            if (!IsTopicInPeriod(topic, activePeriod))
+            {
+                const string oldPeriodMessage = "Không thể sửa đề tài của đợt cũ. Admin chỉ được xem lại dữ liệu lịch sử.";
+                TempData["Error"] = oldPeriodMessage;
+                return isAjax
+                    ? Json(new { success = false, message = oldPeriodMessage })
+                    : RedirectToAction(nameof(ThesisManagement));
+            }
+
+            var approvedCount = await _context.Registrations
+                .CountAsync(r => r.TopicId == topic.Id && r.Status == "Approved");
+
+            if (topic.Status == TopicStatus.Closed
+                || topic.Status == TopicStatus.Full
+                || (topic.MaxStudents > 0 && approvedCount >= topic.MaxStudents))
+            {
+                const string lockedMessage = "Không thể sửa đề tài đã đóng hoặc đã đủ sinh viên.";
+                TempData["Error"] = lockedMessage;
+                return isAjax
+                    ? Json(new { success = false, message = lockedMessage })
+                    : RedirectToAction(nameof(ThesisManagement));
+            }
 
             ModelState.Remove("Lecturer");
             ModelState.Remove("Major");

@@ -1,6 +1,4 @@
-/* ══════════════════════════════════════
-               HEADER
-            ══════════════════════════════════════ */
+
         .page-title {
             font-size: 20px;
             font-weight: 800;
@@ -34,9 +32,6 @@
                 background: #4338ca;
             }
 
-        /* ══════════════════════════════════════
-               LEGEND
-            ══════════════════════════════════════ */
         .legend-bar {
             display: flex;
             align-items: center;
@@ -65,9 +60,6 @@
             flex-shrink: 0;
         }
 
-        /* ══════════════════════════════════════
-               TIMELINE LIST CARD
-            ══════════════════════════════════════ */
         .tl-list-card {
             background: #fff;
             border: 1px solid #e8edf4;
@@ -76,9 +68,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
 
-        /* ══════════════════════════════════════
-               TIMELINE ROW
-            ══════════════════════════════════════ */
         .tl-row {
             display: flex;
             align-items: flex-start;
@@ -108,7 +97,6 @@
                     background: #fff3f3;
                 }
 
-        /* DATE BOX */
         .date-box {
             width: 50px;
             min-width: 50px;

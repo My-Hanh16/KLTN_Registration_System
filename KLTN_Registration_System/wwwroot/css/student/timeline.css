@@ -5,14 +5,10 @@
 
         .timeline-page {
             width: 100%;
-            /* sửa ở đây */
             padding: 10px 24px 40px 6px;
             margin-left: -8px;
         }
 
-        /* =========================================
-                           HEADER
-                ========================================= */
 
         .timeline-header {
             display: flex;

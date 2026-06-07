@@ -27,6 +27,7 @@
     int topicDelta = ViewBag.TopicDelta ?? 0;
     double registrationRateDelta = ViewBag.RegistrationRateDelta ?? 0.0;
     int pendingTopicDelta = ViewBag.PendingTopicDelta ?? 0;
+    int pendingRegistrationDelta = ViewBag.PendingRegistrationDelta ?? 0;
     int lecturerDelta = ViewBag.LecturerDelta ?? 0;
     var yearOptions       = ViewBag.YearOptions as IEnumerable<string> ?? new[] { "2025-2026" };
     var semesterOptions   = ViewBag.SemesterOptions as IEnumerable<string> ?? new[] { "HK1", "HK2" };
@@ -63,24 +64,6 @@
     </div>
 
     <div class="header-actions banner-actions">
-        <form method="get" asp-action="Statistics" asp-controller="Admin"
-              id="filterForm" class="d-flex gap-2">
-            <select name="semester" class="filter-select-inline js-auto-submit">
-                @foreach (var option in semesterOptions)
-                {
-                    <option value="@option" selected="@(curSemester == option)">
-                        @(option == "HK1" ? "Học kỳ I" : option == "HK2" ? "Học kỳ II" : option)
-                    </option>
-                }
-            </select>
-            <select name="year" class="filter-select-inline js-auto-submit">
-                @foreach (var option in yearOptions)
-                {
-                    <option value="@option" selected="@(curYear == option)">@option</option>
-                }
-            </select>
-        </form>
-
         <a asp-action="ExportStatistics"
            asp-controller="Admin"
            asp-route-semester="@curSemester"
@@ -120,13 +103,13 @@
     <div class="stat-card">
         <div class="stat-top">
             <div class="stat-icon red"><i class="fa-solid fa-clipboard-list"></i></div>
-            <div class="stat-trend @TrendClass(pendingTopicDelta, true)">
-                <i class="fa-solid @TrendIcon(pendingTopicDelta)"></i> @TrendText(pendingTopicDelta)
+            <div class="stat-trend @TrendClass(pendingRegistrationDelta, true)">
+                <i class="fa-solid @TrendIcon(pendingRegistrationDelta)"></i> @TrendText(pendingRegistrationDelta)
             </div>
         </div>
-        <div class="stat-label">Đề tài chờ duyệt</div>
-        <div class="stat-number">@pendingTopics</div>
-        <div class="stat-caption">@pendingCount đăng ký đang chờ</div>
+        <div class="stat-label">Đăng ký chờ duyệt</div>
+        <div class="stat-number">@pendingCount</div>
+        <div class="stat-caption">@pendingTopics đề tài chờ duyệt</div>
     </div>
 
     <div class="stat-card">

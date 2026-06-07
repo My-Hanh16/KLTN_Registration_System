@@ -1,7 +1,4 @@
-﻿/* =========================
-       GLOBAL
-    ========================== */   
-
+﻿ 
 body {
     background: #f8fafc;
 }
@@ -30,9 +27,6 @@ body {
     font-size: 13.5px;
 }
 
-    /* =========================
-       TOPIC ITEM
-    ========================== */
 
     .topic-item {
         background: #fff;
@@ -55,9 +49,6 @@ body {
         border-color: #dbeafe;
     }
 
-    /* =========================
-       FULL TOPIC
-    ========================== */
 
     .topic-item.topic-full {
         opacity: 0.58;

@@ -1,6 +1,4 @@
-﻿/* ══════════════════════════════════════
-               HEADER
-            ══════════════════════════════════════ */
+﻿
         .page-title {
             font-size: 20px;
             font-weight: 800;
@@ -14,9 +12,6 @@
             margin: 0;
         }
 
-        /* ══════════════════════════════════════
-               FILTER TABS
-            ══════════════════════════════════════ */
         .filter-tabs {
             display: flex;
             gap: 4px;
@@ -177,13 +172,13 @@
             color: #64748b;
         }
 
-        @@media (max-width: 1100px) {
+        @media (max-width: 1100px) {
             .approval-filter-bar {
                 grid-template-columns: 1fr 1fr;
             }
         }
 
-        @@media (max-width: 700px) {
+        @media (max-width: 700px) {
             .approval-filter-bar {
                 grid-template-columns: 1fr;
             }
@@ -199,7 +194,7 @@
             margin-bottom: 20px;
         }
 
-        @@media (max-width: 768px) {
+        @media (max-width: 768px) {
             .stats-grid
 
         {
@@ -264,20 +259,22 @@
             border: 1px solid #e8edf4;
             border-radius: 14px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            box-shadow: 0 10px 28px rgba(15,23,42,0.06);
         }
 
         .table-header {
-            padding: 16px 22px;
+            padding: 18px 22px;
             border-bottom: 1px solid #f1f5f9;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 14px;
+            background: linear-gradient(180deg, #fff 0%, #fbfdff 100%);
         }
 
         .table-title {
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 800;
             color: #1e293b;
             margin: 0;
         }
@@ -322,6 +319,7 @@
         .approval-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
             .approval-table thead tr {
@@ -329,20 +327,20 @@
             }
 
             .approval-table th {
-                padding: 11px 18px;
+                padding: 12px 20px;
                 font-size: 10.5px;
                 font-weight: 700;
                 text-transform: uppercase;
-                letter-spacing: 0.7px;
+                letter-spacing: 0;
                 color: #94a3b8;
                 border-bottom: 1px solid #f1f5f9;
                 white-space: nowrap;
             }
 
             .approval-table td {
-                padding: 14px 18px;
-                border-bottom: 1px solid #f8fafc;
-                vertical-align: middle;
+                padding: 18px 20px;
+                border-bottom: 1px solid #eef2f7;
+                vertical-align: top;
             }
 
             .approval-table tbody tr:last-child td {
@@ -354,16 +352,17 @@
             }
 
                 .approval-table tbody tr:hover {
-                    background: #fafbff;
+                    background: #fbfcff;
                 }
 
         /* Topic title */
         .topic-name {
-            font-size: 13.5px;
-            font-weight: 700;
+            max-width: 100%;
+            font-size: 14px;
+            font-weight: 800;
             color: #1e293b;
-            margin-bottom: 5px;
-            line-height: 1.4;
+            margin-bottom: 7px;
+            line-height: 1.45;
         }
 
         .approval-table tbody tr:hover .topic-name {
@@ -375,9 +374,9 @@
             flex-wrap: wrap;
             align-items: center;
             gap: 6px;
-            margin-bottom: 7px;
+            margin-bottom: 10px;
             color: #64748b;
-            font-size: 11.5px;
+            font-size: 12px;
             font-weight: 700;
         }
 
@@ -386,20 +385,20 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            background: #f8fafc;
-            border: 1px solid #e8edf4;
-            border-radius: 7px;
-            padding: 3px 9px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 4px 9px;
             font-size: 12px;
-            font-weight: 500;
-            color: #475569;
+            font-weight: 700;
+            color: #334155;
         }
 
         .student-list {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            margin-top: 8px;
+            margin-top: 10px;
         }
 
             .student-chip i {
@@ -412,6 +411,7 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+            margin-top: 2px;
         }
 
         .group-badge {
@@ -420,7 +420,7 @@
             gap: 6px;
             border-radius: 999px;
             padding: 4px 10px;
-            font-size: 11px;
+            font-size: 11.5px;
             font-weight: 700;
         }
 
@@ -447,26 +447,31 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
+            min-width: 0;
+            max-width: 100%;
             font-size: 12px;
-            color: #475569;
-            background: #f8fafc;
+            color: #334155;
+            background: #fff;
             border: 1px solid #e8edf4;
-            border-radius: 7px;
-            padding: 4px 10px;
+            border-radius: 8px;
+            padding: 5px 10px;
             font-family: 'Courier New', monospace;
-            font-weight: 500;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .mssv-badge {
             display: inline-flex;
-            font-size: 11px;
-            font-weight: 600;
+            align-items: center;
+            font-size: 11.5px;
+            font-weight: 800;
             background: #eef2ff;
             color: #4f46e5;
             border: 1px solid #c7d2fe;
-            border-radius: 6px;
-            padding: 2px 8px;
-            margin-top: 4px;
+            border-radius: 8px;
+            padding: 4px 9px;
             font-family: 'Courier New', monospace;
         }
 
@@ -474,33 +479,54 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            font-size: 11px;
+            min-width: 0;
+            max-width: 100%;
+            font-size: 11.5px;
             font-weight: 700;
             background: #f0f9ff;
             color: #0369a1;
             border: 1px solid #bae6fd;
-            border-radius: 6px;
-            padding: 2px 8px;
+            border-radius: 8px;
+            padding: 4px 9px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .student-contact-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
 
         .student-contact {
-            display: flex;
+            display: grid;
+            grid-template-columns: minmax(150px, 1fr) auto;
             align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
+            gap: 7px;
+            padding: 10px;
+            background: #f8fafc;
+            border: 1px solid #edf2f7;
+            border-radius: 10px;
+        }
+
+        .student-major-badge {
+            grid-column: 1 / -1;
         }
 
         /* Date */
         .date-text {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 96px;
+            height: 32px;
             font-size: 12.5px;
-            color: #64748b;
-            font-weight: 500;
+            color: #475569;
+            font-weight: 800;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            border-radius: 9px;
         }
 
         /* Status badge for non-pending rows */
@@ -531,10 +557,10 @@
 
         /* Action buttons */
         .btn-approve {
-            width: 34px;
-            height: 34px;
-            border-radius: 9px;
-            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid #dcfce7;
             background: #f0fdf4;
             color: #16a34a;
             display: inline-flex;
@@ -552,10 +578,10 @@
             }
 
         .btn-reject {
-            width: 34px;
-            height: 34px;
-            border-radius: 9px;
-            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid #fee2e2;
             background: #fff5f5;
             color: #dc2626;
             display: inline-flex;
@@ -571,6 +597,13 @@
                 color: #fff;
                 box-shadow: 0 3px 8px rgba(220,38,38,.25);
             }
+
+        .action-buttons {
+            display: inline-flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+        }
 
         /* Empty state */
         .empty-state {
@@ -599,6 +632,56 @@
             font-size: 12px;
             color: #94a3b8;
             font-weight: 500;
+        }
+
+        @media (min-width: 1101px) {
+            .topic-col {
+                width: 45%;
+            }
+
+            .approval-table th:nth-child(2),
+            .approval-table td:nth-child(2) {
+                width: 35%;
+            }
+
+            .approval-table th:nth-child(3),
+            .approval-table td:nth-child(3) {
+                width: 10%;
+            }
+
+            .approval-table th:nth-child(4),
+            .approval-table td:nth-child(4) {
+                width: 10%;
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .table-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .approval-table {
+                min-width: 940px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .filter-tabs {
+                width: 100%;
+                overflow-x: auto;
+            }
+
+            .filter-tab {
+                flex: 1 0 auto;
+                justify-content: center;
+                padding-inline: 14px;
+            }
+
+            .table-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
         }
 
         .alert-bar {

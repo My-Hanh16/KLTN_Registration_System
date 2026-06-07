@@ -1,6 +1,8 @@
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
 @using KLTN_Registration_System.Models.Entities
 @inject UserManager<ApplicationUser> UserManager
+@inject AppDbContext DashboardDb
 @{
     string? adminSelectedSemester = ViewBag.AdminSelectedSemester as string;
     string? adminSelectedYear = ViewBag.AdminSelectedYear as string;
@@ -52,6 +54,35 @@
         bool isAdmin = User.IsInRole("Admin");
         string roleLabel = isAdmin ? "Quản trị viên" : "Giảng viên";
         string avatarClass = isAdmin ? "admin" : "lecturer";
+        RegistrationPeriod? dashboardActivePeriod = ViewBag.ActivePeriod as RegistrationPeriod;
+        if (dashboardActivePeriod == null
+            && !string.IsNullOrWhiteSpace(adminSelectedSemester)
+            && !string.IsNullOrWhiteSpace(adminSelectedYear))
+        {
+            var selectedPeriodName = $"{adminSelectedSemester.Trim()}-{adminSelectedYear.Trim()}";
+            dashboardActivePeriod = await DashboardDb.RegistrationPeriods
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Name == selectedPeriodName);
+        }
+
+        if (dashboardActivePeriod == null)
+        {
+            dashboardActivePeriod = await DashboardDb.RegistrationPeriods
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .OrderByDescending(p => p.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        string semesterNumber = dashboardActivePeriod?.SemesterCode ?? "";
+        if (semesterNumber.StartsWith("HK", StringComparison.OrdinalIgnoreCase))
+        {
+            semesterNumber = semesterNumber[2..];
+        }
+
+        string dashboardPeriodLabel = dashboardActivePeriod == null
+            ? ""
+            : $"Học kỳ: {semesterNumber}, năm học: {dashboardActivePeriod.AcademicYear}";
 
         Func<string, string, string> IsActive = (c, a) =>
         string.Equals(ctrl, c, StringComparison.OrdinalIgnoreCase) &&
@@ -271,6 +302,14 @@
                            placeholder="Tìm kiếm sinh viên, đề tài..." />
                 </form>
             </div>
+
+            @if (!string.IsNullOrWhiteSpace(dashboardPeriodLabel))
+            {
+                <div class="topbar-period-chip" title="@dashboardActivePeriod?.Name">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>@dashboardPeriodLabel</span>
+                </div>
+            }
 
             <div class="topbar-right">
 

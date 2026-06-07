@@ -593,25 +593,28 @@ namespace KLTN_Registration_System.Controllers
         // QUẢN LÝ ĐỀ TÀI  →  /Lecturer/ThesisManagement
         // ─────────────────────────────────────────────────────────────
         public async Task<IActionResult> ThesisManagement(
-            string? semester = null,
+            int? periodId = null,
             string? status = null,
             int? majorId = null)
         {
             var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var selectedPeriod = periodId.HasValue
+                ? await _context.RegistrationPeriods
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == periodId.Value)
+                : activePeriod;
 
-            var query = FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+            selectedPeriod ??= activePeriod;
+
+            var query = _context.Topics
                 .Include(t => t.Registrations)
                 .Include(t => t.Major)
                 .Include(t => t.Lecturer)
-                .Where(t => t.LecturerId == uid)
+                .Where(t => t.LecturerId == uid
+                    && (t.RegistrationPeriodId == selectedPeriod.Id
+                        || (t.RegistrationPeriodId == null && t.Semester == selectedPeriod.Name)))
                 .AsQueryable();
-
-            // FILTER HỌC KỲ
-            if (!string.IsNullOrEmpty(semester))
-            {
-                query = query.Where(t => t.Semester == semester);
-            }
 
             // FILTER TRẠNG THÁI
             if (!string.IsNullOrEmpty(status)
@@ -631,8 +634,10 @@ namespace KLTN_Registration_System.Controllers
                 .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();
 
-            var my = await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
-                .Where(t => t.LecturerId == uid)
+            var my = await _context.Topics
+                .Where(t => t.LecturerId == uid
+                    && (t.RegistrationPeriodId == selectedPeriod.Id
+                        || (t.RegistrationPeriodId == null && t.Semester == selectedPeriod.Name)))
                 .ToListAsync();
 
             // KPI
@@ -649,8 +654,88 @@ namespace KLTN_Registration_System.Controllers
 
             ViewBag.Majors = await GetLecturerMajorsAsync(uid);
             ViewBag.ActivePeriod = activePeriod;
+            ViewBag.SelectedPeriod = selectedPeriod;
+            ViewBag.SelectedPeriodId = selectedPeriod.Id;
+            ViewBag.IsViewingOldPeriod = selectedPeriod.Id != activePeriod.Id;
+            ViewBag.RegistrationPeriods = await _context.RegistrationPeriods
+                .AsNoTracking()
+                .OrderByDescending(p => p.SemesterStart)
+                .ThenByDescending(p => p.CreatedAt)
+                .ToListAsync();
 
             return View("_TopicList", topics);
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> CopyTopicToActivePeriod(int id, int? periodId = null, string? status = null, int? majorId = null)
+        {
+            var lecturerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activePeriod = await GetOrCreateActiveRegistrationPeriodAsync();
+            var allowedMajorIds = (await GetLecturerMajorsAsync(lecturerId))
+                .Select(m => m.Id)
+                .ToHashSet();
+
+            var source = await _context.Topics
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == id && t.LecturerId == lecturerId);
+
+            if (source == null)
+            {
+                TempData["Error"] = "Không tìm thấy đề tài cần sao chép.";
+                return RedirectToAction(nameof(ThesisManagement), new { periodId, status, majorId });
+            }
+
+            if (source.RegistrationPeriodId == activePeriod.Id || source.Semester == activePeriod.Name)
+            {
+                TempData["Error"] = "Đề tài này đã thuộc đợt hiện tại.";
+                return RedirectToAction(nameof(ThesisManagement), new { periodId, status, majorId });
+            }
+
+            if (source.MajorId.HasValue && allowedMajorIds.Any() && !allowedMajorIds.Contains(source.MajorId.Value))
+            {
+                TempData["Error"] = "Bạn chỉ được sao chép đề tài thuộc chuyên ngành đã được Admin phân công.";
+                return RedirectToAction(nameof(ThesisManagement), new { periodId, status, majorId });
+            }
+
+            var normalizedSourceTitle = source.Title.Trim().ToLower();
+            var duplicateExists = !string.IsNullOrWhiteSpace(normalizedSourceTitle)
+                && await FilterTopicsByActivePeriod(_context.Topics, activePeriod)
+                    .AnyAsync(t => t.LecturerId == lecturerId
+                        && t.Title.Trim().ToLower() == normalizedSourceTitle);
+
+            if (duplicateExists)
+            {
+                TempData["Error"] = "Đợt hiện tại đã có đề tài cùng tên. Vui lòng kiểm tra để tránh trùng.";
+                return RedirectToAction(nameof(ThesisManagement), new { periodId, status, majorId });
+            }
+
+            _context.Topics.Add(new Topic
+            {
+                TopicCode = $"TOPIC-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString()[..4].ToUpper()}",
+                Title = source.Title,
+                Description = source.Description,
+                Category = source.Category,
+                Semester = activePeriod.Name,
+                RegistrationPeriodId = activePeriod.Id,
+                LecturerId = lecturerId,
+                MajorId = source.MajorId,
+                Faculty = source.Faculty,
+                DepartmentName = source.DepartmentName,
+                CreatedAt = DateTime.Now,
+                IsApproved = false,
+                Status = TopicStatus.Pending,
+                IsRegistrationOpen = false,
+                Level = source.Level,
+                MaxStudents = Math.Clamp(source.MaxStudents, 1, 10),
+                Deadline = DateTime.Now.AddMonths(3),
+                Note = string.IsNullOrWhiteSpace(source.TopicCode)
+                    ? $"Sao chép từ đề tài cũ ({source.Semester})."
+                    : $"Sao chép từ đề tài cũ {source.TopicCode} ({source.Semester})."
+            });
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = "Đã sao chép đề tài sang đợt hiện tại. Vui lòng chờ Admin duyệt.";
+            return RedirectToAction(nameof(ThesisManagement));
         }
 
         public async Task<IActionResult> GuidedTopics()

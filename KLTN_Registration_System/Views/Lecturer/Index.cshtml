@@ -11,9 +11,6 @@
     var total = (int)(ViewBag.TotalTopics ?? 0);
     var app = (int)(ViewBag.AppCount ?? 0);
     var res = (int)(ViewBag.ResCount ?? 0);
-    var activePeriod = ViewBag.ActivePeriod as KLTN_Registration_System.Models.Entities.RegistrationPeriod;
-    string activePeriodName = activePeriod?.Name ?? "Chưa cấu hình";
-
     double appRate = total > 0 ? ((double)app / total * 100) : 0;
     double resRate = total > 0 ? (100 - appRate) : 0;
 }
@@ -28,10 +25,6 @@
         <p class="font-body opacity-90 max-w-lg">
             Bạn có <b>@ViewBag.TotalPending</b> yêu cầu mới cần xem xét và <b>@upcomingSchedules.Count</b> buổi hẹn hướng dẫn hôm nay.
         </p>
-        <div class="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20">
-            <span class="material-symbols-outlined">event</span>
-            Đợt hiện tại: @activePeriodName
-        </div>
     </div>
     <div class="z-10 relative">
         <button type="button" class="js-open-create-modal bg-white text-primary font-bold px-6 py-3 rounded-xl flex items-center gap-2 hover:bg-slate-50 transition-all shadow-lg active:scale-95 border-0 disabled:opacity-60 disabled:cursor-not-allowed"

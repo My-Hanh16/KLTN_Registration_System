@@ -13,14 +13,12 @@
         .reg-card:hover,
         .reg-card-proposed:hover {
             box-shadow: 0 8px 24px rgba(43,78,255,0.07);
-            transform: translateY(-1px); /* Fix: -2px → -1px bớt giật */
+            transform: translateY(-1px); 
         }
 
-    /* Viền trái theo trạng thái */
     .border-approved {
         border-left: 5px solid #2b4eff;
     }
-    /* Fix: 6px → 5px đồng đều hơn */
     .border-pending {
         border-left: 5px solid #f6ad55;
     }
@@ -33,13 +31,12 @@
         border-left: 5px solid #7c3aed;
     }
 
-    /* --- STATUS BADGE --- */
     .status-badge {
         display: inline-flex;
         align-items: center;
         padding: 4px 12px;
         border-radius: 7px;
-        font-size: 10px; /* Thống nhất 10px */
+        font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.5px;
         line-height: 1.4;
@@ -109,18 +106,16 @@
         flex-shrink: 0;
     }
 
-    /* --- TIÊU ĐỀ TOPIC TRONG CARD --- */
     .card-topic-title {
-        font-size: 15px; /* Fix: h4 Bootstrap (~24px) → 15px */
+        font-size: 15px; 
         font-weight: 700;
         color: #1e293b;
         margin: 10px 0 14px;
         line-height: 1.4;
     }
 
-    /* --- ICON BOX --- */
     .icon-box-sm {
-        width: 38px; /* Fix: 40px → 38px gọn hơn */
+        width: 38px; 
         height: 38px;
         min-width: 38px;
         background: #f1f5f9;
@@ -132,9 +127,8 @@
         font-size: 14px;
     }
 
-    /* --- LABEL NHỎ trong icon-box group --- */
     .meta-label {
-        font-size: 10px; /* Fix: inline 9px → 10px, dùng class thay inline style */
+        font-size: 10px; 
         font-weight: 700;
         text-transform: uppercase;
         color: #94a3b8;
@@ -149,9 +143,8 @@
         color: #1e293b;
     }
 
-    /* --- STATS PANEL --- */
     .stats-panel {
-        background: #2b4eff; /* Fix: var(--primary-blue, #2b4eff) → thẳng giá trị, biến chưa khai báo */
+        background: #2b4eff; 
         color: #fff;
         border-radius: 18px;
         padding: 22px 24px;
@@ -159,7 +152,7 @@
     }
 
     .stats-panel-title {
-        font-size: 11px; /* Fix: 12px → 11px, thống nhất label size */
+        font-size: 11px; 
         font-weight: 700;
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -169,7 +162,7 @@
     }
 
     .stats-number {
-        font-size: 28px; /* Fix: h2 Bootstrap (~32px) → 28px, cân hơn trong panel nhỏ */
+        font-size: 28px;
         font-weight: 800;
         line-height: 1.1;
         margin-bottom: 2px;

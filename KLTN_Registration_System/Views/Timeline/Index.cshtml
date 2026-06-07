@@ -45,12 +45,15 @@
     {
         @foreach (var tl in timelines)
         {
-            bool isPast = tl.Date < now;
-            bool isUrgent = !isPast && (tl.Date - now).TotalDays <= 7;
+            DateTime effectiveDeadline = tl.ReviewDeadline
+                ?? tl.SubmissionDeadline
+                ?? tl.Date;
+            bool isPast = effectiveDeadline < now;
+            bool isUrgent = !isPast && (effectiveDeadline - now).TotalDays <= 7;
 
             string rowClass = isPast ? "is-past" : isUrgent ? "is-urgent" : "";
             string boxClass = isPast ? "past" : isUrgent ? "urgent" : "normal";
-            int daysLeft = (int)Math.Ceiling((tl.Date - now).TotalDays);
+            int daysLeft = (int)Math.Ceiling((effectiveDeadline - now).TotalDays);
 
             string subDlClass = "dl-none";
             string subDlText = "Chưa cấu hình";
