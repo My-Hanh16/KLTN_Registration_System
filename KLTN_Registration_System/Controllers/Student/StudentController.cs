@@ -138,19 +138,28 @@ namespace KLTN_Registration_System.Controllers.Student
                 RedirectUrl = n.RedirectUrl
             }).ToList();
 
-            var timelines = await FilterTimelinesByActivePeriod(_context.Timelines, activePeriod)
-                .Where(t => t.Date >= now && t.IsActive)
-                .OrderBy(t => t.Date)
-                .Take(3)
+            var activeTimelines = await FilterTimelinesByActivePeriod(_context.Timelines, activePeriod)
+                .Where(t => t.IsActive)
                 .ToListAsync();
+
+            var timelines = activeTimelines
+                .Select(t => new
+                {
+                    Timeline = t,
+                    EffectiveDeadline = t.ReviewDeadline ?? t.SubmissionDeadline ?? t.Date
+                })
+                .Where(t => t.EffectiveDeadline >= now)
+                .OrderBy(t => t.EffectiveDeadline)
+                .Take(3)
+                .ToList();
 
             var deadlines = timelines.Select(t => new DeadlineVM
             {
-                Date = t.Date.Day.ToString("00"),
-                Month = t.Date.Month.ToString("00"),
-                Content = t.Title,
-                SubContent = t.Description ?? "",
-                IsUrgent = (t.Date - now).TotalDays <= 3
+                Date = t.EffectiveDeadline.Day.ToString("00"),
+                Month = t.EffectiveDeadline.Month.ToString("00"),
+                Content = t.Timeline.Title,
+                SubContent = t.Timeline.Description ?? "",
+                IsUrgent = (t.EffectiveDeadline - now).TotalDays <= 3
             }).ToList();
 
             var model = new HomeStudent
